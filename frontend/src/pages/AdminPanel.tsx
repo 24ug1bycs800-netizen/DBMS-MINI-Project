@@ -5,13 +5,13 @@ import {
   LayoutDashboard, Film, Calendar, PlusCircle, AlertCircle,
   CheckCircle, BarChart3, LineChart, PieChart, Users, Wallet,
   Compass, Trash2, Search, MapPin, ChevronRight, ChevronDown,
-  Clock, Check, X, Plus, Layers,
+  Clock, Check, X, Plus, Layers, Pencil, Building2, Monitor,
 } from "lucide-react";
 import api from "../services/api.js";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 interface KPI { totalRevenue: number; totalBookings: number; totalUsers: number; activeGroupRooms: number; }
-interface AdminMovie { id: number; title: string; language: string; genre: string; posterUrl: string; isNowShowing: boolean; }
+interface AdminMovie { id: number; title: string; description: string; language: string; genre: string; durationMins: number; rating: string; ratingValue: string; releaseDate: string; trailerUrl?: string; posterUrl: string; isNowShowing: boolean; }
 interface AdminTheatre { id: number; name: string; cityId: number; address: string; }
 interface AdminShow { id: number; movieId: number; movieTitle: string; moviePosterUrl: string; movieLanguage: string; language?: string; screenId: number; screenNumber: number; screenType: string; theatreId: number; theatreName: string; cityId: number; cityName: string; startTime: string; date: string; priceRegular: number; pricePremium: number; priceRecliner: number; status: string; }
 
@@ -185,6 +185,25 @@ export const AdminPanel: React.FC = () => {
   const [newScreenNumber, setNewScreenNumber] = useState("1");
   const [newScreenType, setNewScreenType] = useState("2D");
 
+  // ── Bulk Screens ──────────────────────────────────────────────────────────────
+  const [bulkScreenTheatreId, setBulkScreenTheatreId] = useState("");
+  const [bulkScreenCount, setBulkScreenCount] = useState("3");
+  const [bulkScreenType, setBulkScreenType] = useState("2D");
+
+  // ── Edit Movie Modal ──────────────────────────────────────────────────────────
+  const [editingMovie, setEditingMovie] = useState<AdminMovie | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [editGenre, setEditGenre] = useState("");
+  const [editLangs, setEditLangs] = useState<string[]>(["Hindi"]);
+  const [editDur, setEditDur] = useState("135");
+  const [editRating, setEditRating] = useState("UA");
+  const [editRatingValue, setEditRatingValue] = useState("7.0");
+  const [editRel, setEditRel] = useState(getToday());
+  const [editPoster, setEditPoster] = useState("");
+  const [editTrailer, setEditTrailer] = useState("");
+  const [editShowing, setEditShowing] = useState(true);
+
   // ─── DATA FETCHING ─────────────────────────────────────────────────────────
   const fetchStats = async () => {
     try {
@@ -336,6 +355,64 @@ export const AdminPanel: React.FC = () => {
     }
   };
 
+  const handleBulkScreens = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMsg(""); setErr("");
+    try {
+      const res = await api.post("/admin/screens/bulk", {
+        theatreId: parseInt(bulkScreenTheatreId),
+        count: parseInt(bulkScreenCount),
+        type: bulkScreenType,
+      });
+      setMsg(res.data.message);
+      setBulkScreenTheatreId(""); setBulkScreenCount("3");
+      fetchAll();
+    } catch (error: any) {
+      setErr(error.response?.data?.error || "Failed to add screens.");
+    }
+  };
+
+  const openEditMovie = (movie: AdminMovie) => {
+    setEditingMovie(movie);
+    setEditTitle(movie.title);
+    setEditDesc(movie.description || "");
+    setEditGenre(movie.genre);
+    setEditLangs(movie.language.split(",").map(l => l.trim()).filter(Boolean));
+    setEditDur(String(movie.durationMins));
+    setEditRating(movie.rating);
+    setEditRatingValue(movie.ratingValue || "7.0");
+    setEditRel(movie.releaseDate || getToday());
+    setEditPoster(movie.posterUrl);
+    setEditTrailer(movie.trailerUrl || "");
+    setEditShowing(movie.isNowShowing);
+    setMsg(""); setErr("");
+  };
+
+  const handleUpdateMovie = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMovie) return;
+    setMsg(""); setErr("");
+    if (editLangs.length === 0) { setErr("Select at least one language."); return; }
+    try {
+      await api.put(`/admin/movies/${editingMovie.id}`, {
+        title: editTitle, description: editDesc, genre: editGenre,
+        language: editLangs, durationMins: parseInt(editDur),
+        rating: editRating, ratingValue: editRatingValue,
+        releaseDate: editRel, posterUrl: editPoster,
+        trailerUrl: editTrailer.trim(), isNowShowing: editShowing,
+      });
+      setMsg(`"${editTitle}" updated successfully!`);
+      setEditingMovie(null);
+      fetchAll();
+    } catch (error: any) {
+      setErr(error.response?.data?.error || "Failed to update movie.");
+    }
+  };
+
+  const toggleEditLanguage = (lang: string) => {
+    setEditLangs(prev => prev.includes(lang) ? prev.filter(l => l !== lang) : [...prev, lang]);
+  };
+
 
 
   // ─── ADD MOVIE HANDLER ─────────────────────────────────────────────────────
@@ -387,7 +464,7 @@ export const AdminPanel: React.FC = () => {
   }, [movies, manageSearch, manageCityFilter, showsByMovie]);
 
   const filteredMoviesForWizard = useMemo(() =>
-    movies.filter(m => !wMovieSearch || m.title.toLowerCase().includes(wMovieSearch.toLowerCase())),
+    movies.filter(m => m.isNowShowing && (!wMovieSearch || m.title.toLowerCase().includes(wMovieSearch.toLowerCase()))),
     [movies, wMovieSearch]
   );
 
@@ -1106,13 +1183,22 @@ export const AdminPanel: React.FC = () => {
                               </p>
                             </div>
                           </div>
-                          <button
-                            onClick={e => { e.stopPropagation(); handleDeleteMovie(movie.id); }}
-                            className="p-2 rounded-lg text-red-500 hover:bg-red-900/20 transition-colors flex-shrink-0"
-                            title="Delete movie and all its shows"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button
+                              onClick={e => { e.stopPropagation(); openEditMovie(movie); }}
+                              className="p-2 rounded-lg text-[#d4af37] hover:bg-[#d4af37]/10 transition-colors"
+                              title="Edit movie details"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={e => { e.stopPropagation(); handleDeleteMovie(movie.id); }}
+                              className="p-2 rounded-lg text-red-500 hover:bg-red-900/20 transition-colors"
+                              title="Delete movie and all its shows"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
 
                         {/* Show timings */}
@@ -1169,9 +1255,181 @@ export const AdminPanel: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* ── ADD THEATRE ─────────────────────────────────────────────── */}
+            <div className={cardDark}>
+              <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-primary" /> Add New Theatre
+              </h2>
+              <form onSubmit={handleAddTheatre} className="grid grid-cols-1 md:grid-cols-3 gap-4 font-inter text-xs">
+                <div>
+                  <FieldLabel>City</FieldLabel>
+                  <select className={selectCls} required value={newTheatreCityId} onChange={e => setNewTheatreCityId(e.target.value)}>
+                    <option value="">— Select City —</option>
+                    {cityList.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <FieldLabel>Theatre Name</FieldLabel>
+                  <input className={inputCls} required placeholder="e.g. PVR IMAX Orion" value={newTheatreName} onChange={e => setNewTheatreName(e.target.value)} />
+                </div>
+                <div>
+                  <FieldLabel>Address</FieldLabel>
+                  <input className={inputCls} required placeholder="Street, Area, City" value={newTheatreAddress} onChange={e => setNewTheatreAddress(e.target.value)} />
+                </div>
+                <GoldBtn type="submit" className="md:col-span-3 w-fit">
+                  <Plus className="w-4 h-4" /> Add Theatre
+                </GoldBtn>
+              </form>
+            </div>
+
+            {/* ── BULK ADD SCREENS ─────────────────────────────────────────── */}
+            <div className={cardDark}>
+              <h2 className="text-lg font-bold mb-1 flex items-center gap-2">
+                <Monitor className="w-5 h-5 text-accent" /> Add Screens to Theatre
+              </h2>
+              <p className="text-[10px] text-neutral-600 font-inter mb-4">
+                Adds multiple screens at once, auto-numbered from the next available slot. Each screen gets 60 seats (Regular / Premium / Recliner).
+              </p>
+              <form onSubmit={handleBulkScreens} className="grid grid-cols-1 md:grid-cols-4 gap-4 font-inter text-xs">
+                <div className="md:col-span-2">
+                  <FieldLabel>Theatre</FieldLabel>
+                  <select className={selectCls} required value={bulkScreenTheatreId} onChange={e => setBulkScreenTheatreId(e.target.value)}>
+                    <option value="">— Select Theatre —</option>
+                    {theatreList.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <FieldLabel>Number of Screens</FieldLabel>
+                  <select className={selectCls} value={bulkScreenCount} onChange={e => setBulkScreenCount(e.target.value)}>
+                    {[1,2,3,4,5,6,7,8].map(n => <option key={n} value={n}>{n} screen{n !== 1 ? "s" : ""}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <FieldLabel>Screen Type</FieldLabel>
+                  <select className={selectCls} value={bulkScreenType} onChange={e => setBulkScreenType(e.target.value)}>
+                    <option value="2D">2D</option>
+                    <option value="3D">3D</option>
+                    <option value="IMAX">IMAX</option>
+                  </select>
+                </div>
+                <GoldBtn type="submit" className="md:col-span-4 w-fit">
+                  <Plus className="w-4 h-4" /> Add {bulkScreenCount} Screen{parseInt(bulkScreenCount) !== 1 ? "s" : ""}
+                </GoldBtn>
+              </form>
+            </div>
+
           </div>
         )}
+
       </div>
+
+      {/* ── EDIT MOVIE MODAL ────────────────────────────────────────────── */}
+      {editingMovie && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style={{ background: "rgba(0,0,0,0.88)", backdropFilter: "blur(6px)" }}
+        onClick={e => { if (e.target === e.currentTarget) setEditingMovie(null); }}
+      >
+        <div
+          className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl"
+          style={{ background: "#0d0d0d", border: "1px solid rgba(212,175,55,0.25)", boxShadow: "0 32px 80px rgba(0,0,0,0.8)" }}
+        >
+          <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-900">
+            <h2 className="text-lg font-bold flex items-center gap-2">
+              <Pencil className="w-5 h-5 text-primary" /> Edit Movie
+              <span className="text-neutral-600 font-normal text-sm">— {editingMovie.title}</span>
+            </h2>
+            <button onClick={() => setEditingMovie(null)} className="p-2 rounded-xl hover:bg-neutral-900 transition-colors text-neutral-500">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          {err && (
+            <div className="mx-6 mt-4 p-3 bg-red-900/20 border border-red-500/30 rounded-xl flex items-center gap-2 text-xs text-red-400 font-inter">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" /> {err}
+            </div>
+          )}
+          <form onSubmit={handleUpdateMovie} className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5 font-inter text-xs">
+            <div>
+              <FieldLabel>Movie Title</FieldLabel>
+              <input className={inputCls} required value={editTitle} onChange={e => setEditTitle(e.target.value)} />
+            </div>
+            <div>
+              <FieldLabel>Genre Tags</FieldLabel>
+              <input className={inputCls} required placeholder="e.g. Action/Thriller" value={editGenre} onChange={e => setEditGenre(e.target.value)} />
+            </div>
+            <div className="md:col-span-2">
+              <FieldLabel>Synopsis</FieldLabel>
+              <textarea className={inputCls} required rows={4} value={editDesc} onChange={e => setEditDesc(e.target.value)} style={{ resize: "none" }} />
+            </div>
+            <div>
+              <FieldLabel>Languages</FieldLabel>
+              <div className="grid grid-cols-2 gap-2">
+                {MOVIE_LANGUAGES.map(lang => {
+                  const sel = editLangs.includes(lang);
+                  return (
+                    <label key={lang} className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${sel ? "border-[#d4af37] bg-[#d4af37]/10 text-white" : "border-neutral-800 bg-neutral-950 text-neutral-500 hover:border-neutral-700"}`}>
+                      <input type="checkbox" checked={sel} onChange={() => toggleEditLanguage(lang)} className="w-3.5 h-3.5 rounded" />
+                      <span className="font-bold">{lang}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <FieldLabel>Duration (Minutes)</FieldLabel>
+                <input className={inputCls} type="number" required value={editDur} onChange={e => setEditDur(e.target.value)} />
+              </div>
+              <div>
+                <FieldLabel>Censor Rating</FieldLabel>
+                <select className={selectCls} value={editRating} onChange={e => setEditRating(e.target.value)}>
+                  <option value="U">U (Universal)</option>
+                  <option value="UA">UA (Parental Guidance)</option>
+                  <option value="A">A (Adults Only)</option>
+                </select>
+              </div>
+              <div>
+                <FieldLabel>Rating Score (e.g. 8.2)</FieldLabel>
+                <input className={inputCls} type="number" step="0.1" min="0" max="10" value={editRatingValue} onChange={e => setEditRatingValue(e.target.value)} placeholder="0.0 – 10.0" />
+              </div>
+              <div>
+                <FieldLabel>Release Date</FieldLabel>
+                <input className={inputCls} type="date" required value={editRel} onChange={e => setEditRel(e.target.value)} />
+              </div>
+            </div>
+            <div className="md:col-span-2">
+              <FieldLabel>Poster Image URL</FieldLabel>
+              <input className={inputCls} value={editPoster} onChange={e => setEditPoster(e.target.value)} placeholder="Paste poster URL" />
+              {editPoster && (
+                <img src={editPoster} alt="Preview" loading="lazy" decoding="async"
+                  className="mt-3 w-24 h-36 object-cover rounded-lg border border-neutral-800"
+                  onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+              )}
+            </div>
+            <div className="md:col-span-2">
+              <FieldLabel>YouTube Trailer URL</FieldLabel>
+              <input className={inputCls} value={editTrailer} onChange={e => setEditTrailer(e.target.value)} placeholder="e.g. https://www.youtube.com/watch?v=..." />
+              {editTrailer && (
+                <a href={editTrailer} target="_blank" rel="noopener noreferrer"
+                  className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-bold"
+                  style={{ color: "#d4af37" }}>
+                  ▶ Preview trailer
+                </a>
+              )}
+            </div>
+            <div className="flex items-center gap-3.5">
+              <input type="checkbox" id="editShowing" checked={editShowing} onChange={e => setEditShowing(e.target.checked)} className="w-4 h-4 rounded" />
+              <label htmlFor="editShowing" className="font-bold text-white cursor-pointer text-xs">Now Showing</label>
+            </div>
+            <div className="md:col-span-2 flex gap-3 pt-2 border-t border-neutral-900">
+              <GhostBtn type="button" onClick={() => setEditingMovie(null)}>Cancel</GhostBtn>
+              <GoldBtn type="submit" className="flex-1 justify-center">Save Changes</GoldBtn>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
     </div>
   );
 };

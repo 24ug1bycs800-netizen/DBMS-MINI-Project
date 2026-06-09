@@ -11,6 +11,9 @@ import {
   Download,
   ExternalLink,
   LogOut,
+  X,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import api from "../services/api.js";
 
@@ -22,6 +25,8 @@ export const Dashboard: React.FC = () => {
   const [wishlist, setWishlist] = useState<any[]>([]);
   const [rooms, setRooms] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<"bookings" | "wishlist" | "rooms">("bookings");
+  const [cancelTarget, setCancelTarget] = useState<any | null>(null);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -43,16 +48,31 @@ export const Dashboard: React.FC = () => {
     fetchDashboardData();
   }, [user]);
 
+  const isCancellable = (booking: any): boolean => {
+    const date = booking.show?.date;
+    const startTime = booking.show?.startTime;
+    if (!date || !startTime) return false;
+    const [time, period] = startTime.split(" ");
+    let [hours, minutes] = time.split(":").map(Number);
+    if (period === "PM" && hours !== 12) hours += 12;
+    if (period === "AM" && hours === 12) hours = 0;
+    const [year, month, day] = date.split("-").map(Number);
+    const showAt = new Date(year, month - 1, day, hours, minutes);
+    return (showAt.getTime() - Date.now()) > 3 * 60 * 60 * 1000;
+  };
+
   const handleCancelBooking = async (bookingId: number) => {
+    setCancelling(true);
     try {
       await api.patch(`/bookings/${bookingId}/cancel`);
       setBookings((prev) =>
-        prev.map((booking) =>
-          booking.id === bookingId ? { ...booking, status: "cancelled" } : booking
-        )
+        prev.map((b) => b.id === bookingId ? { ...b, status: "cancelled" } : b)
       );
     } catch (err) {
       console.error("Failed to cancel booking", err);
+    } finally {
+      setCancelling(false);
+      setCancelTarget(null);
     }
   };
 
@@ -363,7 +383,7 @@ export const Dashboard: React.FC = () => {
                               <Download className="w-3.5 h-3.5" /> Download Pass
                             </button>
                             <button
-                              onClick={() => handleCancelBooking(booking.id)}
+                              onClick={() => setCancelTarget(booking)}
                               className="w-full px-4 py-2 rounded-xl text-xs font-bold transition-all hover:scale-[1.02]"
                               style={{
                                 background: "rgba(239,68,68,0.08)",
@@ -493,7 +513,92 @@ export const Dashboard: React.FC = () => {
           )}
         </div>
       </div>
-    </div>
+
+    {/* ── CANCEL TICKET POPUP ───────────────────────────────────────── */}
+    {cancelTarget && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)" }}
+        onClick={e => { if (e.target === e.currentTarget) setCancelTarget(null); }}
+      >
+        <div
+          className="w-full max-w-sm rounded-2xl overflow-hidden"
+          style={{ background: "#111", border: "1px solid rgba(212,175,55,0.18)", boxShadow: "0 32px 80px rgba(0,0,0,0.8)" }}
+        >
+          {/* header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+            <span className="font-black text-sm text-white">Cancel Ticket</span>
+            <button onClick={() => setCancelTarget(null)} className="text-neutral-600 hover:text-white transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="px-5 py-5 space-y-4">
+            {/* movie info strip */}
+            <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+              <img src={cancelTarget.movie?.posterUrl} alt="" className="w-10 h-14 object-cover rounded-lg flex-shrink-0" style={{ border: "1px solid rgba(212,175,55,0.15)" }} />
+              <div className="min-w-0">
+                <p className="font-black text-xs text-white truncate">{cancelTarget.movie?.title}</p>
+                <p className="text-[10px] text-neutral-500 font-inter mt-0.5">{cancelTarget.show?.date} · {cancelTarget.show?.startTime}</p>
+                <p className="text-[10px] text-neutral-600 font-inter truncate">{cancelTarget.theatre?.name}</p>
+              </div>
+            </div>
+
+            {isCancellable(cancelTarget) ? (
+              <>
+                <div className="flex items-start gap-3 p-3 rounded-xl" style={{ background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.15)" }}>
+                  <RefreshCw className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-black text-green-400">Refund Eligible</p>
+                    <p className="text-[11px] text-neutral-500 font-inter mt-1 leading-relaxed">
+                      Your refund of <strong className="text-white">₹{cancelTarget.totalAmount}</strong> will be credited to your original payment method within <strong className="text-white">5–7 working days</strong>.
+                    </p>
+                  </div>
+                </div>
+                <p className="text-[10px] text-neutral-600 font-inter text-center">This action cannot be undone.</p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setCancelTarget(null)}
+                    className="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all hover:scale-[1.01]"
+                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#888" }}
+                  >
+                    Keep Ticket
+                  </button>
+                  <button
+                    onClick={() => handleCancelBooking(cancelTarget.id)}
+                    disabled={cancelling}
+                    className="flex-1 py-2.5 rounded-xl text-xs font-black transition-all hover:scale-[1.01] disabled:opacity-50"
+                    style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171" }}
+                  >
+                    {cancelling ? "Cancelling…" : "Confirm & Refund"}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-start gap-3 p-3 rounded-xl" style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)" }}>
+                  <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-black text-red-400">Cancellation Not Allowed</p>
+                    <p className="text-[11px] text-neutral-500 font-inter mt-1 leading-relaxed">
+                      Tickets cannot be cancelled within <strong className="text-white">3 hours</strong> of showtime. Please contact support if you need further assistance.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setCancelTarget(null)}
+                  className="w-full py-2.5 rounded-xl text-xs font-bold transition-all hover:scale-[1.01]"
+                  style={{ background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.2)", color: "#d4af37" }}
+                >
+                  OK, Got It
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
   );
 };
 

@@ -221,6 +221,47 @@ export const addMovie = async (req: Request, res: Response) => {
   }
 };
 
+export const updateMovie = async (req: Request, res: Response) => {
+  try {
+    const id = parseInteger(req.params.id);
+    if (Number.isNaN(id)) return res.status(400).json({ error: "Invalid movie ID" });
+
+    const {
+      title, description, genre, language, durationMins,
+      rating, ratingValue, releaseDate, trailerUrl, posterUrl, isNowShowing,
+    } = req.body;
+
+    const updates: Partial<typeof movies.$inferInsert> = {};
+    if (title !== undefined) updates.title = String(title).trim();
+    if (description !== undefined) updates.description = String(description).trim();
+    if (genre !== undefined) updates.genre = String(genre).trim();
+    if (language !== undefined) updates.language = normalizeMovieLanguage(language);
+    if (durationMins !== undefined) updates.durationMins = parseInteger(durationMins);
+    if (rating !== undefined) updates.rating = String(rating);
+    if (ratingValue !== undefined) updates.ratingValue = String(ratingValue);
+    if (releaseDate !== undefined) updates.releaseDate = String(releaseDate);
+    if (trailerUrl !== undefined) updates.trailerUrl = normalizeYouTubeUrl(trailerUrl);
+    if (posterUrl !== undefined) updates.posterUrl = String(posterUrl).trim();
+    if (isNowShowing !== undefined) updates.isNowShowing = isNowShowing === "true" || isNowShowing === true;
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: "No fields to update" });
+    }
+
+    const updated = await db
+      .update(movies)
+      .set(updates)
+      .where(eq(movies.id, id))
+      .returning();
+
+    if (!updated[0]) return res.status(404).json({ error: "Movie not found" });
+    return res.status(200).json({ message: "Movie updated successfully", movie: updated[0] });
+  } catch (err) {
+    console.error("Update movie error:", err);
+    return res.status(500).json({ error: "Internal server error updating movie" });
+  }
+};
+
 export const deleteMovie = async (req: Request, res: Response) => {
   try {
     const id = parseInteger(req.params.id);
@@ -375,6 +416,53 @@ export const addScreen = async (req: Request, res: Response) => {
   } catch (err) {
     console.error("Add screen error:", err);
     return res.status(500).json({ error: "Internal server error adding screen" });
+  }
+};
+
+export const addBulkScreens = async (req: Request, res: Response) => {
+  try {
+    const { theatreId, count, type = "2D" } = req.body;
+    const parsedTheatreId = parseInteger(theatreId);
+    const parsedCount = Math.max(1, Math.min(parseInteger(count) || 1, 10));
+
+    if (Number.isNaN(parsedTheatreId)) {
+      return res.status(400).json({ error: "Valid theatre ID is required" });
+    }
+
+    const theatre = await db
+      .select({ id: theatres.id })
+      .from(theatres)
+      .where(eq(theatres.id, parsedTheatreId))
+      .limit(1);
+
+    if (!theatre[0]) return res.status(400).json({ error: "Theatre not found" });
+
+    const existingScreens = await db
+      .select({ number: screens.number })
+      .from(screens)
+      .where(eq(screens.theatreId, parsedTheatreId))
+      .orderBy(desc(screens.number));
+
+    const maxNumber = existingScreens[0]?.number ?? 0;
+    const created: number[] = [];
+
+    for (let i = 1; i <= parsedCount; i++) {
+      const screenNumber = maxNumber + i;
+      const inserted = await db
+        .insert(screens)
+        .values({ theatreId: parsedTheatreId, number: screenNumber, type: String(type).trim() })
+        .returning();
+      await db.insert(seats).values(buildDefaultSeats(inserted[0].id));
+      created.push(screenNumber);
+    }
+
+    return res.status(201).json({
+      message: `${created.length} screen${created.length !== 1 ? "s" : ""} added successfully (Screen${created.length !== 1 ? "s" : ""} ${created.join(", ")})`,
+      screens: created,
+    });
+  } catch (err) {
+    console.error("Bulk add screens error:", err);
+    return res.status(500).json({ error: "Internal server error adding screens" });
   }
 };
 

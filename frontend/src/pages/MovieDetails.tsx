@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useCityStore } from "../store/useCityStore.js";
 import { useAuth } from "../context/AuthContext.js";
@@ -277,6 +277,7 @@ export const MovieDetails: React.FC = () => {
   const [reviews, setReviews] = useState<any[]>([]);
   const [shows, setShows] = useState<Show[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(DATE_OPTIONS[0]);
+  const [selectedLanguage, setSelectedLanguage] = useState("");
   const [trailerOpen, setTrailerOpen] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
 
@@ -342,6 +343,11 @@ export const MovieDetails: React.FC = () => {
     }
   };
 
+  const availableLanguages = useMemo(() => {
+    const langs = new Set(shows.map(s => s.language).filter(Boolean));
+    return Array.from(langs) as string[];
+  }, [shows]);
+
   if (!movie) {
     return (
       <div
@@ -357,7 +363,9 @@ export const MovieDetails: React.FC = () => {
   }
 
   const dailyShows = shows.filter(
-    (s) => s.date === selectedDate && isShowAvailable(s, selectedDate),
+    (s) => s.date === selectedDate &&
+      isShowAvailable(s, selectedDate) &&
+      (!selectedLanguage || s.language === selectedLanguage),
   );
   const theatresMap: Record<
     number,
@@ -601,6 +609,37 @@ export const MovieDetails: React.FC = () => {
 
           {movie.isNowShowing ? (
             <>
+              {/* LANGUAGE FILTER — BookMyShow style */}
+              {availableLanguages.length > 0 && (
+                <div className="flex flex-wrap gap-2 items-center">
+                  <button
+                    onClick={() => setSelectedLanguage("")}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                    style={
+                      selectedLanguage === ""
+                        ? { background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000" }
+                        : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#666" }
+                    }
+                  >
+                    All Languages
+                  </button>
+                  {availableLanguages.map(lang => (
+                    <button
+                      key={lang}
+                      onClick={() => setSelectedLanguage(lang)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                      style={
+                        selectedLanguage === lang
+                          ? { background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000" }
+                          : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#666" }
+                      }
+                    >
+                      {lang}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {/* DATE PICKER */}
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {DATE_OPTIONS.map((dateStr) => {

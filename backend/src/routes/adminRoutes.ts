@@ -2,9 +2,11 @@ import { Router } from 'express';
 import {
   getDashboardStats,
   addMovie,
+  updateMovie,
   addShow,
   addTheatre,
   addScreen,
+  addBulkScreens,
   generateShows,
   deleteMovie,
   deleteShow,
@@ -35,7 +37,11 @@ router.post('/movies',         authenticateJWT, requireAdmin, addMovie);
 router.post('/shows',          authenticateJWT, requireAdmin, addShow);
 router.post('/theatres',       authenticateJWT, requireAdmin, addTheatre);
 router.post('/screens',        authenticateJWT, requireAdmin, addScreen);
+router.post('/screens/bulk',   authenticateJWT, requireAdmin, addBulkScreens);
 router.post('/generate-shows', authenticateJWT, requireAdmin, generateShows);
+
+// ── Update ────────────────────────────────────────────────────────────────────
+router.put('/movies/:id', authenticateJWT, requireAdmin, updateMovie);
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 // Soft-expires all shows whose date < today (preserves booking history)
