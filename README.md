@@ -135,9 +135,10 @@ CineCircle successfully demonstrates the implementation of a modern movie ticket
 
 ## Developed By
 
-Kaniska Raj
-Shashikala T
-Sinchana S R
+Kaniska Raj-1BY24CS122
+Shashikala T-1TD24CS263
+Sinchana S R-1TD24CS276
+Ananya Priyadarshini - 1BY24CS018
 
 Mini Project Submission
 
