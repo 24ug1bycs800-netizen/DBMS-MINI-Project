@@ -131,7 +131,7 @@ Dashboard
 
 CineCircle successfully demonstrates the implementation of a modern movie ticket booking system with features such as seat reservation, payment integration, digital ticket generation, and collaborative group planning. The project combines frontend, backend, and database technologies to provide a complete web-based solution.
 
-##Website link: https://dbms-mini-project-k8vk.vercel.app
+
 ---
 
 ## Developed By
