@@ -184,6 +184,8 @@ export const AdminPanel: React.FC = () => {
   const [manageSearch, setManageSearch] = useState("");
   const [manageCityFilter, setManageCityFilter] = useState<number | "">("");
   const [expandedMovies, setExpandedMovies] = useState<Set<number>>(new Set());
+  const [expandedCities, setExpandedCities] = useState<Set<string>>(new Set());
+  const [expandedTheatres, setExpandedTheatres] = useState<Set<number>>(new Set());
   const [newTheatreCityId, setNewTheatreCityId] = useState("");
   const [newTheatreName, setNewTheatreName] = useState("");
   const [newTheatreAddress, setNewTheatreAddress] = useState("");
@@ -592,34 +594,61 @@ export const AdminPanel: React.FC = () => {
   const cardDark = `${card} bg-[#0d0d0d]`;
 
   return (
-    <div className="min-h-screen bg-background text-white pb-20 font-poppins">
-      <div className="max-w-7xl mx-auto px-6 sm:px-12 py-12 space-y-8">
+    <div className="min-h-screen bg-background text-white font-poppins flex items-start">
 
-        {/* ── HEADER ────────────────────────────────────────────────────────── */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-neutral-900 pb-6 gap-4">
+      {/* ── SIDEBAR ───────────────────────────────────────────────────────── */}
+      <aside
+        className="w-56 shrink-0 sticky top-[68px] max-h-[calc(100vh-68px)] overflow-y-auto flex flex-col"
+        style={{ background: "#090909", borderRight: "1px solid rgba(255,255,255,0.05)" }}
+      >
+        <div className="px-4 py-5 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-xl" style={{ background: "linear-gradient(135deg, #d4af37, #f4d03f)" }}>
+              <Monitor className="w-4 h-4 text-black" />
+            </div>
+            <div>
+              <p className="text-[9px] font-black tracking-[0.2em] uppercase" style={{ color: "#d4af37" }}>CineCircle</p>
+              <p className="text-sm font-black text-white leading-none mt-0.5">Admin</p>
+            </div>
+          </div>
+        </div>
+        <nav className="flex-1 p-3 space-y-1">
+          {([
+            { id: "dashboard" as const, icon: <LayoutDashboard className="w-4 h-4" />, label: "Analytics", color: "#d4af37", bg: "rgba(212,175,55,0.12)", bdr: "rgba(212,175,55,0.22)" },
+            { id: "add-movie" as const, icon: <Film className="w-4 h-4" />, label: "Add Movie", color: "#6ee7e7", bg: "rgba(110,231,231,0.1)", bdr: "rgba(110,231,231,0.2)" },
+            { id: "add-show" as const, icon: <Calendar className="w-4 h-4" />, label: "Schedule Show", color: "#c084fc", bg: "rgba(192,132,252,0.1)", bdr: "rgba(192,132,252,0.2)" },
+            { id: "manage" as const, icon: <Layers className="w-4 h-4" />, label: "Manage Data", color: "#fb923c", bg: "rgba(251,146,60,0.1)", bdr: "rgba(251,146,60,0.2)" },
+          ]).map(({ id, icon, label, color, bg, bdr }) => (
+            <button
+              key={id}
+              onClick={() => { setActiveTab(id); setMsg(""); setErr(""); }}
+              className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all"
+              style={activeTab === id
+                ? { background: bg, border: `1px solid ${bdr}`, color }
+                : { background: "transparent", border: "1px solid transparent", color: "rgba(255,255,255,0.3)" }
+              }
+            >
+              <span style={{ color: activeTab === id ? color : "rgba(255,255,255,0.28)" }}>{icon}</span>
+              <span className="text-xs font-bold">{label}</span>
+              {activeTab === id && <ChevronRight className="w-3 h-3 ml-auto shrink-0" style={{ color }} />}
+            </button>
+          ))}
+        </nav>
+        <div className="p-4 border-t" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+          <p className="text-[9px] font-inter text-center tracking-widest uppercase" style={{ color: "rgba(255,255,255,0.12)" }}>Operations v1</p>
+        </div>
+      </aside>
+
+      {/* ── MAIN CONTENT ──────────────────────────────────────────────────── */}
+      <div className="flex-1 min-w-0 px-8 py-10 pb-20 space-y-8">
+
+        {/* ── PAGE TITLE ────────────────────────────────────────────────────── */}
+        <div className="flex items-center justify-between pb-5 border-b border-neutral-900">
           <div>
-            <h1 className="text-3xl font-black text-white tracking-wider flex items-center gap-2">
-              <LayoutDashboard className="w-8 h-8 text-primary" /> Admin Console
-            </h1>
-            <p className="text-xs text-neutral-500 font-inter mt-1.5">
-              CineCircle operations dashboard — movies, scheduling, analytics, lifecycle management.
-            </p>
+            <h1 className="text-2xl font-black text-white tracking-wider">{TAB_LABELS[activeTab]}</h1>
+            <p className="text-[11px] text-neutral-500 font-inter mt-1">CineCircle · Admin Console</p>
           </div>
-          <div className="flex gap-2 text-xs font-semibold flex-wrap">
-            {(["dashboard", "add-movie", "add-show", "manage"] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => { setActiveTab(tab); setMsg(""); setErr(""); }}
-                className={`px-4 py-2 rounded-xl border transition-all ${
-                  activeTab === tab
-                    ? "border-[#d4af37] bg-[#d4af37]/10 text-white"
-                    : "border-neutral-900 bg-neutral-950/40 text-neutral-500 hover:border-neutral-700"
-                }`}
-              >
-                {TAB_LABELS[tab]}
-              </button>
-            ))}
-          </div>
+          <span className="text-[10px] text-neutral-700 font-inter font-semibold tracking-wider">{getToday()}</span>
         </div>
 
         {/* ── ALERTS ────────────────────────────────────────────────────────── */}
@@ -1069,7 +1098,7 @@ export const AdminPanel: React.FC = () => {
                   </div>
                 )}
 
-                {/* Show times */}
+                {/* Show times – grouped by period */}
                 <div>
                   <FieldLabel>
                     Show Times
@@ -1077,29 +1106,54 @@ export const AdminPanel: React.FC = () => {
                       (min 2 · {wTimes.length} selected)
                     </span>
                   </FieldLabel>
-                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
-                    {ALL_24H_TIMES.map(t => {
-                      const selected = wTimes.includes(t);
+                  <div className="space-y-2.5">
+                    {([
+                      { label: "Late Night", emoji: "🌙", hours: [0,1,2,3,4,5] },
+                      { label: "Morning",    emoji: "🌅", hours: [6,7,8,9,10,11] },
+                      { label: "Afternoon",  emoji: "☀️",  hours: [12,13,14,15,16,17] },
+                      { label: "Evening",    emoji: "🌆", hours: [18,19,20,21,22,23] },
+                    ] as { label: string; emoji: string; hours: number[] }[]).map(({ label, emoji, hours }) => {
+                      const to24 = (t: string) => { const [tp, per] = t.split(" "); let h = parseInt(tp); if (per === "AM" && h === 12) h = 0; else if (per === "PM" && h !== 12) h += 12; return h; };
+                      const periodTimes = ALL_24H_TIMES.filter(t => hours.includes(to24(t)));
+                      const selCount = periodTimes.filter(t => wTimes.includes(t)).length;
                       return (
-                        <button
-                          key={t}
-                          type="button"
-                          onClick={() =>
-                            setWTimes(prev =>
-                              selected
-                                ? prev.length > 2 ? prev.filter(v => v !== t) : prev
-                                : [...prev, t]
-                            )
-                          }
-                          className="py-1.5 rounded-lg text-[10px] font-bold transition-all"
-                          style={selected
-                            ? { background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000" }
-                            : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.35)" }
-                          }
-                          title={selected && wTimes.length <= 2 ? "Minimum 2 required" : ""}
-                        >
-                          {t}
-                        </button>
+                        <div key={label} className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                          <div className="flex items-center gap-2 mb-2.5">
+                            <span className="text-sm leading-none">{emoji}</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-neutral-500">{label}</span>
+                            {selCount > 0 && (
+                              <span className="ml-auto text-[9px] font-black px-1.5 py-0.5 rounded-md" style={{ background: "rgba(212,175,55,0.12)", color: "#d4af37" }}>
+                                {selCount} selected
+                              </span>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-6 gap-1.5">
+                            {periodTimes.map(t => {
+                              const selected = wTimes.includes(t);
+                              return (
+                                <button
+                                  key={t}
+                                  type="button"
+                                  onClick={() =>
+                                    setWTimes(prev =>
+                                      selected
+                                        ? prev.length > 2 ? prev.filter(v => v !== t) : prev
+                                        : [...prev, t]
+                                    )
+                                  }
+                                  className="py-2 rounded-lg text-[11px] font-bold transition-all"
+                                  style={selected
+                                    ? { background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000" }
+                                    : { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.3)" }
+                                  }
+                                  title={selected && wTimes.length <= 2 ? "Minimum 2 required" : ""}
+                                >
+                                  {t}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
                       );
                     })}
                   </div>
@@ -1204,15 +1258,20 @@ export const AdminPanel: React.FC = () => {
 
             {/* Stats bar */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { label: "Total Movies", value: movies.length, color: "text-primary" },
-                { label: "Total Shows", value: shows.length, color: "text-accent" },
-                { label: "Active Shows", value: shows.filter(s => s.status === "active").length, color: "text-green-400" },
-                { label: "Total Theatres", value: theatreList.length, color: "text-yellow-400" },
-              ].map(({ label, value, color }) => (
-                <div key={label} className={`${cardDark} py-4`}>
-                  <p className="text-xs text-neutral-500 font-inter">{label}</p>
-                  <p className={`text-2xl font-black ${color} mt-1`}>{value}</p>
+              {([
+                { label: "Total Movies",   value: movies.length,                                   Icon: Film,        color: "#d4af37", bg: "rgba(212,175,55,0.07)",  border: "rgba(212,175,55,0.18)"  },
+                { label: "Total Shows",    value: shows.length,                                    Icon: Calendar,    color: "#6ee7e7", bg: "rgba(110,231,231,0.07)", border: "rgba(110,231,231,0.18)" },
+                { label: "Active Shows",   value: shows.filter(s => s.status === "active").length, Icon: CheckCircle, color: "#4ade80", bg: "rgba(74,222,128,0.07)",  border: "rgba(74,222,128,0.18)"  },
+                { label: "Total Theatres", value: theatreList.length,                              Icon: Building2,   color: "#fb923c", bg: "rgba(251,146,60,0.07)",  border: "rgba(251,146,60,0.18)"  },
+              ] as { label: string; value: number; Icon: React.FC<any>; color: string; bg: string; border: string }[]).map(({ label, value, Icon, color, bg, border }) => (
+                <div key={label} className="rounded-2xl p-5 flex items-start justify-between gap-3" style={{ background: bg, border: `1px solid ${border}` }}>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest mb-2.5" style={{ color: "rgba(255,255,255,0.3)" }}>{label}</p>
+                    <p className="text-3xl font-black text-white">{value}</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}18`, border: `1px solid ${color}28` }}>
+                    <Icon className="w-5 h-5" style={{ color }} />
+                  </div>
                 </div>
               ))}
             </div>
@@ -1316,49 +1375,50 @@ export const AdminPanel: React.FC = () => {
                             {movieShows.length === 0 ? (
                               <p className="text-xs text-neutral-700 py-4 text-center font-inter">No shows scheduled for this movie.</p>
                             ) : (
-                              <div className="divide-y divide-neutral-800/40">
+                              <div className="divide-y divide-neutral-800/30">
                                 {movieShows.map(show => (
-                                  <div
-                                    key={show.id}
-                                    className="flex items-center justify-between px-5 py-2.5"
-                                  >
-                                    <div className="flex items-center gap-4 min-w-0">
-                                      {/* Date + time */}
-                                      <div className="flex-shrink-0 text-center w-16">
-                                        <p className="text-[10px] font-black text-white">{show.date.substring(5)}</p>
-                                        <p className="text-[10px] text-neutral-500 font-inter">{show.startTime}</p>
+                                  <div key={show.id} className="px-4 py-3 hover:bg-neutral-900/30 transition-colors">
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div className="flex items-start gap-3 min-w-0">
+                                        {/* Date + time badge */}
+                                        <div className="flex-shrink-0 rounded-xl px-2.5 py-2 text-center min-w-[56px]" style={{ background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.12)" }}>
+                                          <p className="text-[9px] font-black text-neutral-500 uppercase tracking-wider leading-none mb-1">{show.date.substring(5)}</p>
+                                          <p className="text-[11px] font-black leading-none" style={{ color: "#d4af37" }}>{show.startTime}</p>
+                                        </div>
+                                        {/* Info */}
+                                        <div className="min-w-0 pt-0.5">
+                                          <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                                            <span className="text-xs font-bold text-white">{show.theatreName}</span>
+                                            <span className="text-neutral-700 text-[10px]">·</span>
+                                            <span className="text-[10px] font-bold text-neutral-400">Scr {show.screenNumber}</span>
+                                            <span className="px-1.5 py-0.5 rounded text-[9px] font-black" style={
+                                              show.screenType === "IMAX" ? { background: "rgba(244,208,63,0.12)", color: "#f4d03f" } :
+                                              show.screenType === "3D"   ? { background: "rgba(110,231,231,0.12)", color: "#6ee7e7" } :
+                                              { background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.3)" }
+                                            }>{show.screenType}</span>
+                                            <StatusPill status={show.status} />
+                                          </div>
+                                          <p className="text-[10px] text-neutral-600 font-inter truncate">
+                                            {show.cityName} · {show.language || show.movieLanguage} · ₹{show.priceRegular} / {show.pricePremium} / {show.priceRecliner}
+                                          </p>
+                                        </div>
                                       </div>
-                                      <div className="w-px h-8 bg-neutral-800 flex-shrink-0" />
-                                      {/* Screen + theatre */}
-                                      <div className="min-w-0">
-                                        <p className="text-xs font-bold text-white truncate">
-                                          Screen {show.screenNumber}
-                                          <span className="text-[10px] font-normal text-neutral-500 ml-1.5">({show.screenType})</span>
-                                          <span className="text-[10px] font-normal text-neutral-500 ml-1.5">{show.language || show.movieLanguage}</span>
-                                          <span className="text-neutral-600 mx-1.5">·</span>
-                                          {show.theatreName}
-                                        </p>
-                                        <p className="text-[10px] text-neutral-600 font-inter truncate">
-                                          {show.cityName} &nbsp;·&nbsp; Rs {show.priceRegular} / {show.pricePremium} / {show.priceRecliner}
-                                        </p>
+                                      <div className="flex items-center gap-1 flex-shrink-0 pt-0.5">
+                                        <button
+                                          onClick={() => openEditShow(show)}
+                                          className="p-1.5 rounded-lg text-[#d4af37] hover:bg-[#d4af37]/10 transition-colors"
+                                          title="Edit show"
+                                        >
+                                          <Pencil className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                          onClick={() => handleDeleteShow(show.id)}
+                                          className="p-1.5 rounded-lg text-red-500 hover:bg-red-900/20 transition-colors"
+                                          title="Delete show"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
                                       </div>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                                      <StatusPill status={show.status} />
-                                      <button
-                                        onClick={() => openEditShow(show)}
-                                        className="p-1.5 rounded-lg text-[#d4af37] hover:bg-[#d4af37]/10 transition-colors"
-                                        title="Edit show"
-                                      >
-                                        <Pencil className="w-3.5 h-3.5" />
-                                      </button>
-                                      <button
-                                        onClick={() => handleDeleteShow(show.id)}
-                                        className="p-1.5 rounded-lg text-red-500 hover:bg-red-900/20 transition-colors"
-                                        title="Delete show"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </button>
                                     </div>
                                   </div>
                                 ))}
@@ -1373,93 +1433,110 @@ export const AdminPanel: React.FC = () => {
               )}
             </div>
 
-            {/* ── ADD CITY ────────────────────────────────────────────────── */}
+            {/* ── INFRASTRUCTURE ─────────────────────────────────────────── */}
             <div className={cardDark}>
-              <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-primary" /> Add New City
-              </h2>
-              <form onSubmit={handleAddCity} className="flex items-end gap-4 font-inter text-xs">
-                <div className="flex-1">
-                  <FieldLabel>City Name</FieldLabel>
-                  <input className={inputCls} required placeholder="e.g. Bengaluru" value={newCityName} onChange={e => setNewCityName(e.target.value)} />
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.2)" }}>
+                  <Building2 className="w-5 h-5" style={{ color: "#d4af37" }} />
                 </div>
-                <GoldBtn type="submit" className="w-fit"><Plus className="w-4 h-4" /> Add City</GoldBtn>
-              </form>
-            </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white leading-tight">Infrastructure</h2>
+                  <p className="text-[10px] text-neutral-600 font-inter">Manage cities, theatres &amp; screens</p>
+                </div>
+              </div>
 
-            {/* ── ADD THEATRE ─────────────────────────────────────────────── */}
-            <div className={cardDark}>
-              <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-primary" /> Add New Theatre
-              </h2>
-              <form onSubmit={handleAddTheatre} className="grid grid-cols-1 md:grid-cols-3 gap-4 font-inter text-xs">
-                <div>
-                  <FieldLabel>City</FieldLabel>
-                  <select className={selectCls} required value={newTheatreCityId} onChange={e => setNewTheatreCityId(e.target.value)}>
-                    <option value="">— Select City —</option>
-                    {cityList.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+              {/* Add City */}
+              <div className="mb-4 p-4 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <div className="flex items-center gap-2 mb-3">
+                  <MapPin className="w-3.5 h-3.5" style={{ color: "#d4af37" }} />
+                  <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "rgba(212,175,55,0.8)" }}>Add City</p>
                 </div>
-                <div>
-                  <FieldLabel>Theatre Name</FieldLabel>
-                  <input className={inputCls} required placeholder="e.g. PVR IMAX Orion" value={newTheatreName} onChange={e => setNewTheatreName(e.target.value)} />
-                </div>
-                <div>
-                  <FieldLabel>Address</FieldLabel>
-                  <input className={inputCls} required placeholder="Street, Area, City" value={newTheatreAddress} onChange={e => setNewTheatreAddress(e.target.value)} />
-                </div>
-                <GoldBtn type="submit" className="md:col-span-3 w-fit">
-                  <Plus className="w-4 h-4" /> Add Theatre
-                </GoldBtn>
-              </form>
-            </div>
+                <form onSubmit={handleAddCity} className="flex items-end gap-3 font-inter text-xs">
+                  <div className="flex-1">
+                    <input className={inputCls} required placeholder="e.g. Bengaluru" value={newCityName} onChange={e => setNewCityName(e.target.value)} />
+                  </div>
+                  <GoldBtn type="submit" className="flex-shrink-0"><Plus className="w-3.5 h-3.5" /> Add City</GoldBtn>
+                </form>
+              </div>
 
-            {/* ── BULK ADD SCREENS ─────────────────────────────────────────── */}
-            <div className={cardDark}>
-              <h2 className="text-lg font-bold mb-1 flex items-center gap-2">
-                <Monitor className="w-5 h-5 text-accent" /> Add Screens to Theatre
-              </h2>
-              <p className="text-[10px] text-neutral-600 font-inter mb-4">
-                Adds multiple screens at once, auto-numbered from the next available slot. Seats are generated based on type: 2D → 200 seats, 3D → 156 seats, IMAX → 234 seats.
-              </p>
-              <form onSubmit={handleBulkScreens} className="grid grid-cols-1 md:grid-cols-4 gap-4 font-inter text-xs">
-                <div className="md:col-span-2">
-                  <FieldLabel>Theatre</FieldLabel>
-                  <select className={selectCls} required value={bulkScreenTheatreId} onChange={e => setBulkScreenTheatreId(e.target.value)}>
-                    <option value="">— Select Theatre —</option>
-                    {theatreList.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                  </select>
+              {/* Add Theatre */}
+              <div className="mb-4 p-4 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <div className="flex items-center gap-2 mb-3">
+                  <Building2 className="w-3.5 h-3.5" style={{ color: "#6ee7e7" }} />
+                  <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "rgba(110,231,231,0.8)" }}>Add Theatre</p>
                 </div>
-                <div>
-                  <FieldLabel>Number of Screens</FieldLabel>
-                  <select className={selectCls} value={bulkScreenCount} onChange={e => setBulkScreenCount(e.target.value)}>
-                    {[1,2,3,4,5,6,7,8].map(n => <option key={n} value={n}>{n} screen{n !== 1 ? "s" : ""}</option>)}
-                  </select>
+                <form onSubmit={handleAddTheatre} className="grid grid-cols-1 md:grid-cols-3 gap-3 font-inter text-xs">
+                  <div>
+                    <FieldLabel>City</FieldLabel>
+                    <select className={selectCls} required value={newTheatreCityId} onChange={e => setNewTheatreCityId(e.target.value)}>
+                      <option value="">— Select City —</option>
+                      {cityList.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <FieldLabel>Theatre Name</FieldLabel>
+                    <input className={inputCls} required placeholder="e.g. PVR IMAX Orion" value={newTheatreName} onChange={e => setNewTheatreName(e.target.value)} />
+                  </div>
+                  <div>
+                    <FieldLabel>Address</FieldLabel>
+                    <input className={inputCls} required placeholder="Street, Area, City" value={newTheatreAddress} onChange={e => setNewTheatreAddress(e.target.value)} />
+                  </div>
+                  <GoldBtn type="submit" className="md:col-span-3 w-fit">
+                    <Plus className="w-3.5 h-3.5" /> Add Theatre
+                  </GoldBtn>
+                </form>
+              </div>
+
+              {/* Add Screens */}
+              <div className="p-4 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <div className="flex items-center gap-2 mb-3">
+                  <Monitor className="w-3.5 h-3.5" style={{ color: "#a78bfa" }} />
+                  <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "rgba(167,139,250,0.8)" }}>Add Screens</p>
+                  <span className="text-[9px] text-neutral-700 font-inter ml-1">2D→200 · 3D→156 · IMAX→234 seats</span>
                 </div>
-                <div>
-                  <FieldLabel>Screen Type</FieldLabel>
-                  <select className={selectCls} value={bulkScreenType} onChange={e => setBulkScreenType(e.target.value)}>
-                    <option value="2D">2D</option>
-                    <option value="3D">3D</option>
-                    <option value="IMAX">IMAX</option>
-                  </select>
-                </div>
-                <GoldBtn type="submit" className="md:col-span-4 w-fit">
-                  <Plus className="w-4 h-4" /> Add {bulkScreenCount} Screen{parseInt(bulkScreenCount) !== 1 ? "s" : ""}
-                </GoldBtn>
-              </form>
+                <form onSubmit={handleBulkScreens} className="grid grid-cols-1 md:grid-cols-4 gap-3 font-inter text-xs">
+                  <div className="md:col-span-2">
+                    <FieldLabel>Theatre</FieldLabel>
+                    <select className={selectCls} required value={bulkScreenTheatreId} onChange={e => setBulkScreenTheatreId(e.target.value)}>
+                      <option value="">— Select Theatre —</option>
+                      {theatreList.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <FieldLabel>Count</FieldLabel>
+                    <select className={selectCls} value={bulkScreenCount} onChange={e => setBulkScreenCount(e.target.value)}>
+                      {[1,2,3,4,5,6,7,8].map(n => <option key={n} value={n}>{n}{n !== 1 ? " screens" : " screen"}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <FieldLabel>Type</FieldLabel>
+                    <select className={selectCls} value={bulkScreenType} onChange={e => setBulkScreenType(e.target.value)}>
+                      <option value="2D">2D</option>
+                      <option value="3D">3D</option>
+                      <option value="IMAX">IMAX</option>
+                    </select>
+                  </div>
+                  <GoldBtn type="submit" className="md:col-span-4 w-fit">
+                    <Plus className="w-3.5 h-3.5" /> Add {bulkScreenCount} Screen{parseInt(bulkScreenCount) !== 1 ? "s" : ""}
+                  </GoldBtn>
+                </form>
+              </div>
             </div>
 
             {/* ── THEATRES & SCREENS LIST ─────────────────────────────────── */}
             <div className={cardDark}>
-              <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-accent" /> Theatres &amp; Screens
-                <span className="text-neutral-600 font-normal text-sm">({theatreList.length} theatres)</span>
-              </h2>
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-lg font-bold flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-accent" /> Theatres &amp; Screens
+                </h2>
+                <span className="text-[10px] font-black px-2.5 py-1 rounded-lg" style={{ background: "rgba(110,231,231,0.08)", border: "1px solid rgba(110,231,231,0.15)", color: "#6ee7e7" }}>
+                  {theatreList.length} theatre{theatreList.length !== 1 ? "s" : ""}
+                </span>
+              </div>
               {theatreList.length === 0 ? (
-                <p className="text-sm text-neutral-600 py-6 text-center font-inter">No theatres added yet.</p>
+                <p className="text-sm text-neutral-600 py-8 text-center font-inter">No theatres added yet.</p>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {Object.entries(
                     theatreList.reduce((acc: Record<string, typeof theatreList>, t) => {
                       const city = cityList.find((c: any) => c.id === t.cityId);
@@ -1467,58 +1544,119 @@ export const AdminPanel: React.FC = () => {
                       (acc[key] = acc[key] || []).push(t);
                       return acc;
                     }, {})
-                  ).sort(([a], [b]) => a.localeCompare(b)).map(([cityName, cityTheatres]) => (
-                    <div key={cityName}>
-                      <p className="text-[9px] font-black uppercase tracking-widest px-1 mb-1.5" style={{ color: "rgba(212,175,55,0.5)" }}>
-                        {cityName}
-                      </p>
-                      <div className="space-y-1.5">
-                        {cityTheatres.map(t => {
-                          const tScreens = screenList
-                            .filter((s: any) => s.theatreId === t.id)
-                            .sort((a: any, b: any) => a.number - b.number);
-                          return (
-                            <div key={t.id} className="rounded-xl border border-neutral-800 overflow-hidden">
-                              <div className="flex items-center justify-between px-4 py-2.5 bg-neutral-900/30">
-                                <div>
-                                  <p className="font-black text-sm text-white">{t.name}</p>
-                                  <p className="text-[10px] text-neutral-600 font-inter">{t.address}</p>
-                                </div>
-                                <button
-                                  onClick={() => handleDeleteTheatre(t.id, t.name)}
-                                  className="p-1.5 rounded-lg text-red-500 hover:bg-red-900/20 transition-colors flex-shrink-0"
-                                  title="Delete theatre"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                              {tScreens.length > 0 && (
-                                <div className="divide-y divide-neutral-800/40">
-                                  {tScreens.map((s: any) => (
-                                    <div key={s.id} className="flex items-center justify-between px-5 py-2">
-                                      <span className="text-xs font-bold text-neutral-400 font-inter">
-                                        Screen {s.number}
-                                        <span className="ml-2 text-[10px] font-normal" style={{
-                                          color: s.type === "IMAX" ? "#f4d03f" : s.type === "3D" ? "#6ee7e7" : "rgba(255,255,255,0.25)"
-                                        }}>{s.type}</span>
+                  ).sort(([a], [b]) => a.localeCompare(b)).map(([cityName, cityTheatres]) => {
+                    const cityOpen = expandedCities.has(cityName);
+                    const totalScreens = cityTheatres.reduce((sum, t) =>
+                      sum + screenList.filter((s: any) => s.theatreId === t.id).length, 0);
+                    return (
+                      <div key={cityName} className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(212,175,55,0.12)" }}>
+                        {/* City accordion header */}
+                        <button
+                          className="w-full flex items-center gap-3 px-4 py-3.5 text-left select-none transition-colors hover:bg-[#d4af37]/5"
+                          style={{ background: cityOpen ? "rgba(212,175,55,0.06)" : "rgba(212,175,55,0.03)" }}
+                          onClick={() => setExpandedCities(prev => {
+                            const next = new Set(prev);
+                            cityOpen ? next.delete(cityName) : next.add(cityName);
+                            return next;
+                          })}
+                        >
+                          <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(212,175,55,0.1)", border: "1px solid rgba(212,175,55,0.2)" }}>
+                            <MapPin className="w-3.5 h-3.5" style={{ color: "#d4af37" }} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-black text-white">{cityName}</p>
+                            <p className="text-[10px] font-inter" style={{ color: "rgba(212,175,55,0.5)" }}>
+                              {cityTheatres.length} theatre{cityTheatres.length !== 1 ? "s" : ""} · {totalScreens} screen{totalScreens !== 1 ? "s" : ""}
+                            </p>
+                          </div>
+                          <div className="flex-shrink-0 transition-transform duration-200" style={{ transform: cityOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+                            <ChevronDown className="w-4 h-4" style={{ color: "#d4af37" }} />
+                          </div>
+                        </button>
+
+                        {/* City content */}
+                        {cityOpen && (
+                          <div className="border-t px-3 py-3 space-y-2" style={{ borderColor: "rgba(212,175,55,0.1)", background: "rgba(0,0,0,0.2)" }}>
+                            {cityTheatres.map(t => {
+                              const tScreens = screenList
+                                .filter((s: any) => s.theatreId === t.id)
+                                .sort((a: any, b: any) => a.number - b.number);
+                              const theatreOpen = expandedTheatres.has(t.id);
+                              return (
+                                <div key={t.id} className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(110,231,231,0.1)" }}>
+                                  {/* Theatre accordion header */}
+                                  <button
+                                    className="w-full flex items-center gap-3 px-3.5 py-3 text-left select-none transition-colors"
+                                    style={{ background: theatreOpen ? "rgba(110,231,231,0.06)" : "rgba(255,255,255,0.02)" }}
+                                    onClick={() => setExpandedTheatres(prev => {
+                                      const next = new Set(prev);
+                                      theatreOpen ? next.delete(t.id) : next.add(t.id);
+                                      return next;
+                                    })}
+                                  >
+                                    <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(110,231,231,0.07)", border: "1px solid rgba(110,231,231,0.12)" }}>
+                                      <Building2 className="w-3.5 h-3.5" style={{ color: "#6ee7e7" }} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-black text-sm text-white truncate">{t.name}</p>
+                                      <p className="text-[10px] text-neutral-600 font-inter truncate">{t.address}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                      <span className="text-[10px] font-black px-2 py-0.5 rounded-md" style={{ background: "rgba(110,231,231,0.08)", color: "#6ee7e7" }}>
+                                        {tScreens.length} scr
                                       </span>
                                       <button
-                                        onClick={() => handleDeleteScreen(s.id, t.name, s.number)}
-                                        className="p-1.5 rounded-lg text-red-500/60 hover:bg-red-900/20 transition-colors"
-                                        title="Delete screen"
+                                        onClick={e => { e.stopPropagation(); handleDeleteTheatre(t.id, t.name); }}
+                                        className="p-1.5 rounded-lg text-red-500 hover:bg-red-900/20 transition-colors"
+                                        title="Delete theatre"
                                       >
                                         <Trash2 className="w-3.5 h-3.5" />
                                       </button>
+                                      <div className="transition-transform duration-200" style={{ transform: theatreOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+                                        <ChevronDown className="w-3.5 h-3.5 text-neutral-600" />
+                                      </div>
                                     </div>
-                                  ))}
+                                  </button>
+
+                                  {/* Screens list */}
+                                  {theatreOpen && (
+                                    <div className="border-t px-3.5 py-3" style={{ borderColor: "rgba(110,231,231,0.08)", background: "rgba(0,0,0,0.25)" }}>
+                                      {tScreens.length === 0 ? (
+                                        <p className="text-[10px] text-neutral-700 font-inter py-1">No screens added to this theatre.</p>
+                                      ) : (
+                                        <div className="flex flex-wrap gap-2">
+                                          {tScreens.map((s: any) => (
+                                            <div key={s.id} className="flex items-center gap-1.5 pl-2.5 pr-1 py-1.5 rounded-lg" style={{
+                                              background: s.type === "IMAX" ? "rgba(244,208,63,0.07)" : s.type === "3D" ? "rgba(110,231,231,0.07)" : "rgba(255,255,255,0.04)",
+                                              border: `1px solid ${s.type === "IMAX" ? "rgba(244,208,63,0.18)" : s.type === "3D" ? "rgba(110,231,231,0.18)" : "rgba(255,255,255,0.08)"}`,
+                                            }}>
+                                              <span className="text-[10px] font-black" style={{ color: s.type === "IMAX" ? "#f4d03f" : s.type === "3D" ? "#6ee7e7" : "rgba(255,255,255,0.4)" }}>
+                                                Scr {s.number}
+                                              </span>
+                                              <span className="text-[9px] font-bold" style={{ color: s.type === "IMAX" ? "rgba(244,208,63,0.55)" : s.type === "3D" ? "rgba(110,231,231,0.55)" : "rgba(255,255,255,0.2)" }}>
+                                                {s.type}
+                                              </span>
+                                              <button
+                                                onClick={() => handleDeleteScreen(s.id, t.name, s.number)}
+                                                className="p-0.5 rounded text-red-500/40 hover:text-red-400 transition-colors"
+                                                title="Delete screen"
+                                              >
+                                                <X className="w-3 h-3" />
+                                              </button>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                          );
-                        })}
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

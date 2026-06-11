@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCityStore } from "../store/useCityStore.js";
 import {
@@ -408,46 +408,58 @@ const MovieCard: React.FC<{
   meta: string;
   onClick: () => void;
   accentColor: string;
-}> = ({ movie, badge, subtitle, meta, onClick, accentColor }) => (
-  <div
-    className="group cursor-pointer rounded-xl overflow-hidden transition-all duration-300 hover:-translate-y-1.5"
-    style={{
-      background: "#101010",
-      border: "1px solid rgba(255,255,255,0.04)",
-      boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
-    }}
-    onClick={onClick}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.borderColor = `${accentColor}55`;
-      e.currentTarget.style.boxShadow = `0 12px 40px rgba(0,0,0,0.5)`;
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.borderColor = "rgba(255,255,255,0.04)";
-      e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.3)";
-    }}
-  >
-    <div className="relative aspect-[2/3] overflow-hidden">
-      <img
-        src={getImageUrl(movie.posterUrl)}
-        alt={movie.title}
-        loading="lazy"
-        decoding="async"
-        className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-110"
-      />
-      {/* HOVER GRADIENT */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      {/* BADGE */}
-      <div className="absolute top-2 right-2">{badge}</div>
-    </div>
+}> = ({ movie, badge, subtitle, meta, onClick, accentColor }) => {
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
 
-    <div className="p-3.5">
-      <span className="text-[9px] font-black tracking-widest uppercase" style={{ color: accentColor }}>
-        {subtitle}
-      </span>
-      <h3 className="font-black text-sm mt-1.5 text-white group-hover:text-[#d4af37] transition-colors leading-snug line-clamp-2">
-        {movie.title}
-      </h3>
-      <p className="text-[9px] text-neutral-700 font-inter mt-1.5">{meta}</p>
+  useEffect(() => {
+    if (imgRef.current?.complete) setImgLoaded(true);
+  }, []);
+
+  return (
+    <div
+      className="group cursor-pointer rounded-xl overflow-hidden transition-all duration-300 hover:-translate-y-1.5"
+      style={{
+        background: "#101010",
+        border: "1px solid rgba(255,255,255,0.04)",
+        boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+      }}
+      onClick={onClick}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = `${accentColor}55`;
+        e.currentTarget.style.boxShadow = `0 12px 40px rgba(0,0,0,0.5)`;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = "rgba(255,255,255,0.04)";
+        e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.3)";
+      }}
+    >
+      <div className="relative aspect-[2/3] overflow-hidden bg-neutral-900">
+        {!imgLoaded && <div className="absolute inset-0 shimmer" />}
+        <img
+          ref={imgRef}
+          src={getImageUrl(movie.posterUrl)}
+          alt={movie.title}
+          loading="lazy"
+          decoding="async"
+          onLoad={() => setImgLoaded(true)}
+          className={`w-full h-full object-cover object-center transition-all duration-500 group-hover:scale-110 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+        />
+        {/* HOVER GRADIENT */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        {/* BADGE */}
+        <div className="absolute top-2 right-2">{badge}</div>
+      </div>
+
+      <div className="p-3.5">
+        <span className="text-[9px] font-black tracking-widest uppercase" style={{ color: accentColor }}>
+          {subtitle}
+        </span>
+        <h3 className="font-black text-sm mt-1.5 text-white group-hover:text-[#d4af37] transition-colors leading-snug line-clamp-2">
+          {movie.title}
+        </h3>
+        <p className="text-[9px] text-neutral-700 font-inter mt-1.5">{meta}</p>
+      </div>
     </div>
-  </div>
-);
+  );
+};

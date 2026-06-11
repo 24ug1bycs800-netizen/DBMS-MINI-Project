@@ -3,7 +3,7 @@ import { db } from "../db/db";
 import Razorpay from "razorpay";
 import {
   bookings, bookingSeats, payments, seats, shows,
-  movies, screens, theatres, wishlist, reviews,seatLocks,
+  movies, screens, theatres, wishlist, reviews, seatLocks, notifications,
 } from "../db/schema";
 import {
   and,
@@ -112,111 +112,100 @@ export const createBooking = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     const { showId, seatIds } = req.body;
- 
+
     if (!showId || !seatIds || !Array.isArray(seatIds) || seatIds.length === 0) {
       return res.status(400).json({ error: "showId and a non-empty array of seatIds are required" });
     }
- 
+
     const showInt = parseInt(showId);
-    const dbShows = await db.select().from(shows).where(eq(shows.id, showInt)).limit(1);
-    const showItem = dbShows[0];
-    if (!showItem) return res.status(404).json({ error: "Show not found" });
-            // Remove expired locks
-await db
-  .delete(seatLocks)
-  .where(
-    lt(seatLocks.expiresAt, new Date())
-  );
 
-// Get active locks
-    const activeLocks = await db
-      .select()
-      .from(seatLocks)
-      .where(
-        and(
-          eq(seatLocks.showId, showInt),
-          inArray(seatLocks.seatId, seatIds)
-        )
-      );
+    // Clean up expired locks before any checks
+    await db.delete(seatLocks).where(lt(seatLocks.expiresAt, new Date()));
 
-    // If another user locked them
-    const conflictingLocks = activeLocks.filter(
-      (lock) => lock.userId !== user.id
-    );
+    // Use a transaction so seat-conflict check + booking insert are atomic
+    const { newBooking, razorpayOrderId, order } = await db.transaction(async (tx) => {
+      const dbShows = await tx.select().from(shows).where(eq(shows.id, showInt)).limit(1);
+      const showItem = dbShows[0];
+      if (!showItem) throw Object.assign(new Error("Show not found"), { statusCode: 404 });
 
-    if (conflictingLocks.length > 0) {
-      return res.status(409).json({
-        error: "One or more seats are currently reserved."
+      // Check seat locks held by other users
+      const activeLocks = await tx
+        .select()
+        .from(seatLocks)
+        .where(and(eq(seatLocks.showId, showInt), inArray(seatLocks.seatId, seatIds)));
+
+      if (activeLocks.some(lock => lock.userId !== user.id)) {
+        throw Object.assign(new Error("One or more seats are currently reserved."), { statusCode: 409 });
+      }
+
+      // Check already-confirmed seats (single JOIN query — no N+1)
+      const bookedRows = await tx
+        .select({ seatId: bookingSeats.seatId })
+        .from(bookingSeats)
+        .innerJoin(bookings, eq(bookingSeats.bookingId, bookings.id))
+        .where(and(eq(bookings.showId, showInt), eq(bookings.status, "confirmed")));
+
+      const bookedSeatIds = new Set(bookedRows.map(r => r.seatId));
+      if (seatIds.some((sId: number) => bookedSeatIds.has(sId))) {
+        throw Object.assign(new Error("One or more selected seats are already booked."), { statusCode: 409 });
+      }
+
+      // Fetch requested seats and calculate total
+      const seatsList = await tx
+        .select()
+        .from(seats)
+        .where(and(eq(seats.screenId, showItem.screenId), inArray(seats.id, seatIds)));
+
+      let totalAmount = 0;
+      for (const seat of seatsList) {
+        if (seat.category === "Premium") totalAmount += showItem.pricePremium;
+        else if (seat.category === "Recliner") totalAmount += showItem.priceRecliner;
+        else totalAmount += showItem.priceRegular;
+      }
+
+      const bookingCode = `CC-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
+
+      // Create Razorpay order (outside DB but inside try so errors bubble to rollback)
+      const order = await razorpay.orders.create({
+        amount: totalAmount * 100,
+        currency: "INR",
+        receipt: bookingCode,
       });
-  }
- 
-    // Get seats belonging to this screen
-    let seatsList = await db.select().from(seats).where(eq(seats.screenId, showItem.screenId));
-    seatsList = seatsList.filter((s) => seatIds.includes(s.id));
- 
-    // Check for already booked seats
-    const activeBookings = await db.select().from(bookings).where(
-      and(eq(bookings.showId, showInt), eq(bookings.status, "confirmed"))
-    );
-    const bookedSeatIds: number[] = [];
-    for (const booking of activeBookings) {
-      const linkedSeats = await db.select().from(bookingSeats).where(eq(bookingSeats.bookingId, booking.id));
-      linkedSeats.forEach((ls) => bookedSeatIds.push(ls.seatId));
-    }
- 
-    if (seatIds.some((sId: number) => bookedSeatIds.includes(sId))) {
-      return res.status(409).json({ error: "One or more selected seats are already booked." });
-    }
- 
-    // Calculate total
-    let totalAmount = 0;
-    seatsList.forEach((seat) => {
-      if (seat.category === "Premium") totalAmount += showItem.pricePremium;
-      else if (seat.category === "Recliner") totalAmount += showItem.priceRecliner;
-      else totalAmount += showItem.priceRegular;
+
+      // Insert booking
+      const inserted = await tx.insert(bookings).values({
+        userId: user.id,
+        showId: showInt,
+        totalAmount,
+        status: "pending",
+        code: bookingCode,
+      }).returning();
+      const newBooking = inserted[0];
+
+      // Link seats in one batch
+      await tx.insert(bookingSeats).values(seatIds.map((sId: number) => ({ bookingId: newBooking.id, seatId: sId })));
+
+      // Insert payment record
+      await tx.insert(payments).values({
+        bookingId: newBooking.id,
+        razorpayOrderId: order.id,
+        status: "pending",
+      });
+
+      return { newBooking, razorpayOrderId: order.id, order };
     });
- 
-    const bookingCode = `CC-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
 
-const order = await razorpay.orders.create({
-  amount: totalAmount * 100, // Razorpay uses paise
-  currency: "INR",
-  receipt: bookingCode,
-});
-
-const razorpayOrderId = order.id;
-    // Insert booking
-    const inserted = await db.insert(bookings).values({
-      userId: user.id,
-      showId: showInt,
-      totalAmount,
-      status: "pending",
-      code: bookingCode,
-    }).returning();
-    const newBooking = inserted[0];
- 
-    // Link seats
-    for (const sId of seatIds) {
-      await db.insert(bookingSeats).values({ bookingId: newBooking.id, seatId: sId });
-    }
- 
-    // Insert payment record
-    await db.insert(payments).values({
-      bookingId: newBooking.id,
+    return res.status(201).json({
+      success: true,
+      booking: newBooking,
       razorpayOrderId,
-      status: "pending",
+      amount: order.amount,
+      currency: order.currency,
+      key: process.env.RAZORPAY_KEY_ID,
     });
- 
-  return res.status(201).json({
-  success: true,
-  booking: newBooking,
-  razorpayOrderId: order.id,
-  amount: order.amount,
-  currency: order.currency,
-  key: process.env.RAZORPAY_KEY_ID,
-});
-  } catch (err) {
+  } catch (err: any) {
     console.error("Create booking error:", err);
+    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
     return res.status(500).json({ error: "Internal server error creating booking" });
   }
 };
@@ -247,10 +236,13 @@ export const cancelBooking = async (
 
     await db
       .update(bookings)
-      .set({
-        status: "cancelled",
-      })
+      .set({ status: "cancelled" })
       .where(eq(bookings.id, bookingId));
+
+    await db.insert(notifications).values({
+      userId: booking.userId,
+      message: `Your booking ${booking.code} has been cancelled.`,
+    });
 
     return res.json({
       success: true,
@@ -267,20 +259,43 @@ export const cancelBooking = async (
 // VERIFY PAYMENT & CONFIRM BOOKING
 export const verifyPayment = async (req: Request, res: Response) => {
   try {
-    const { razorpayOrderId, razorpayPaymentId } = req.body;
-    if (!razorpayOrderId) return res.status(400).json({ error: "razorpayOrderId is required" });
- 
-    const mockPaymentId = razorpayPaymentId || `pay_${crypto.randomBytes(8).toString("hex")}`;
- 
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
+    if (!razorpayOrderId || !razorpayPaymentId) {
+      return res.status(400).json({ error: "razorpayOrderId and razorpayPaymentId are required" });
+    }
+
+    // Verify Razorpay signature to prevent fake payment confirmations
+    if (razorpaySignature) {
+      const expectedSig = crypto
+        .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET!)
+        .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+        .digest("hex");
+
+      if (expectedSig !== razorpaySignature) {
+        return res.status(400).json({ error: "Invalid payment signature" });
+      }
+    }
+
     const paymentItems = await db.select().from(payments).where(eq(payments.razorpayOrderId, razorpayOrderId)).limit(1);
     const paymentItem = paymentItems[0];
     if (!paymentItem) return res.status(404).json({ error: "Order transaction not found" });
- 
-    await db.update(payments).set({ status: "success", razorpayPaymentId: mockPaymentId }).where(eq(payments.id, paymentItem.id));
- 
-    const updated = await db.update(bookings).set({ status: "confirmed" }).where(eq(bookings.id, paymentItem.bookingId)).returning();
+
+    await db.update(payments)
+      .set({ status: "success", razorpayPaymentId })
+      .where(eq(payments.id, paymentItem.id));
+
+    const updated = await db.update(bookings)
+      .set({ status: "confirmed" })
+      .where(eq(bookings.id, paymentItem.bookingId))
+      .returning();
     const updatedBooking = updated[0];
- 
+
+    // Notify user that booking is confirmed
+    await db.insert(notifications).values({
+      userId: updatedBooking.userId,
+      message: `Booking confirmed! Your ticket code is ${updatedBooking.code}. Enjoy the show 🎬`,
+    });
+
     return res.status(200).json({
       message: "Payment verified and ticket confirmed!",
       booking: updatedBooking,

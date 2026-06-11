@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.js";
 import { Star, Ticket, AlertCircle } from "lucide-react";
@@ -34,39 +34,107 @@ interface Seat {
   status: string;
 }
 
-// ─── CATEGORY CONFIG ──────────────────────────────────────────────────────────
-const CATEGORY_STYLES: Record<string, { idle: React.CSSProperties; hover: React.CSSProperties; label: string }> = {
-  Regular: {
-    idle: { border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.03)", color: "#555" },
-    hover: { border: "1px solid rgba(212,175,55,0.4)", background: "rgba(212,175,55,0.06)", color: "#d4af37" },
-    label: "Regular",
-  },
-  Premium: {
-    idle: { border: "1px solid rgba(110,231,231,0.25)", background: "rgba(110,231,231,0.04)", color: "#4db6b6" },
-    hover: { border: "1px solid rgba(110,231,231,0.6)", background: "rgba(110,231,231,0.1)", color: "#6ee7e7" },
-    label: "Premium",
-  },
-  Recliner: {
-    idle: { border: "1px solid rgba(212,175,55,0.35)", background: "rgba(212,175,55,0.05)", color: "#a08020" },
-    hover: { border: "1px solid rgba(212,175,55,0.7)", background: "rgba(212,175,55,0.12)", color: "#d4af37" },
-    label: "Recliner",
-  },
-};
-
-const CATEGORY_ACCENT: Record<string, string> = {
-  Regular:  "rgba(255,255,255,0.1)",
-  Premium:  "rgba(110,231,231,0.2)",
-  Recliner: "rgba(212,175,55,0.3)",
-};
+// ─── CONSTANTS ────────────────────────────────────────────────────────────────
 
 const ROW_ORDER = "ABCDEFGHIJKLMN";
 
-const getScreenConfig = (type: string) => {
-  const t = (type ?? "").toUpperCase();
-  if (t === "IMAX") return { seatCls: "w-6 h-7", minWidth: "700px" };
-  if (t === "3D")   return { seatCls: "w-7 h-7", minWidth: "630px" };
-  return                   { seatCls: "w-7 h-7", minWidth: "660px" };
+const ZONE_CONFIG: Record<string, {
+  color: string; glow: string; bg: string; border: string;
+  label: string; priceKey: "priceRecliner" | "pricePremium" | "priceRegular";
+}> = {
+  Recliner: {
+    color: "#d4af37", glow: "rgba(212,175,55,0.18)",
+    bg: "rgba(212,175,55,0.04)", border: "rgba(212,175,55,0.14)",
+    label: "RECLINER", priceKey: "priceRecliner",
+  },
+  Premium: {
+    color: "#6ee7e7", glow: "rgba(110,231,231,0.15)",
+    bg: "rgba(110,231,231,0.03)", border: "rgba(110,231,231,0.12)",
+    label: "PREMIUM", priceKey: "pricePremium",
+  },
+  Regular: {
+    color: "rgba(255,255,255,0.4)", glow: "rgba(255,255,255,0.07)",
+    bg: "transparent", border: "transparent",
+    label: "REGULAR", priceKey: "priceRegular",
+  },
 };
+
+const SEAT_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  booked:   { bg: "rgba(255,255,255,0.025)", border: "rgba(255,255,255,0.07)", text: "rgba(255,255,255,0.1)" },
+  selected: { bg: "rgba(34,197,94,0.2)",     border: "rgba(34,197,94,0.9)",   text: "#4ade80" },
+  Regular:  { bg: "rgba(255,255,255,0.05)",  border: "rgba(255,255,255,0.22)", text: "rgba(255,255,255,0.5)" },
+  Premium:  { bg: "rgba(110,231,231,0.07)",  border: "rgba(110,231,231,0.45)", text: "#6ee7e7" },
+  Recliner: { bg: "rgba(212,175,55,0.09)",   border: "rgba(212,175,55,0.5)",  text: "#d4af37" },
+};
+
+// Splits a row into left-wing | (optional center) | right-wing
+const getRowSections = (rowSeats: Seat[]) => {
+  const n = rowSeats.length;
+  if (n <= 8) {
+    const mid = Math.floor(n / 2);
+    return { left: rowSeats.slice(0, mid), center: null as Seat[] | null, right: rowSeats.slice(mid) };
+  }
+  const wing = Math.max(3, Math.floor(n * 0.25));
+  return {
+    left:   rowSeats.slice(0, wing),
+    center: rowSeats.slice(wing, n - wing),
+    right:  rowSeats.slice(n - wing),
+  };
+};
+
+// ─── SEAT BUTTON (cinema seat shape: backrest + cushion) ─────────────────────
+
+const SeatBtn: React.FC<{
+  seat: Seat;
+  isSelected: boolean;
+  onClick: () => void;
+}> = ({ seat, isSelected, onClick }) => {
+  const isBooked = seat.status === "booked";
+  const c = isBooked
+    ? SEAT_COLORS.booked
+    : isSelected
+    ? SEAT_COLORS.selected
+    : (SEAT_COLORS[seat.category] ?? SEAT_COLORS.Regular);
+  const glow = isSelected ? "0 0 14px rgba(34,197,94,0.4)" : "none";
+
+  return (
+    <button
+      disabled={isBooked}
+      onClick={onClick}
+      className="flex flex-col items-center transition-all hover:-translate-y-0.5 hover:scale-[1.14] disabled:cursor-not-allowed focus:outline-none"
+      title={isBooked ? "Booked" : `${seat.row}${seat.number}`}
+    >
+      {/* Backrest */}
+      <div style={{
+        width: 22, height: 14,
+        background: c.bg,
+        border: `1.2px solid ${c.border}`,
+        borderRadius: "4px 4px 0 0",
+        borderBottom: "none",
+        boxShadow: glow,
+      }} />
+      {/* Cushion with seat number */}
+      <div style={{
+        width: 26, height: 13,
+        background: c.bg,
+        border: `1.2px solid ${c.border}`,
+        borderRadius: "0 0 3px 3px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: 8,
+        fontWeight: 900,
+        fontFamily: "monospace",
+        color: c.text,
+        boxShadow: glow,
+      }}>
+        {isBooked ? "×" : seat.number}
+      </div>
+    </button>
+  );
+};
+
+// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export const SeatBooking: React.FC = () => {
   const { showId } = useParams();
@@ -98,30 +166,25 @@ export const SeatBooking: React.FC = () => {
     fetchSeats();
   }, [showId, user, authLoading]);
 
-  // Start 5-min countdown when first seat is selected; clear when all deselected
+  // 5-min countdown — starts on first seat pick, resets when all deselected
   useEffect(() => {
     if (selectedSeats.length > 0 && !lockExpiry) {
       setLockExpiry(new Date(Date.now() + 5 * 60 * 1000));
     }
-    if (selectedSeats.length === 0) {
-      setLockExpiry(null);
-      setTimeLeft("");
-    }
+    if (selectedSeats.length === 0) { setLockExpiry(null); setTimeLeft(""); }
   }, [selectedSeats.length]);
 
   useEffect(() => {
     if (!lockExpiry) return;
     const tick = () => {
-      const remaining = lockExpiry.getTime() - Date.now();
-      if (remaining <= 0) {
-        setSelectedSeats([]);
-        setLockExpiry(null);
-        setTimeLeft("");
+      const rem = lockExpiry.getTime() - Date.now();
+      if (rem <= 0) {
+        setSelectedSeats([]); setLockExpiry(null); setTimeLeft("");
         setError("Your seat selection expired. Please reselect.");
         return;
       }
-      const m = Math.floor(remaining / 60000);
-      const s = Math.floor((remaining % 60000) / 1000);
+      const m = Math.floor(rem / 60000);
+      const s = Math.floor((rem % 60000) / 1000);
       setTimeLeft(`${m}:${String(s).padStart(2, "0")}`);
     };
     tick();
@@ -130,10 +193,10 @@ export const SeatBooking: React.FC = () => {
   }, [lockExpiry]);
 
   const handleSeatClick = (seatId: number) => {
-    const seat = seats.find((s) => s.id === seatId)!;
+    const seat = seats.find(s => s.id === seatId)!;
     if (seat.status === "booked") return;
-    setSelectedSeats((prev) => {
-      if (prev.includes(seatId)) return prev.filter((id) => id !== seatId);
+    setSelectedSeats(prev => {
+      if (prev.includes(seatId)) return prev.filter(id => id !== seatId);
       if (prev.length >= 6) {
         setError("Maximum 6 seats per booking.");
         setTimeout(() => setError(""), 4000);
@@ -144,17 +207,15 @@ export const SeatBooking: React.FC = () => {
   };
 
   const getSelectedSeatNames = () =>
-    seats.filter((s) => selectedSeats.includes(s.id)).map((s) => `${s.row}${s.number}`).join(", ");
+    seats.filter(s => selectedSeats.includes(s.id)).map(s => `${s.row}${s.number}`).join(", ");
 
   const calculateTotalPrice = () => {
     if (!show) return 0;
-    return seats
-      .filter((s) => selectedSeats.includes(s.id))
-      .reduce((total, seat) => {
-        if (seat.category === "Premium") return total + show.pricePremium;
-        if (seat.category === "Recliner") return total + show.priceRecliner;
-        return total + show.priceRegular;
-      }, 0);
+    return seats.filter(s => selectedSeats.includes(s.id)).reduce((total, seat) => {
+      if (seat.category === "Premium") return total + show.pricePremium;
+      if (seat.category === "Recliner") return total + show.priceRecliner;
+      return total + show.priceRegular;
+    }, 0);
   };
 
   const handleCheckoutSubmit = async () => {
@@ -174,9 +235,9 @@ export const SeatBooking: React.FC = () => {
             const verifyRes = await api.post("/bookings/verify", {
               razorpayOrderId: response.razorpay_order_id,
               razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
             });
-            const ticketCode: string = verifyRes.data.ticketCode;
-            navigate(`/booking/confirm/${ticketCode}`);
+            navigate(`/booking/confirm/${verifyRes.data.ticketCode}`);
           } catch (err) { console.error(err); }
         },
         prefill: { name: user?.fullName, email: user?.email },
@@ -192,6 +253,26 @@ export const SeatBooking: React.FC = () => {
     }
   };
 
+  // Group seat rows into category zones (Recliner → Premium → Regular, top to bottom)
+  const seatRows = useMemo(() =>
+    Array.from(new Set(seats.map(s => s.row))).sort((a, b) => ROW_ORDER.indexOf(a) - ROW_ORDER.indexOf(b)),
+    [seats]
+  );
+
+  const categoryZones = useMemo(() => {
+    const zones: { category: string; rows: string[] }[] = [];
+    for (const row of seatRows) {
+      const cat = seats.find(s => s.row === row)?.category ?? "Regular";
+      const last = zones[zones.length - 1];
+      if (last && last.category === cat) last.rows.push(row);
+      else zones.push({ category: cat, rows: [row] });
+    }
+    return zones;
+  }, [seatRows, seats]);
+
+  const isImax = show?.screen.type === "IMAX";
+  const is3D   = show?.screen.type === "3D";
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "#080808" }}>
@@ -201,172 +282,190 @@ export const SeatBooking: React.FC = () => {
   }
   if (!show) return null;
 
-  const seatRows = Array.from(new Set(seats.map(s => s.row)))
-    .sort((a, b) => ROW_ORDER.indexOf(a) - ROW_ORDER.indexOf(b));
-  const screenCfg = getScreenConfig(show.screen.type);
-
   return (
     <div className="min-h-screen text-white pb-24 font-poppins relative" style={{ background: "#080808" }}>
-      {/* FILM GRAIN */}
-      <div
-        className="fixed inset-0 opacity-[0.025] pointer-events-none z-0"
-        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")` }}
-      />
-      {/* AMBIENT GLOW */}
-      <div
-        className="fixed top-0 left-1/2 -translate-x-1/2 w-[700px] h-[300px] pointer-events-none z-0"
-        style={{ background: "radial-gradient(ellipse at center top, rgba(212,175,55,0.05) 0%, transparent 65%)" }}
-      />
+      {/* Film grain */}
+      <div className="fixed inset-0 opacity-[0.025] pointer-events-none z-0"
+        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")` }} />
+      {/* Ambient glow */}
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[700px] h-[300px] pointer-events-none z-0"
+        style={{ background: "radial-gradient(ellipse at center top, rgba(212,175,55,0.05) 0%, transparent 65%)" }} />
 
-      <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-12 py-12 grid grid-cols-1 lg:grid-cols-3 gap-10">
-        {/* ── SEAT GRID (left 2 cols) ───────────────────────────────── */}
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-8 py-12 grid grid-cols-1 lg:grid-cols-3 gap-10">
+
+        {/* ── SEAT GRID ──────────────────────────────────────────────────── */}
         <div className="lg:col-span-2 flex flex-col items-center">
+
           {/* SCREEN GRAPHIC */}
-          <div className={`w-full ${show.screen.type === "IMAX" ? "max-w-2xl" : "max-w-lg"} mb-14 flex flex-col items-center relative`}>
-            {/* PROJECTOR BEAM */}
-            <div
-              className={`absolute -top-8 blur-2xl rounded-full pointer-events-none ${show.screen.type === "IMAX" ? "w-11/12 h-20" : "w-8/12 h-16"}`}
-              style={{ background: show.screen.type === "IMAX" ? "rgba(212,175,55,0.09)" : show.screen.type === "3D" ? "rgba(110,231,231,0.06)" : "rgba(212,175,55,0.06)" }}
-            />
-            {/* SCREEN TYPE BADGE */}
-            <div
-              className="mb-4 px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase"
-              style={
-                show.screen.type === "IMAX"
-                  ? { background: "rgba(212,175,55,0.12)", border: "1px solid rgba(212,175,55,0.45)", color: "#f4d03f" }
-                  : show.screen.type === "3D"
-                  ? { background: "rgba(110,231,231,0.08)", border: "1px solid rgba(110,231,231,0.35)", color: "#6ee7e7" }
-                  : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)" }
-              }
-            >
-              {show.screen.type === "IMAX" ? "IMAX Experience" : show.screen.type === "3D" ? "3D Experience" : "Standard 2D"}
+          <div className={`w-full mb-12 flex flex-col items-center relative ${isImax ? "max-w-2xl" : "max-w-xl"}`}>
+            {/* Projector glow */}
+            <div className={`absolute -top-6 blur-3xl rounded-full pointer-events-none opacity-70 ${isImax ? "w-10/12 h-20" : "w-7/12 h-16"}`}
+              style={{ background: is3D ? "rgba(110,231,231,0.08)" : "rgba(212,175,55,0.08)" }} />
+
+            {/* Screen type badge */}
+            <div className="mb-4 px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase" style={
+              isImax
+                ? { background: "rgba(212,175,55,0.12)", border: "1px solid rgba(212,175,55,0.45)", color: "#f4d03f" }
+                : is3D
+                ? { background: "rgba(110,231,231,0.08)", border: "1px solid rgba(110,231,231,0.35)", color: "#6ee7e7" }
+                : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)" }
+            }>
+              {isImax ? "IMAX Experience" : is3D ? "3D Experience" : "Standard 2D"}
             </div>
-            {/* SCREEN BAR */}
-            <div
-              className={`w-full rounded-full relative ${show.screen.type === "IMAX" ? "h-1" : "h-0.5"}`}
-              style={{
-                background: show.screen.type === "3D"
-                  ? "linear-gradient(to right, transparent, rgba(110,231,231,0.4) 20%, #6ee7e7 50%, rgba(110,231,231,0.4) 80%, transparent)"
-                  : "linear-gradient(to right, transparent, rgba(212,175,55,0.5) 20%, #d4af37 50%, rgba(212,175,55,0.5) 80%, transparent)",
-                boxShadow: show.screen.type === "3D" ? "0 0 20px rgba(110,231,231,0.2)" : "0 0 20px rgba(212,175,55,0.2)",
-              }}
-            />
-            {/* SCREEN PERSPECTIVE LINES */}
-            <svg className={`mt-0.5 opacity-10 ${show.screen.type === "IMAX" ? "w-11/12" : "w-8/12"}`} viewBox="0 0 300 30" fill="none">
-              <line x1="150" y1="0" x2="0" y2="30" stroke={show.screen.type === "3D" ? "#6ee7e7" : "#d4af37"} strokeWidth="0.5" />
-              <line x1="150" y1="0" x2="300" y2="30" stroke={show.screen.type === "3D" ? "#6ee7e7" : "#d4af37"} strokeWidth="0.5" />
+
+            {/* Screen bar */}
+            <div className={`w-full rounded-full ${isImax ? "h-1" : "h-0.5"}`} style={{
+              background: is3D
+                ? "linear-gradient(to right, transparent, rgba(110,231,231,0.4) 20%, #6ee7e7 50%, rgba(110,231,231,0.4) 80%, transparent)"
+                : "linear-gradient(to right, transparent, rgba(212,175,55,0.5) 20%, #d4af37 50%, rgba(212,175,55,0.5) 80%, transparent)",
+              boxShadow: is3D ? "0 0 20px rgba(110,231,231,0.2)" : "0 0 24px rgba(212,175,55,0.2)",
+            }} />
+
+            {/* Perspective lines */}
+            <svg className={`mt-0.5 opacity-[0.08] ${isImax ? "w-10/12" : "w-7/12"}`} viewBox="0 0 300 30" fill="none">
+              <line x1="150" y1="0" x2="0"   y2="30" stroke={is3D ? "#6ee7e7" : "#d4af37"} strokeWidth="0.6" />
+              <line x1="150" y1="0" x2="300" y2="30" stroke={is3D ? "#6ee7e7" : "#d4af37"} strokeWidth="0.6" />
             </svg>
-            <p className="text-[9px] tracking-[0.3em] uppercase mt-2 font-inter" style={{ color: "rgba(212,175,55,0.4)" }}>
-              Screen This Way · {seats.length} seats · {seats.filter(s => s.status !== "booked").length} available
+
+            <p className="text-[9px] tracking-[0.3em] uppercase mt-2 font-inter" style={{ color: "rgba(212,175,55,0.35)" }}>
+              All Eyes This Way · {seats.length} seats · {seats.filter(s => s.status !== "booked").length} available
             </p>
           </div>
 
-          {/* SEAT ROWS */}
-          <div className="space-y-2 max-w-full overflow-x-auto pb-4">
-            {seatRows.map((rowLetter, rowIndex) => {
-              const rowSeats = seats
-                .filter((s) => s.row === rowLetter)
-                .sort((a, b) => a.number - b.number);
-              const category = rowSeats[0]?.category || "Regular";
-              const styles = CATEGORY_STYLES[category] || CATEGORY_STYLES.Regular;
-              const prevCategory = rowIndex > 0
-                ? seats.find(s => s.row === seatRows[rowIndex - 1])?.category
-                : null;
-              const isCategoryChange = !!prevCategory && prevCategory !== category;
-              const { seatCls, minWidth } = screenCfg;
-              const mid = Math.floor(rowSeats.length / 2);
-              const leftSeats = rowSeats.slice(0, mid);
-              const rightSeats = rowSeats.slice(mid);
+          {/* SEAT ZONES */}
+          <div className="overflow-x-auto pb-4 w-full flex flex-col items-center">
+            <div className="space-y-4">
+              {categoryZones.map(({ category, rows }) => {
+                const zone = ZONE_CONFIG[category] ?? ZONE_CONFIG.Regular;
+                const price = show[zone.priceKey];
 
-              const renderSeatBtn = (seat: Seat) => {
-                const isSelected = selectedSeats.includes(seat.id);
-                const isBooked = seat.status === "booked";
-                const seatStyle = isBooked
-                  ? { border: "1px solid rgba(255,255,255,0.04)", background: "rgba(255,255,255,0.02)", color: "#2a2a2a", cursor: "not-allowed" }
-                  : isSelected
-                  ? { border: "1px solid rgba(34,197,94,0.6)", background: "rgba(34,197,94,0.15)", color: "#4ade80", boxShadow: "0 0 10px rgba(34,197,94,0.15)" }
-                  : styles.idle;
                 return (
-                  <button
-                    key={seat.id}
-                    disabled={isBooked}
-                    onClick={() => handleSeatClick(seat.id)}
-                    className={`${seatCls} rounded-lg text-[10px] font-black font-inter transition-all flex items-center justify-center hover:scale-110`}
-                    style={seatStyle}
-                    onMouseEnter={(e) => {
-                      if (!isBooked && !isSelected) Object.assign(e.currentTarget.style, styles.hover);
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isBooked && !isSelected) Object.assign(e.currentTarget.style, styles.idle);
-                    }}
-                  >
-                    {isBooked ? "×" : seat.number}
-                  </button>
-                );
-              };
+                  <div key={category}>
+                    {/* Zone header */}
+                    <div className="flex items-center gap-3 mb-2.5 px-1">
+                      <div className="flex-1 h-px" style={{ background: zone.border || "rgba(255,255,255,0.07)" }} />
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: zone.color }}>
+                          {zone.label}
+                        </span>
+                        <span className="text-[9px] font-black px-2 py-0.5 rounded-md" style={{
+                          background: zone.glow, color: zone.color,
+                          border: `1px solid ${zone.border || "rgba(255,255,255,0.07)"}`,
+                        }}>
+                          ₹{price}
+                        </span>
+                        <span className="text-[9px] text-neutral-700 font-inter">{rows.length} row{rows.length !== 1 ? "s" : ""}</span>
+                      </div>
+                      <div className="flex-1 h-px" style={{ background: zone.border || "rgba(255,255,255,0.07)" }} />
+                    </div>
 
-              return (
-                <React.Fragment key={rowLetter}>
-                  {isCategoryChange && (
-                    <div className="flex items-center gap-3 my-2 opacity-70" style={{ minWidth }}>
-                      <div className="flex-1 h-px" style={{ background: CATEGORY_ACCENT[category] }} />
-                      <span className="text-[8px] font-black uppercase tracking-widest px-1"
-                        style={{ color: CATEGORY_ACCENT[category] }}>
-                        {category}
-                      </span>
-                      <div className="flex-1 h-px" style={{ background: CATEGORY_ACCENT[category] }} />
+                    {/* Rows */}
+                    <div className="space-y-2">
+                      {rows.map(rowLetter => {
+                        const rowSeats = seats
+                          .filter(s => s.row === rowLetter)
+                          .sort((a, b) => a.number - b.number);
+                        const { left, center, right } = getRowSections(rowSeats);
+
+                        return (
+                          <div key={rowLetter} className="flex items-center gap-1.5">
+                            {/* Left row label */}
+                            <span className="w-5 text-center text-[10px] font-black font-mono flex-shrink-0"
+                              style={{ color: "rgba(212,175,55,0.3)" }}>
+                              {rowLetter}
+                            </span>
+
+                            {/* Left wing */}
+                            <div className="flex gap-1">
+                              {left.map(seat => (
+                                <SeatBtn
+                                  key={seat.id}
+                                  seat={seat}
+                                  isSelected={selectedSeats.includes(seat.id)}
+                                  onClick={() => handleSeatClick(seat.id)}
+                                />
+                              ))}
+                            </div>
+
+                            {/* Aisle gap */}
+                            <div className="w-5 flex-shrink-0" />
+
+                            {/* Center section */}
+                            {center && (
+                              <>
+                                <div className="flex gap-1">
+                                  {center.map(seat => (
+                                    <SeatBtn
+                                      key={seat.id}
+                                      seat={seat}
+                                      isSelected={selectedSeats.includes(seat.id)}
+                                      onClick={() => handleSeatClick(seat.id)}
+                                    />
+                                  ))}
+                                </div>
+                                {/* Aisle gap */}
+                                <div className="w-5 flex-shrink-0" />
+                              </>
+                            )}
+
+                            {/* Right wing */}
+                            <div className="flex gap-1">
+                              {right.map(seat => (
+                                <SeatBtn
+                                  key={seat.id}
+                                  seat={seat}
+                                  isSelected={selectedSeats.includes(seat.id)}
+                                  onClick={() => handleSeatClick(seat.id)}
+                                />
+                              ))}
+                            </div>
+
+                            {/* Right row label */}
+                            <span className="w-5 text-center text-[10px] font-black font-mono flex-shrink-0"
+                              style={{ color: "rgba(212,175,55,0.3)" }}>
+                              {rowLetter}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
-                  )}
-                  <div className="flex items-center gap-2" style={{ minWidth }}>
-                    <span className="w-5 text-[10px] font-black text-center font-inter flex-shrink-0" style={{ color: "rgba(212,175,55,0.4)" }}>
-                      {rowLetter}
-                    </span>
-                    <div className="flex gap-1">
-                      {leftSeats.map(renderSeatBtn)}
-                      <div className="w-5 flex-shrink-0" />
-                      {rightSeats.map(renderSeatBtn)}
-                    </div>
-                    <span className="text-[9px] font-black font-inter uppercase tracking-wider flex-shrink-0" style={{ color: "rgba(255,255,255,0.15)" }}>
-                      {category}
-                    </span>
                   </div>
-                </React.Fragment>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
 
           {/* LEGEND */}
           <div className="flex flex-wrap gap-5 mt-12 justify-center">
             {[
-              { label: "Regular", style: CATEGORY_STYLES.Regular.idle },
-              { label: `Premium ₹${show.pricePremium}`, style: CATEGORY_STYLES.Premium.idle },
-              { label: `Recliner ₹${show.priceRecliner}`, style: CATEGORY_STYLES.Recliner.idle },
-              { label: "Selected", style: { border: "1px solid rgba(34,197,94,0.6)", background: "rgba(34,197,94,0.15)" } },
-              { label: "Booked", style: { border: "1px solid rgba(255,255,255,0.04)", background: "rgba(255,255,255,0.02)" } },
-            ].map(({ label, style }) => (
+              { label: `Regular ₹${show.priceRegular}`,  c: SEAT_COLORS.Regular  },
+              { label: `Premium ₹${show.pricePremium}`,  c: SEAT_COLORS.Premium  },
+              { label: `Recliner ₹${show.priceRecliner}`, c: SEAT_COLORS.Recliner },
+              { label: "Selected",                        c: SEAT_COLORS.selected },
+              { label: "Booked",                          c: SEAT_COLORS.booked   },
+            ].map(({ label, c }) => (
               <div key={label} className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded" style={style} />
-                <span className="text-xs text-neutral-600 font-inter">{label}</span>
+                <div className="flex flex-col items-center">
+                  <div style={{ width: 16, height: 10, background: c.bg, border: `1.2px solid ${c.border}`, borderRadius: "3px 3px 0 0", borderBottom: "none" }} />
+                  <div style={{ width: 19, height: 9,  background: c.bg, border: `1.2px solid ${c.border}`, borderRadius: "0 0 2px 2px" }} />
+                </div>
+                <span className="text-[10px] text-neutral-600 font-inter">{label}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* ── CHECKOUT SIDEBAR ──────────────────────────────────────── */}
+        {/* ── CHECKOUT SIDEBAR ───────────────────────────────────────────── */}
         <div className="space-y-5">
-          {/* MOVIE CARD */}
-          <div
-            className="p-5 rounded-2xl relative overflow-hidden"
-            style={{ background: "linear-gradient(160deg, #111 0%, #0c0c0c 100%)", border: "1px solid rgba(212,175,55,0.1)" }}
-          >
-            <div className="absolute top-0 left-0 right-0 h-px" style={{ background: "linear-gradient(to right, transparent, rgba(212,175,55,0.3) 40%, transparent)" }} />
+          {/* Movie card */}
+          <div className="p-5 rounded-2xl relative overflow-hidden"
+            style={{ background: "linear-gradient(160deg, #111 0%, #0c0c0c 100%)", border: "1px solid rgba(212,175,55,0.1)" }}>
+            <div className="absolute top-0 left-0 right-0 h-px"
+              style={{ background: "linear-gradient(to right, transparent, rgba(212,175,55,0.3) 40%, transparent)" }} />
             <div className="flex gap-4">
-              <img
-                src={getImageUrl(show.movie.posterUrl)}
-                alt={show.movie.title}
+              <img src={getImageUrl(show.movie.posterUrl)} alt={show.movie.title}
                 className="w-20 aspect-[2/3] object-cover rounded-xl flex-shrink-0"
-                style={{ border: "1px solid rgba(212,175,55,0.15)" }}
-              />
+                style={{ border: "1px solid rgba(212,175,55,0.15)" }} />
               <div>
                 <h3 className="font-black text-white text-sm leading-tight">{show.movie.title}</h3>
                 <span className="text-[10px] font-black tracking-wider uppercase mt-1.5 inline-block" style={{ color: "#d4af37" }}>
@@ -378,12 +477,12 @@ export const SeatBooking: React.FC = () => {
                 </div>
               </div>
             </div>
-
-            <div className="mt-5 pt-4 space-y-2.5 font-inter text-xs text-neutral-600" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+            <div className="mt-5 pt-4 space-y-2.5 font-inter text-xs text-neutral-600"
+              style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
               {[
-                { label: "Theatre", value: show.theatre.name },
+                { label: "Theatre",    value: show.theatre.name },
                 { label: "Date & Time", value: `${show.date} @ ${show.startTime}` },
-                { label: "Screen", value: `${show.screen?.type} · Screen ${show.screen.number}` },
+                { label: "Screen",     value: `${show.screen.type} · Screen ${show.screen.number}` },
               ].map(({ label, value }) => (
                 <div key={label} className="flex justify-between">
                   <span>{label}</span>
@@ -393,26 +492,23 @@ export const SeatBooking: React.FC = () => {
             </div>
           </div>
 
-          {/* BOOKING SUMMARY */}
-          <div
-            className="p-5 rounded-2xl"
-            style={{ background: "linear-gradient(160deg, #111 0%, #0c0c0c 100%)", border: "1px solid rgba(212,175,55,0.1)" }}
-          >
+          {/* Booking summary */}
+          <div className="p-5 rounded-2xl"
+            style={{ background: "linear-gradient(160deg, #111 0%, #0c0c0c 100%)", border: "1px solid rgba(212,175,55,0.1)" }}>
             <h4 className="font-black text-sm text-white mb-4 flex items-center gap-2">
               <Ticket className="w-4 h-4" style={{ color: "#d4af37" }} /> Booking Summary
             </h4>
 
             {error && (
-              <div
-                className="mb-4 p-3.5 rounded-xl flex items-center gap-2 text-xs font-inter"
-                style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)" }}
-              >
+              <div className="mb-4 p-3.5 rounded-xl flex items-center gap-2 text-xs font-inter"
+                style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)" }}>
                 <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
                 <span className="text-red-400">{error}</span>
               </div>
             )}
 
-            <div className="space-y-3 font-inter text-xs text-neutral-600 mb-5 pb-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+            <div className="space-y-3 font-inter text-xs text-neutral-600 mb-5 pb-4"
+              style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
               <div className="flex justify-between">
                 <span>Selected Seats</span>
                 <span className="font-black text-white truncate max-w-[140px]">{getSelectedSeatNames() || "None"}</span>
@@ -423,12 +519,9 @@ export const SeatBooking: React.FC = () => {
               </div>
             </div>
 
-            {/* TOTAL */}
             <div className="flex justify-between items-center mb-5">
               <span className="font-black text-white">Total Amount</span>
-              <span className="text-2xl font-black" style={{ color: "#d4af37" }}>
-                ₹{calculateTotalPrice()}
-              </span>
+              <span className="text-2xl font-black" style={{ color: "#d4af37" }}>₹{calculateTotalPrice()}</span>
             </div>
 
             <button

@@ -4,30 +4,61 @@ import { groupRooms, movies, seatLocks, shows } from "../db/schema";
 
 const getToday = () => new Date().toISOString().slice(0, 10);
 
-// Hard-deletes all shows whose date is strictly before today.
+// Converts "06:30 PM" → minutes since midnight (e.g. 1110)
+const timeToMinutes = (t: string): number => {
+  const m = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!m) return 0;
+  let h = parseInt(m[1]);
+  const mins = parseInt(m[2]);
+  const period = m[3].toUpperCase();
+  if (period === "AM" && h === 12) h = 0;
+  if (period === "PM" && h !== 12) h += 12;
+  return h * 60 + mins;
+};
+
+// Hard-deletes all shows that are in the past:
+//   • shows from previous dates
+//   • shows from today whose startTime ended ≥30 minutes ago
 // Cleans up seat locks and group room references first.
 export const deletePastShows = async () => {
   const today = getToday();
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
   try {
-    const pastShows = await db
+    // Shows from previous dates
+    const pastDateShows = await db
       .select({ id: shows.id })
       .from(shows)
       .where(sql`${shows.date} < ${today}`);
 
-    if (pastShows.length === 0) return;
+    // Today's shows whose start time is more than 30 minutes in the past
+    const todayShows = await db
+      .select({ id: shows.id, startTime: shows.startTime })
+      .from(shows)
+      .where(eq(shows.date, today));
 
-    const ids = pastShows.map((s) => s.id);
+    const expiredTodayIds = todayShows
+      .filter(s => timeToMinutes(s.startTime) < nowMinutes - 30)
+      .map(s => s.id);
 
-    await db.delete(seatLocks).where(inArray(seatLocks.showId, ids));
+    const allExpiredIds = [
+      ...pastDateShows.map(s => s.id),
+      ...expiredTodayIds,
+    ];
+
+    if (allExpiredIds.length === 0) return;
+
+    await db.delete(seatLocks).where(inArray(seatLocks.showId, allExpiredIds));
     await db
       .update(groupRooms)
       .set({ selectedShowId: null })
-      .where(inArray(groupRooms.selectedShowId as any, ids));
-    await db.delete(shows).where(inArray(shows.id, ids));
+      .where(inArray(groupRooms.selectedShowId as any, allExpiredIds));
+    await db.delete(shows).where(inArray(shows.id, allExpiredIds));
 
-    console.log(`[cleanup] Deleted ${ids.length} past show(s) (date < ${today})`);
+    console.log(`[cleanup] Deleted ${allExpiredIds.length} expired show(s) at ${now.toLocaleTimeString()}`);
   } catch (err) {
-    console.error("[cleanup] Failed to delete past shows:", err);
+    console.error("[cleanup] Failed to delete expired shows:", err);
   }
 };
 
@@ -54,29 +85,28 @@ export const promoteReleasedMovies = async () => {
   }
 };
 
-// Runs both jobs together — called on startup and every midnight.
-const runDailyJobs = async () => {
-  await deletePastShows();
-  await promoteReleasedMovies();
-};
-
-// Schedules daily jobs to run at midnight every day.
-// Also runs once immediately on server startup to catch anything
-// that changed while the server was offline.
+// Runs both jobs on startup, then:
+//   • deletePastShows  — every hour (catches intraday expired shows)
+//   • promoteReleasedMovies — once at midnight every day
 export const startCleanupScheduler = () => {
-  runDailyJobs();
+  deletePastShows();
+  promoteReleasedMovies();
 
-  const msUntilMidnight = () => {
+  // Expire shows every hour
+  setInterval(deletePastShows, 60 * 60 * 1000);
+
+  // Promote movies at midnight daily
+  const scheduleMidnightPromotion = () => {
     const now = new Date();
     const midnight = new Date(now);
     midnight.setHours(24, 0, 0, 0);
-    return midnight.getTime() - now.getTime();
+    const msUntil = midnight.getTime() - now.getTime();
+    setTimeout(() => {
+      promoteReleasedMovies();
+      setInterval(promoteReleasedMovies, 24 * 60 * 60 * 1000);
+    }, msUntil);
   };
+  scheduleMidnightPromotion();
 
-  setTimeout(() => {
-    runDailyJobs();
-    setInterval(runDailyJobs, 24 * 60 * 60 * 1000);
-  }, msUntilMidnight());
-
-  console.log(`[scheduler] Started — next run in ${Math.round(msUntilMidnight() / 60000)} min`);
+  console.log("[scheduler] Started — show cleanup runs every hour, movie promotion runs at midnight");
 };
