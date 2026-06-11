@@ -412,8 +412,14 @@ export const addTheatre = async (req: Request, res: Response) => {
 
     return res.status(201).json({ message: "Theatre added successfully", theatre: inserted[0] });
   } catch (err) {
+    const cause = (err as any)?.cause;
     console.error("Add theatre error:", err);
-    return res.status(500).json({ error: "Internal server error adding theatre" });
+    console.error("Add theatre cause:", cause);
+    const pgMsg: string =
+      (cause?.message as string | undefined) ??
+      ((err as any)?.message as string | undefined) ??
+      "Unknown DB error";
+    return res.status(500).json({ error: pgMsg });
   }
 };
 
