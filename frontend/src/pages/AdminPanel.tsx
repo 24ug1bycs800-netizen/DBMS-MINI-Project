@@ -16,7 +16,13 @@ interface AdminTheatre { id: number; name: string; cityId: number; address: stri
 interface AdminShow { id: number; movieId: number; movieTitle: string; moviePosterUrl: string; movieLanguage: string; language?: string; screenId: number; screenNumber: number; screenType: string; theatreId: number; theatreName: string; cityId: number; cityName: string; startTime: string; date: string; priceRegular: number; pricePremium: number; priceRecliner: number; status: string; }
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
-const ALL_TIMES = ["09:00 AM", "10:00 AM", "12:30 PM", "02:00 PM", "03:45 PM", "06:30 PM", "09:30 PM", "11:45 PM"];
+const ALL_24H_TIMES: string[] = Array.from({ length: 48 }, (_, i) => {
+  const h = Math.floor(i / 2);
+  const m = i % 2 === 0 ? "00" : "30";
+  const period = h < 12 ? "AM" : "PM";
+  const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${String(displayH).padStart(2, "0")}:${m} ${period}`;
+});
 
 const getToday = () => {
   const n = new Date();
@@ -112,7 +118,7 @@ const WizardSteps: React.FC<{ step: number }> = ({ step }) => {
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 export const AdminPanel: React.FC = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   // ── Dashboard ────────────────────────────────────────────────────────────────
@@ -229,10 +235,11 @@ export const AdminPanel: React.FC = () => {
   };
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user || user.role !== "admin") { navigate("/"); return; }
     fetchStats();
     fetchAll();
-  }, [user]);
+  }, [user, authLoading]);
 
   // Cascade: city → theatres
   useEffect(() => {
@@ -969,35 +976,41 @@ export const AdminPanel: React.FC = () => {
 
                 {/* Show times */}
                 <div>
-                  <FieldLabel>Show Times <span className="text-neutral-600 normal-case font-normal">(min 2)</span></FieldLabel>
-                  <div className="space-y-2">
-                    {wTimes.map((t, i) => (
-                      <div key={i} className="flex gap-2 items-center">
-                        <select
-                          className={`${selectCls} flex-1`}
-                          value={t}
-                          onChange={e => setWTimes(prev => prev.map((v, j) => j === i ? e.target.value : v))}
+                  <FieldLabel>
+                    Show Times
+                    <span className="text-neutral-600 normal-case font-normal ml-1">
+                      (min 2 · {wTimes.length} selected)
+                    </span>
+                  </FieldLabel>
+                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
+                    {ALL_24H_TIMES.map(t => {
+                      const selected = wTimes.includes(t);
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() =>
+                            setWTimes(prev =>
+                              selected
+                                ? prev.length > 2 ? prev.filter(v => v !== t) : prev
+                                : [...prev, t]
+                            )
+                          }
+                          className="py-1.5 rounded-lg text-[10px] font-bold transition-all"
+                          style={selected
+                            ? { background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000" }
+                            : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.35)" }
+                          }
+                          title={selected && wTimes.length <= 2 ? "Minimum 2 required" : ""}
                         >
-                          {ALL_TIMES.map(at => <option key={at} value={at}>{at}</option>)}
-                        </select>
-                        {wTimes.length > 2 && (
-                          <button onClick={() => setWTimes(prev => prev.filter((_, j) => j !== i))}
-                            className="p-2 rounded-lg hover:bg-red-900/30 text-red-500 transition-colors">
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
+                          {t}
+                        </button>
+                      );
+                    })}
                   </div>
-                  <button
-                    onClick={() => setWTimes(prev => [...prev, "06:30 PM"])}
-                    className="mt-2 text-xs font-bold flex items-center gap-1 transition-colors"
-                    style={{ color: "rgba(212,175,55,0.6)" }}
-                    onMouseEnter={e => (e.currentTarget.style.color = "#d4af37")}
-                    onMouseLeave={e => (e.currentTarget.style.color = "rgba(212,175,55,0.6)")}
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Add Time Slot
-                  </button>
+                  {wTimes.length < 2 && (
+                    <p className="mt-2 text-[10px] text-red-400 font-inter">Select at least 2 time slots.</p>
+                  )}
                 </div>
 
                 {/* Pricing */}

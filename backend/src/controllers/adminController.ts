@@ -25,24 +25,52 @@ const GENERATION_TIMES = ["10:00 AM", "02:00 PM"];
 
 const parseInteger = (value: unknown) => Number.parseInt(String(value), 10);
 
-const DEFAULT_SEAT_ROWS = [
-  { row: "A", category: "Regular" },
-  { row: "B", category: "Regular" },
-  { row: "C", category: "Premium" },
-  { row: "D", category: "Premium" },
-  { row: "E", category: "Recliner" },
-  { row: "F", category: "Recliner" },
-];
+// Per-type seat layouts — 2D: 60 seats, 3D: 88 seats, IMAX: 128 seats
+const SCREEN_LAYOUTS: Record<string, Array<{ row: string; category: string; count: number }>> = {
+  "2D": [
+    { row: "A", category: "Regular",  count: 10 },
+    { row: "B", category: "Regular",  count: 10 },
+    { row: "C", category: "Premium",  count: 10 },
+    { row: "D", category: "Premium",  count: 10 },
+    { row: "E", category: "Recliner", count: 10 },
+    { row: "F", category: "Recliner", count: 10 },
+  ],
+  "3D": [
+    { row: "A", category: "Regular",  count: 12 },
+    { row: "B", category: "Regular",  count: 12 },
+    { row: "C", category: "Regular",  count: 12 },
+    { row: "D", category: "Premium",  count: 12 },
+    { row: "E", category: "Premium",  count: 12 },
+    { row: "F", category: "Premium",  count: 12 },
+    { row: "G", category: "Recliner", count: 8  },
+    { row: "H", category: "Recliner", count: 8  },
+  ],
+  "IMAX": [
+    { row: "A", category: "Regular",  count: 14 },
+    { row: "B", category: "Regular",  count: 14 },
+    { row: "C", category: "Regular",  count: 14 },
+    { row: "D", category: "Premium",  count: 14 },
+    { row: "E", category: "Premium",  count: 14 },
+    { row: "F", category: "Premium",  count: 14 },
+    { row: "G", category: "Premium",  count: 14 },
+    { row: "H", category: "Recliner", count: 10 },
+    { row: "I", category: "Recliner", count: 10 },
+    { row: "J", category: "Recliner", count: 10 },
+  ],
+};
 
-const buildDefaultSeats = (screenId: number) =>
-  DEFAULT_SEAT_ROWS.flatMap(({ row, category }) =>
-    Array.from({ length: 10 }, (_, index) => ({
+const buildSeatsForScreenType = (screenId: number, type: string) => {
+  const key = String(type || "2D").toUpperCase().trim();
+  const layout = SCREEN_LAYOUTS[key] ?? SCREEN_LAYOUTS["2D"];
+  return layout.flatMap(({ row, category, count }) =>
+    Array.from({ length: count }, (_, index) => ({
       screenId,
       row,
       category,
       number: index + 1,
     }))
   );
+};
 
 const normalizeMovieLanguage = (value: unknown) => {
   const values = Array.isArray(value) ? value : String(value ?? "").split(",");
@@ -410,7 +438,7 @@ export const addScreen = async (req: Request, res: Response) => {
       })
       .returning();
 
-    await db.insert(seats).values(buildDefaultSeats(inserted[0].id));
+    await db.insert(seats).values(buildSeatsForScreenType(inserted[0].id, inserted[0].type));
 
     return res.status(201).json({ message: "Screen added successfully", screen: inserted[0] });
   } catch (err) {
@@ -452,7 +480,7 @@ export const addBulkScreens = async (req: Request, res: Response) => {
         .insert(screens)
         .values({ theatreId: parsedTheatreId, number: screenNumber, type: String(type).trim() })
         .returning();
-      await db.insert(seats).values(buildDefaultSeats(inserted[0].id));
+      await db.insert(seats).values(buildSeatsForScreenType(inserted[0].id, inserted[0].type));
       created.push(screenNumber);
     }
 

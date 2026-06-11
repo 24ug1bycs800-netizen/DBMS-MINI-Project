@@ -18,7 +18,7 @@ import {
 import api from "../services/api.js";
 
 export const Dashboard: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const [bookings, setBookings] = useState<any[]>([]);
@@ -29,6 +29,7 @@ export const Dashboard: React.FC = () => {
   const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) {
       navigate("/auth");
       return;
@@ -46,7 +47,7 @@ export const Dashboard: React.FC = () => {
       }
     };
     fetchDashboardData();
-  }, [user]);
+  }, [user, authLoading]);
 
   const isCancellable = (booking: any): boolean => {
     const date = booking.show?.date;

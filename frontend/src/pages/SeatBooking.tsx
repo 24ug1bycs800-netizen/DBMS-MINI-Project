@@ -53,19 +53,34 @@ const CATEGORY_STYLES: Record<string, { idle: React.CSSProperties; hover: React.
   },
 };
 
+const CATEGORY_ACCENT: Record<string, string> = {
+  Regular:  "rgba(255,255,255,0.1)",
+  Premium:  "rgba(110,231,231,0.2)",
+  Recliner: "rgba(212,175,55,0.3)",
+};
+
+const ROW_ORDER = "ABCDEFGHIJ";
+
+const getScreenConfig = (type: string) => {
+  const t = (type ?? "").toUpperCase();
+  if (t === "IMAX") return { seatCls: "w-7 h-8", gap: "gap-1",   minWidth: "670px" };
+  if (t === "3D")   return { seatCls: "w-7 h-7", gap: "gap-1",   minWidth: "490px" };
+  return                   { seatCls: "w-8 h-8", gap: "gap-1.5", minWidth: "410px" };
+};
+
 export const SeatBooking: React.FC = () => {
   const { showId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   const [show, setShow] = useState<ShowDetails | null>(null);
   const [seats, setSeats] = useState<Seat[]>([]);
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [] = useState(false);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) { navigate("/auth", { state: { from: `/shows/${showId}/booking` } }); return; }
     const fetchSeats = async () => {
       try {
@@ -79,7 +94,7 @@ export const SeatBooking: React.FC = () => {
       }
     };
     fetchSeats();
-  }, [showId, user]);
+  }, [showId, user, authLoading]);
 
   const handleSeatClick = (seatId: number) => {
     const seat = seats.find((s) => s.id === seatId)!;
@@ -155,6 +170,10 @@ export const SeatBooking: React.FC = () => {
   }
   if (!show) return null;
 
+  const seatRows = Array.from(new Set(seats.map(s => s.row)))
+    .sort((a, b) => ROW_ORDER.indexOf(a) - ROW_ORDER.indexOf(b));
+  const screenCfg = getScreenConfig(show.screen.type);
+
   return (
     <div className="min-h-screen text-white pb-24 font-poppins relative" style={{ background: "#080808" }}>
       {/* FILM GRAIN */}
@@ -172,76 +191,110 @@ export const SeatBooking: React.FC = () => {
         {/* ── SEAT GRID (left 2 cols) ───────────────────────────────── */}
         <div className="lg:col-span-2 flex flex-col items-center">
           {/* SCREEN GRAPHIC */}
-          <div className="w-full max-w-lg mb-14 flex flex-col items-center relative">
+          <div className={`w-full ${show.screen.type === "IMAX" ? "max-w-2xl" : "max-w-lg"} mb-14 flex flex-col items-center relative`}>
             {/* PROJECTOR BEAM */}
             <div
-              className="absolute -top-8 w-8/12 h-16 blur-2xl rounded-full pointer-events-none"
-              style={{ background: "rgba(212,175,55,0.06)" }}
+              className={`absolute -top-8 blur-2xl rounded-full pointer-events-none ${show.screen.type === "IMAX" ? "w-11/12 h-20" : "w-8/12 h-16"}`}
+              style={{ background: show.screen.type === "IMAX" ? "rgba(212,175,55,0.09)" : show.screen.type === "3D" ? "rgba(110,231,231,0.06)" : "rgba(212,175,55,0.06)" }}
             />
+            {/* SCREEN TYPE BADGE */}
+            <div
+              className="mb-4 px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase"
+              style={
+                show.screen.type === "IMAX"
+                  ? { background: "rgba(212,175,55,0.12)", border: "1px solid rgba(212,175,55,0.45)", color: "#f4d03f" }
+                  : show.screen.type === "3D"
+                  ? { background: "rgba(110,231,231,0.08)", border: "1px solid rgba(110,231,231,0.35)", color: "#6ee7e7" }
+                  : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)" }
+              }
+            >
+              {show.screen.type === "IMAX" ? "IMAX Experience" : show.screen.type === "3D" ? "3D Experience" : "Standard 2D"}
+            </div>
             {/* SCREEN BAR */}
             <div
-              className="w-full h-2 rounded-full relative"
+              className={`w-full rounded-full relative ${show.screen.type === "IMAX" ? "h-1" : "h-0.5"}`}
               style={{
-                background: "linear-gradient(to right, transparent, rgba(212,175,55,0.5) 20%, #d4af37 50%, rgba(212,175,55,0.5) 80%, transparent)",
-                boxShadow: "0 0 20px rgba(212,175,55,0.2)",
+                background: show.screen.type === "3D"
+                  ? "linear-gradient(to right, transparent, rgba(110,231,231,0.4) 20%, #6ee7e7 50%, rgba(110,231,231,0.4) 80%, transparent)"
+                  : "linear-gradient(to right, transparent, rgba(212,175,55,0.5) 20%, #d4af37 50%, rgba(212,175,55,0.5) 80%, transparent)",
+                boxShadow: show.screen.type === "3D" ? "0 0 20px rgba(110,231,231,0.2)" : "0 0 20px rgba(212,175,55,0.2)",
               }}
             />
             {/* SCREEN PERSPECTIVE LINES */}
-            <svg className="w-8/12 mt-0.5 opacity-10" viewBox="0 0 300 30" fill="none">
-              <line x1="150" y1="0" x2="0" y2="30" stroke="#d4af37" strokeWidth="0.5" />
-              <line x1="150" y1="0" x2="300" y2="30" stroke="#d4af37" strokeWidth="0.5" />
+            <svg className={`mt-0.5 opacity-10 ${show.screen.type === "IMAX" ? "w-11/12" : "w-8/12"}`} viewBox="0 0 300 30" fill="none">
+              <line x1="150" y1="0" x2="0" y2="30" stroke={show.screen.type === "3D" ? "#6ee7e7" : "#d4af37"} strokeWidth="0.5" />
+              <line x1="150" y1="0" x2="300" y2="30" stroke={show.screen.type === "3D" ? "#6ee7e7" : "#d4af37"} strokeWidth="0.5" />
             </svg>
             <p className="text-[9px] tracking-[0.3em] uppercase mt-2 font-inter" style={{ color: "rgba(212,175,55,0.4)" }}>
-              Screen This Way
+              Screen This Way · {seats.length} seats · {seats.filter(s => s.status !== "booked").length} available
             </p>
           </div>
 
           {/* SEAT ROWS */}
-          <div className="space-y-2.5 max-w-full overflow-x-auto pb-4">
-            {["A", "B", "C", "D", "E", "F"].map((rowLetter) => {
-              const rowSeats = seats.filter((s) => s.row === rowLetter);
+          <div className="space-y-2 max-w-full overflow-x-auto pb-4">
+            {seatRows.map((rowLetter, rowIndex) => {
+              const rowSeats = seats
+                .filter((s) => s.row === rowLetter)
+                .sort((a, b) => a.number - b.number);
               const category = rowSeats[0]?.category || "Regular";
               const styles = CATEGORY_STYLES[category] || CATEGORY_STYLES.Regular;
+              const prevCategory = rowIndex > 0
+                ? seats.find(s => s.row === seatRows[rowIndex - 1])?.category
+                : null;
+              const isCategoryChange = !!prevCategory && prevCategory !== category;
+              const { seatCls, gap, minWidth } = screenCfg;
 
               return (
-                <div key={rowLetter} className="flex items-center gap-3 min-w-[400px]">
-                  <span className="w-5 text-[10px] font-black text-center font-inter" style={{ color: "rgba(212,175,55,0.4)" }}>
-                    {rowLetter}
-                  </span>
-                  <div className="flex gap-1.5">
-                    {rowSeats.map((seat) => {
-                      const isSelected = selectedSeats.includes(seat.id);
-                      const isBooked = seat.status === "booked";
+                <React.Fragment key={rowLetter}>
+                  {isCategoryChange && (
+                    <div className="flex items-center gap-3 my-2 opacity-70" style={{ minWidth }}>
+                      <div className="flex-1 h-px" style={{ background: CATEGORY_ACCENT[category] }} />
+                      <span className="text-[8px] font-black uppercase tracking-widest px-1"
+                        style={{ color: CATEGORY_ACCENT[category] }}>
+                        {category}
+                      </span>
+                      <div className="flex-1 h-px" style={{ background: CATEGORY_ACCENT[category] }} />
+                    </div>
+                  )}
+                  <div className="flex items-center gap-3" style={{ minWidth }}>
+                    <span className="w-5 text-[10px] font-black text-center font-inter flex-shrink-0" style={{ color: "rgba(212,175,55,0.4)" }}>
+                      {rowLetter}
+                    </span>
+                    <div className={`flex ${gap}`}>
+                      {rowSeats.map((seat) => {
+                        const isSelected = selectedSeats.includes(seat.id);
+                        const isBooked = seat.status === "booked";
 
-                      const seatStyle = isBooked
-                        ? { border: "1px solid rgba(255,255,255,0.04)", background: "rgba(255,255,255,0.02)", color: "#2a2a2a", cursor: "not-allowed" }
-                        : isSelected
-                        ? { border: "1px solid rgba(34,197,94,0.6)", background: "rgba(34,197,94,0.15)", color: "#4ade80", boxShadow: "0 0 10px rgba(34,197,94,0.15)" }
-                        : styles.idle;
+                        const seatStyle = isBooked
+                          ? { border: "1px solid rgba(255,255,255,0.04)", background: "rgba(255,255,255,0.02)", color: "#2a2a2a", cursor: "not-allowed" }
+                          : isSelected
+                          ? { border: "1px solid rgba(34,197,94,0.6)", background: "rgba(34,197,94,0.15)", color: "#4ade80", boxShadow: "0 0 10px rgba(34,197,94,0.15)" }
+                          : styles.idle;
 
-                      return (
-                        <button
-                          key={seat.id}
-                          disabled={isBooked}
-                          onClick={() => handleSeatClick(seat.id)}
-                          className="w-8 h-8 rounded-lg text-[10px] font-black font-inter transition-all flex items-center justify-center hover:scale-110"
-                          style={seatStyle}
-                          onMouseEnter={(e) => {
-                            if (!isBooked && !isSelected) Object.assign(e.currentTarget.style, styles.hover);
-                          }}
-                          onMouseLeave={(e) => {
-                            if (!isBooked && !isSelected) Object.assign(e.currentTarget.style, styles.idle);
-                          }}
-                        >
-                          {isBooked ? "×" : seat.number}
-                        </button>
-                      );
-                    })}
+                        return (
+                          <button
+                            key={seat.id}
+                            disabled={isBooked}
+                            onClick={() => handleSeatClick(seat.id)}
+                            className={`${seatCls} rounded-lg text-[10px] font-black font-inter transition-all flex items-center justify-center hover:scale-110`}
+                            style={seatStyle}
+                            onMouseEnter={(e) => {
+                              if (!isBooked && !isSelected) Object.assign(e.currentTarget.style, styles.hover);
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isBooked && !isSelected) Object.assign(e.currentTarget.style, styles.idle);
+                            }}
+                          >
+                            {isBooked ? "×" : seat.number}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <span className="text-[9px] font-black font-inter uppercase tracking-wider flex-shrink-0" style={{ color: "rgba(255,255,255,0.15)" }}>
+                      {category}
+                    </span>
                   </div>
-                  <span className="text-[9px] font-black font-inter uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.15)" }}>
-                    {category}
-                  </span>
-                </div>
+                </React.Fragment>
               );
             })}
           </div>
