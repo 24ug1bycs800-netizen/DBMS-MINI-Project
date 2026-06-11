@@ -25,27 +25,25 @@ const GENERATION_TIMES = ["10:00 AM", "02:00 PM"];
 
 const parseInteger = (value: unknown) => Number.parseInt(String(value), 10);
 
-// Per-type seat layouts — 2D: 60 seats, 3D: 88 seats, IMAX: 128 seats
+// Per-type seat layouts — 2D: 200 seats, 3D: 156 seats, IMAX: 234 seats
 const SCREEN_LAYOUTS: Record<string, Array<{ row: string; category: string; count: number }>> = {
   "2D": [
-    { row: "A", category: "Regular",  count: 10 },
-    { row: "B", category: "Regular",  count: 10 },
-    { row: "C", category: "Premium",  count: 10 },
-    { row: "D", category: "Premium",  count: 10 },
-    { row: "E", category: "Recliner", count: 10 },
-    { row: "F", category: "Recliner", count: 10 },
+    { row: "A", category: "Regular",  count: 16 },
+    { row: "B", category: "Regular",  count: 16 },
+    { row: "C", category: "Regular",  count: 16 },
+    { row: "D", category: "Premium",  count: 16 },
+    { row: "E", category: "Premium",  count: 16 },
+    { row: "F", category: "Premium",  count: 16 },
+    { row: "G", category: "Premium",  count: 16 },
+    { row: "H", category: "Premium",  count: 16 },
+    { row: "I", category: "Premium",  count: 16 },
+    { row: "J", category: "Premium",  count: 16 },
+    { row: "K", category: "Recliner", count: 10 },
+    { row: "L", category: "Recliner", count: 10 },
+    { row: "M", category: "Recliner", count: 10 },
+    { row: "N", category: "Recliner", count: 10 },
   ],
   "3D": [
-    { row: "A", category: "Regular",  count: 12 },
-    { row: "B", category: "Regular",  count: 12 },
-    { row: "C", category: "Regular",  count: 12 },
-    { row: "D", category: "Premium",  count: 12 },
-    { row: "E", category: "Premium",  count: 12 },
-    { row: "F", category: "Premium",  count: 12 },
-    { row: "G", category: "Recliner", count: 8  },
-    { row: "H", category: "Recliner", count: 8  },
-  ],
-  "IMAX": [
     { row: "A", category: "Regular",  count: 14 },
     { row: "B", category: "Regular",  count: 14 },
     { row: "C", category: "Regular",  count: 14 },
@@ -53,9 +51,27 @@ const SCREEN_LAYOUTS: Record<string, Array<{ row: string; category: string; coun
     { row: "E", category: "Premium",  count: 14 },
     { row: "F", category: "Premium",  count: 14 },
     { row: "G", category: "Premium",  count: 14 },
-    { row: "H", category: "Recliner", count: 10 },
-    { row: "I", category: "Recliner", count: 10 },
+    { row: "H", category: "Premium",  count: 14 },
+    { row: "I", category: "Premium",  count: 14 },
     { row: "J", category: "Recliner", count: 10 },
+    { row: "K", category: "Recliner", count: 10 },
+    { row: "L", category: "Recliner", count: 10 },
+  ],
+  "IMAX": [
+    { row: "A", category: "Regular",  count: 18 },
+    { row: "B", category: "Regular",  count: 18 },
+    { row: "C", category: "Regular",  count: 18 },
+    { row: "D", category: "Premium",  count: 18 },
+    { row: "E", category: "Premium",  count: 18 },
+    { row: "F", category: "Premium",  count: 18 },
+    { row: "G", category: "Premium",  count: 18 },
+    { row: "H", category: "Premium",  count: 18 },
+    { row: "I", category: "Premium",  count: 18 },
+    { row: "J", category: "Premium",  count: 18 },
+    { row: "K", category: "Premium",  count: 18 },
+    { row: "L", category: "Recliner", count: 12 },
+    { row: "M", category: "Recliner", count: 12 },
+    { row: "N", category: "Recliner", count: 12 },
   ],
 };
 

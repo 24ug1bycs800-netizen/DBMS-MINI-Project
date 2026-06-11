@@ -59,13 +59,13 @@ const CATEGORY_ACCENT: Record<string, string> = {
   Recliner: "rgba(212,175,55,0.3)",
 };
 
-const ROW_ORDER = "ABCDEFGHIJ";
+const ROW_ORDER = "ABCDEFGHIJKLMN";
 
 const getScreenConfig = (type: string) => {
   const t = (type ?? "").toUpperCase();
-  if (t === "IMAX") return { seatCls: "w-7 h-8", gap: "gap-1",   minWidth: "670px" };
-  if (t === "3D")   return { seatCls: "w-7 h-7", gap: "gap-1",   minWidth: "490px" };
-  return                   { seatCls: "w-8 h-8", gap: "gap-1.5", minWidth: "410px" };
+  if (t === "IMAX") return { seatCls: "w-6 h-7", minWidth: "700px" };
+  if (t === "3D")   return { seatCls: "w-7 h-7", minWidth: "630px" };
+  return                   { seatCls: "w-7 h-7", minWidth: "660px" };
 };
 
 export const SeatBooking: React.FC = () => {
@@ -242,7 +242,37 @@ export const SeatBooking: React.FC = () => {
                 ? seats.find(s => s.row === seatRows[rowIndex - 1])?.category
                 : null;
               const isCategoryChange = !!prevCategory && prevCategory !== category;
-              const { seatCls, gap, minWidth } = screenCfg;
+              const { seatCls, minWidth } = screenCfg;
+              const mid = Math.floor(rowSeats.length / 2);
+              const leftSeats = rowSeats.slice(0, mid);
+              const rightSeats = rowSeats.slice(mid);
+
+              const renderSeatBtn = (seat: Seat) => {
+                const isSelected = selectedSeats.includes(seat.id);
+                const isBooked = seat.status === "booked";
+                const seatStyle = isBooked
+                  ? { border: "1px solid rgba(255,255,255,0.04)", background: "rgba(255,255,255,0.02)", color: "#2a2a2a", cursor: "not-allowed" }
+                  : isSelected
+                  ? { border: "1px solid rgba(34,197,94,0.6)", background: "rgba(34,197,94,0.15)", color: "#4ade80", boxShadow: "0 0 10px rgba(34,197,94,0.15)" }
+                  : styles.idle;
+                return (
+                  <button
+                    key={seat.id}
+                    disabled={isBooked}
+                    onClick={() => handleSeatClick(seat.id)}
+                    className={`${seatCls} rounded-lg text-[10px] font-black font-inter transition-all flex items-center justify-center hover:scale-110`}
+                    style={seatStyle}
+                    onMouseEnter={(e) => {
+                      if (!isBooked && !isSelected) Object.assign(e.currentTarget.style, styles.hover);
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isBooked && !isSelected) Object.assign(e.currentTarget.style, styles.idle);
+                    }}
+                  >
+                    {isBooked ? "×" : seat.number}
+                  </button>
+                );
+              };
 
               return (
                 <React.Fragment key={rowLetter}>
@@ -256,39 +286,14 @@ export const SeatBooking: React.FC = () => {
                       <div className="flex-1 h-px" style={{ background: CATEGORY_ACCENT[category] }} />
                     </div>
                   )}
-                  <div className="flex items-center gap-3" style={{ minWidth }}>
+                  <div className="flex items-center gap-2" style={{ minWidth }}>
                     <span className="w-5 text-[10px] font-black text-center font-inter flex-shrink-0" style={{ color: "rgba(212,175,55,0.4)" }}>
                       {rowLetter}
                     </span>
-                    <div className={`flex ${gap}`}>
-                      {rowSeats.map((seat) => {
-                        const isSelected = selectedSeats.includes(seat.id);
-                        const isBooked = seat.status === "booked";
-
-                        const seatStyle = isBooked
-                          ? { border: "1px solid rgba(255,255,255,0.04)", background: "rgba(255,255,255,0.02)", color: "#2a2a2a", cursor: "not-allowed" }
-                          : isSelected
-                          ? { border: "1px solid rgba(34,197,94,0.6)", background: "rgba(34,197,94,0.15)", color: "#4ade80", boxShadow: "0 0 10px rgba(34,197,94,0.15)" }
-                          : styles.idle;
-
-                        return (
-                          <button
-                            key={seat.id}
-                            disabled={isBooked}
-                            onClick={() => handleSeatClick(seat.id)}
-                            className={`${seatCls} rounded-lg text-[10px] font-black font-inter transition-all flex items-center justify-center hover:scale-110`}
-                            style={seatStyle}
-                            onMouseEnter={(e) => {
-                              if (!isBooked && !isSelected) Object.assign(e.currentTarget.style, styles.hover);
-                            }}
-                            onMouseLeave={(e) => {
-                              if (!isBooked && !isSelected) Object.assign(e.currentTarget.style, styles.idle);
-                            }}
-                          >
-                            {isBooked ? "×" : seat.number}
-                          </button>
-                        );
-                      })}
+                    <div className="flex gap-1">
+                      {leftSeats.map(renderSeatBtn)}
+                      <div className="w-5 flex-shrink-0" />
+                      {rightSeats.map(renderSeatBtn)}
                     </div>
                     <span className="text-[9px] font-black font-inter uppercase tracking-wider flex-shrink-0" style={{ color: "rgba(255,255,255,0.15)" }}>
                       {category}
