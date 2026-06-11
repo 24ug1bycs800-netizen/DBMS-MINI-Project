@@ -533,7 +533,7 @@ export const deleteShow = async (req: Request, res: Response) => {
 };
 
 // ─── BULK DELETE SHOWS ────────────────────────────────────────────────────────
-// scope: 'screen' | 'theatre' | 'city'
+// scope: 'movie' | 'screen' | 'theatre' | 'city'
 // scopeId: the ID of the entity at that scope
 
 export const bulkDeleteShows = async (req: Request, res: Response) => {
@@ -545,44 +545,53 @@ export const bulkDeleteShows = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "scope and scopeId are required" });
     }
 
-    // Resolve all target screenIds for the given scope
-    let targetScreenIds: number[] = [];
+    let showIds: number[] = [];
 
-    if (scope === "screen") {
-      targetScreenIds = [parsedScopeId];
-    } else if (scope === "theatre") {
-      const rows = await db
-        .select({ id: screens.id })
-        .from(screens)
-        .where(eq(screens.theatreId, parsedScopeId));
-      targetScreenIds = rows.map((r) => r.id);
-    } else if (scope === "city") {
-      const theatreRows = await db
-        .select({ id: theatres.id })
-        .from(theatres)
-        .where(eq(theatres.cityId, parsedScopeId));
-      const theatreIds = theatreRows.map((r) => r.id);
-      if (theatreIds.length > 0) {
-        const screenRows = await db
+    if (scope === "movie") {
+      const showRows = await db
+        .select({ id: shows.id })
+        .from(shows)
+        .where(eq(shows.movieId, parsedScopeId));
+      showIds = showRows.map((r) => r.id);
+    } else {
+      // Resolve all target screenIds for screen/theatre/city scope
+      let targetScreenIds: number[] = [];
+
+      if (scope === "screen") {
+        targetScreenIds = [parsedScopeId];
+      } else if (scope === "theatre") {
+        const rows = await db
           .select({ id: screens.id })
           .from(screens)
-          .where(inArray(screens.theatreId, theatreIds));
-        targetScreenIds = screenRows.map((r) => r.id);
+          .where(eq(screens.theatreId, parsedScopeId));
+        targetScreenIds = rows.map((r) => r.id);
+      } else if (scope === "city") {
+        const theatreRows = await db
+          .select({ id: theatres.id })
+          .from(theatres)
+          .where(eq(theatres.cityId, parsedScopeId));
+        const theatreIds = theatreRows.map((r) => r.id);
+        if (theatreIds.length > 0) {
+          const screenRows = await db
+            .select({ id: screens.id })
+            .from(screens)
+            .where(inArray(screens.theatreId, theatreIds));
+          targetScreenIds = screenRows.map((r) => r.id);
+        }
+      } else {
+        return res.status(400).json({ error: "scope must be 'movie', 'screen', 'theatre', or 'city'" });
       }
-    } else {
-      return res.status(400).json({ error: "scope must be 'screen', 'theatre', or 'city'" });
-    }
 
-    if (targetScreenIds.length === 0) {
-      return res.status(200).json({ message: "No shows found for deletion", deleted: 0 });
-    }
+      if (targetScreenIds.length === 0) {
+        return res.status(200).json({ message: "No shows found for deletion", deleted: 0 });
+      }
 
-    // Get all show IDs for the resolved screens
-    const showRows = await db
-      .select({ id: shows.id })
-      .from(shows)
-      .where(inArray(shows.screenId, targetScreenIds));
-    const showIds = showRows.map((r) => r.id);
+      const showRows = await db
+        .select({ id: shows.id })
+        .from(shows)
+        .where(inArray(shows.screenId, targetScreenIds));
+      showIds = showRows.map((r) => r.id);
+    }
 
     if (showIds.length === 0) {
       return res.status(200).json({ message: "No shows found for deletion", deleted: 0 });

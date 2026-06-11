@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Film, Calendar, PlusCircle, AlertCircle,
   CheckCircle, BarChart3, LineChart, PieChart, Users, Wallet,
   Compass, Trash2, Search, MapPin, ChevronRight, ChevronDown,
-  Clock, Check, X, Plus, Layers, Pencil, Building2, Monitor,
+  Check, X, Plus, Layers, Pencil, Building2, Monitor, CalendarX,
 } from "lucide-react";
 import api from "../services/api.js";
 
@@ -326,6 +326,17 @@ export const AdminPanel: React.FC = () => {
       setMsg("Movie deleted");
       fetchAll();
     } catch { setErr("Failed to delete movie"); }
+  };
+
+  const handleDeleteAllShows = async (movieId: number, movieTitle: string) => {
+    if (!window.confirm(`Delete ALL shows for "${movieTitle}"? Bookings are preserved.`)) return;
+    try {
+      await api.delete("/admin/shows/bulk", { data: { scope: "movie", scopeId: movieId } });
+      setMsg(`All shows for "${movieTitle}" deleted.`);
+      fetchAll();
+    } catch (error: any) {
+      setErr(error.response?.data?.error || "Failed to delete shows.");
+    }
   };
 
   const handleAddTheatre = async (e: React.FormEvent) => {
@@ -1118,7 +1129,7 @@ export const AdminPanel: React.FC = () => {
                 { label: "Total Movies", value: movies.length, color: "text-primary" },
                 { label: "Total Shows", value: shows.length, color: "text-accent" },
                 { label: "Active Shows", value: shows.filter(s => s.status === "active").length, color: "text-green-400" },
-                { label: "Expired Shows", value: shows.filter(s => s.status === "expired").length, color: "text-red-400" },
+                { label: "Total Theatres", value: theatreList.length, color: "text-yellow-400" },
               ].map(({ label, value, color }) => (
                 <div key={label} className={`${cardDark} py-4`}>
                   <p className="text-xs text-neutral-500 font-inter">{label}</p>
@@ -1146,12 +1157,6 @@ export const AdminPanel: React.FC = () => {
                 <option value="">All Cities</option>
                 {cityList.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
-              <div
-                className="px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2"
-                style={{ background: "rgba(34,197,94,0.05)", border: "1px solid rgba(34,197,94,0.15)", color: "rgba(74,222,128,0.6)" }}
-              >
-                <Clock className="w-3.5 h-3.5" /> Past shows auto-deleted at midnight
-              </div>
             </div>
 
             {/* ── MOVIES + SHOWTIMES ───────────────────────────────────────── */}
@@ -1208,6 +1213,13 @@ export const AdminPanel: React.FC = () => {
                               title="Edit movie details"
                             >
                               <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={e => { e.stopPropagation(); handleDeleteAllShows(movie.id, movie.title); }}
+                              className="p-2 rounded-lg text-orange-400 hover:bg-orange-900/20 transition-colors"
+                              title="Delete all shows for this movie"
+                            >
+                              <CalendarX className="w-4 h-4" />
                             </button>
                             <button
                               onClick={e => { e.stopPropagation(); handleDeleteMovie(movie.id); }}

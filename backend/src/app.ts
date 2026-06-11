@@ -9,6 +9,8 @@ import bookingRoutes from "./routes/bookingRoutes";
 import groupRoutes from "./routes/groupRoutes";
 import adminRoutes from "./routes/adminRoutes";
 import { startCleanupScheduler } from "./jobs/cleanupShows";
+import { db } from "./db/db";
+import { sql } from "drizzle-orm";
 
 dotenv.config();
 
@@ -79,7 +81,28 @@ app.use((err: any, req: any, res: any, next: any) => {
 
 /* ---------------- START SERVER ---------------- */
 
-app.listen(PORT, () => {
+const fixSequences = async () => {
+  const tables = [
+    "cities", "users", "movies", "theatres", "screens", "seats",
+    "shows", "bookings", "booking_seats", "payments", "seat_locks",
+    "reviews", "wishlist", "notifications", "group_rooms", "group_members", "votes",
+  ];
+  try {
+    await Promise.all(
+      tables.map((t) =>
+        db.execute(sql.raw(
+          `SELECT setval('${t}_id_seq', COALESCE((SELECT MAX(id) FROM "${t}"), 0) + 1, false)`
+        ))
+      )
+    );
+    console.log("✅ Serial sequences synced");
+  } catch (err) {
+    console.warn("⚠️  Sequence sync skipped:", (err as Error).message);
+  }
+};
+
+app.listen(PORT, async () => {
   console.log(`🎬 CineCircle Backend running on http://localhost:${PORT}`);
+  await fixSequences();
   startCleanupScheduler();
 });
