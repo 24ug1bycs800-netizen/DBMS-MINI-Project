@@ -12,6 +12,7 @@ const GroupBooking = lazy(() => import('./pages/GroupBooking.js').then(m => ({ d
 const GroupRoomsList = lazy(() => import('./pages/GroupRoomsList.js').then(m => ({ default: m.GroupRoomsList })));
 const Dashboard = lazy(() => import('./pages/Dashboard.js').then(m => ({ default: m.Dashboard })));
 const AdminPanel = lazy(() => import('./pages/AdminPanel.js').then(m => ({ default: m.AdminPanel })));
+const BookingConfirmation = lazy(() => import('./pages/BookingConfirmation.js').then(m => ({ default: m.BookingConfirmation })));
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center" style={{ background: '#080808' }}>
@@ -35,6 +36,7 @@ function App() {
                 <Route path="/group/:inviteCode" element={<GroupBooking />} />
                 <Route path="/groups" element={<GroupRoomsList />} />
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/booking/confirm/:code" element={<BookingConfirmation />} />
                 <Route path="/admin" element={<AdminPanel />} />
               </Routes>
             </Suspense>

@@ -197,6 +197,17 @@ export const AdminPanel: React.FC = () => {
   const [bulkScreenType, setBulkScreenType] = useState("2D");
 
   // ── Edit Movie Modal ──────────────────────────────────────────────────────────
+  const [screenList, setScreenList] = useState<any[]>([]);
+  const [newCityName, setNewCityName] = useState("");
+
+  // ── Edit Show Modal ───────────────────────────────────────────────────────────
+  const [editingShow, setEditingShow] = useState<AdminShow | null>(null);
+  const [editShowDate, setEditShowDate] = useState("");
+  const [editShowTime, setEditShowTime] = useState("");
+  const [editShowPriceReg, setEditShowPriceReg] = useState("");
+  const [editShowPricePrem, setEditShowPricePrem] = useState("");
+  const [editShowPriceRec, setEditShowPriceRec] = useState("");
+
   const [editingMovie, setEditingMovie] = useState<AdminMovie | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDesc, setEditDesc] = useState("");
@@ -220,16 +231,18 @@ export const AdminPanel: React.FC = () => {
   };
 
   const fetchAll = async () => {
-    const [moviesRes, showsRes, citiesRes, theatresRes] = await Promise.allSettled([
+    const [moviesRes, showsRes, citiesRes, theatresRes, screensRes] = await Promise.allSettled([
       api.get("/admin/movies"),
       api.get("/admin/shows"),
       api.get("/admin/cities"),
       api.get("/admin/theatres"),
+      api.get("/admin/screens"),
     ]);
     if (moviesRes.status === "fulfilled")   setMovies(moviesRes.value.data || []);
     if (showsRes.status === "fulfilled")    setShows(showsRes.value.data || []);
     if (citiesRes.status === "fulfilled")   setCityList(citiesRes.value.data || []);
     if (theatresRes.status === "fulfilled") setTheatreList(theatresRes.value.data || []);
+    if (screensRes.status === "fulfilled")  setScreenList(screensRes.value.data || []);
     if (citiesRes.status === "rejected")    console.error("Cities load failed:", citiesRes.reason);
     if (showsRes.status === "rejected")     console.error("Shows load failed:", showsRes.reason);
   };
@@ -326,6 +339,72 @@ export const AdminPanel: React.FC = () => {
       setMsg("Movie deleted");
       fetchAll();
     } catch { setErr("Failed to delete movie"); }
+  };
+
+  const handleAddCity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMsg(""); setErr("");
+    if (!newCityName.trim()) { setErr("City name is required."); return; }
+    try {
+      await api.post("/admin/cities", { name: newCityName.trim() });
+      setMsg(`City "${newCityName.trim()}" added.`);
+      setNewCityName("");
+      fetchAll();
+    } catch (error: any) {
+      setErr(error.response?.data?.error || "Failed to add city.");
+    }
+  };
+
+  const handleDeleteTheatre = async (id: number, name: string) => {
+    if (!window.confirm(`Delete theatre "${name}" and all its screens & shows?`)) return;
+    try {
+      await api.delete(`/admin/theatres/${id}`);
+      setMsg("Theatre deleted.");
+      fetchAll();
+    } catch (error: any) {
+      setErr(error.response?.data?.error || "Failed to delete theatre.");
+    }
+  };
+
+  const handleDeleteScreen = async (id: number, theatreName: string, num: number) => {
+    if (!window.confirm(`Delete Screen ${num} from "${theatreName}"? All its shows will also be deleted.`)) return;
+    try {
+      await api.delete(`/admin/screens/${id}`);
+      setMsg("Screen deleted.");
+      fetchAll();
+    } catch (error: any) {
+      setErr(error.response?.data?.error || "Failed to delete screen.");
+    }
+  };
+
+  const openEditShow = (show: AdminShow) => {
+    setEditingShow(show);
+    setEditShowDate(show.date);
+    setEditShowTime(show.startTime);
+    setEditShowPriceReg(String(show.priceRegular));
+    setEditShowPricePrem(String(show.pricePremium));
+    setEditShowPriceRec(String(show.priceRecliner));
+    setErr("");
+  };
+
+  const handleUpdateShow = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingShow) return;
+    setMsg(""); setErr("");
+    try {
+      await api.put(`/admin/shows/${editingShow.id}`, {
+        date: editShowDate,
+        startTime: editShowTime,
+        priceRegular: parseInt(editShowPriceReg),
+        pricePremium: parseInt(editShowPricePrem),
+        priceRecliner: parseInt(editShowPriceRec),
+      });
+      setMsg("Show updated.");
+      setEditingShow(null);
+      fetchAll();
+    } catch (error: any) {
+      setErr(error.response?.data?.error || "Failed to update show.");
+    }
   };
 
   const handleDeleteAllShows = async (movieId: number, movieTitle: string) => {
@@ -1264,11 +1343,19 @@ export const AdminPanel: React.FC = () => {
                                         </p>
                                       </div>
                                     </div>
-                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                    <div className="flex items-center gap-1.5 flex-shrink-0">
                                       <StatusPill status={show.status} />
+                                      <button
+                                        onClick={() => openEditShow(show)}
+                                        className="p-1.5 rounded-lg text-[#d4af37] hover:bg-[#d4af37]/10 transition-colors"
+                                        title="Edit show"
+                                      >
+                                        <Pencil className="w-3.5 h-3.5" />
+                                      </button>
                                       <button
                                         onClick={() => handleDeleteShow(show.id)}
                                         className="p-1.5 rounded-lg text-red-500 hover:bg-red-900/20 transition-colors"
+                                        title="Delete show"
                                       >
                                         <Trash2 className="w-3.5 h-3.5" />
                                       </button>
@@ -1284,6 +1371,20 @@ export const AdminPanel: React.FC = () => {
                   })}
                 </div>
               )}
+            </div>
+
+            {/* ── ADD CITY ────────────────────────────────────────────────── */}
+            <div className={cardDark}>
+              <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-primary" /> Add New City
+              </h2>
+              <form onSubmit={handleAddCity} className="flex items-end gap-4 font-inter text-xs">
+                <div className="flex-1">
+                  <FieldLabel>City Name</FieldLabel>
+                  <input className={inputCls} required placeholder="e.g. Bengaluru" value={newCityName} onChange={e => setNewCityName(e.target.value)} />
+                </div>
+                <GoldBtn type="submit" className="w-fit"><Plus className="w-4 h-4" /> Add City</GoldBtn>
+              </form>
             </div>
 
             {/* ── ADD THEATRE ─────────────────────────────────────────────── */}
@@ -1319,7 +1420,7 @@ export const AdminPanel: React.FC = () => {
                 <Monitor className="w-5 h-5 text-accent" /> Add Screens to Theatre
               </h2>
               <p className="text-[10px] text-neutral-600 font-inter mb-4">
-                Adds multiple screens at once, auto-numbered from the next available slot. Seats are generated based on type: 2D → 60 seats, 3D → 88 seats, IMAX → 128 seats.
+                Adds multiple screens at once, auto-numbered from the next available slot. Seats are generated based on type: 2D → 200 seats, 3D → 156 seats, IMAX → 234 seats.
               </p>
               <form onSubmit={handleBulkScreens} className="grid grid-cols-1 md:grid-cols-4 gap-4 font-inter text-xs">
                 <div className="md:col-span-2">
@@ -1349,12 +1450,141 @@ export const AdminPanel: React.FC = () => {
               </form>
             </div>
 
+            {/* ── THEATRES & SCREENS LIST ─────────────────────────────────── */}
+            <div className={cardDark}>
+              <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-accent" /> Theatres &amp; Screens
+                <span className="text-neutral-600 font-normal text-sm">({theatreList.length} theatres)</span>
+              </h2>
+              {theatreList.length === 0 ? (
+                <p className="text-sm text-neutral-600 py-6 text-center font-inter">No theatres added yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {Object.entries(
+                    theatreList.reduce((acc: Record<string, typeof theatreList>, t) => {
+                      const city = cityList.find((c: any) => c.id === t.cityId);
+                      const key = city?.name ?? "Unknown";
+                      (acc[key] = acc[key] || []).push(t);
+                      return acc;
+                    }, {})
+                  ).sort(([a], [b]) => a.localeCompare(b)).map(([cityName, cityTheatres]) => (
+                    <div key={cityName}>
+                      <p className="text-[9px] font-black uppercase tracking-widest px-1 mb-1.5" style={{ color: "rgba(212,175,55,0.5)" }}>
+                        {cityName}
+                      </p>
+                      <div className="space-y-1.5">
+                        {cityTheatres.map(t => {
+                          const tScreens = screenList
+                            .filter((s: any) => s.theatreId === t.id)
+                            .sort((a: any, b: any) => a.number - b.number);
+                          return (
+                            <div key={t.id} className="rounded-xl border border-neutral-800 overflow-hidden">
+                              <div className="flex items-center justify-between px-4 py-2.5 bg-neutral-900/30">
+                                <div>
+                                  <p className="font-black text-sm text-white">{t.name}</p>
+                                  <p className="text-[10px] text-neutral-600 font-inter">{t.address}</p>
+                                </div>
+                                <button
+                                  onClick={() => handleDeleteTheatre(t.id, t.name)}
+                                  className="p-1.5 rounded-lg text-red-500 hover:bg-red-900/20 transition-colors flex-shrink-0"
+                                  title="Delete theatre"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                              {tScreens.length > 0 && (
+                                <div className="divide-y divide-neutral-800/40">
+                                  {tScreens.map((s: any) => (
+                                    <div key={s.id} className="flex items-center justify-between px-5 py-2">
+                                      <span className="text-xs font-bold text-neutral-400 font-inter">
+                                        Screen {s.number}
+                                        <span className="ml-2 text-[10px] font-normal" style={{
+                                          color: s.type === "IMAX" ? "#f4d03f" : s.type === "3D" ? "#6ee7e7" : "rgba(255,255,255,0.25)"
+                                        }}>{s.type}</span>
+                                      </span>
+                                      <button
+                                        onClick={() => handleDeleteScreen(s.id, t.name, s.number)}
+                                        className="p-1.5 rounded-lg text-red-500/60 hover:bg-red-900/20 transition-colors"
+                                        title="Delete screen"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
           </div>
         )}
 
       </div>
 
       {/* ── EDIT MOVIE MODAL ────────────────────────────────────────────── */}
+      {/* ── EDIT SHOW MODAL ─────────────────────────────────────────────── */}
+      {editingShow && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.88)", backdropFilter: "blur(6px)" }}
+          onClick={e => { if (e.target === e.currentTarget) setEditingShow(null); }}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl"
+            style={{ background: "#0d0d0d", border: "1px solid rgba(212,175,55,0.25)", boxShadow: "0 32px 80px rgba(0,0,0,0.8)" }}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-900">
+              <h2 className="text-base font-bold flex items-center gap-2">
+                <Pencil className="w-4 h-4 text-primary" /> Edit Show
+                <span className="text-neutral-600 font-normal text-sm">— {editingShow.movieTitle}</span>
+              </h2>
+              <button onClick={() => setEditingShow(null)} className="p-2 rounded-xl hover:bg-neutral-900 transition-colors text-neutral-500">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form onSubmit={handleUpdateShow} className="p-6 space-y-4 font-inter text-xs">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <FieldLabel>Date</FieldLabel>
+                  <input type="date" className={inputCls} required value={editShowDate} onChange={e => setEditShowDate(e.target.value)} />
+                </div>
+                <div>
+                  <FieldLabel>Start Time</FieldLabel>
+                  <select className={selectCls} required value={editShowTime} onChange={e => setEditShowTime(e.target.value)}>
+                    {ALL_24H_TIMES.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <FieldLabel>Regular (₹)</FieldLabel>
+                  <input type="number" className={inputCls} required min={1} value={editShowPriceReg} onChange={e => setEditShowPriceReg(e.target.value)} />
+                </div>
+                <div>
+                  <FieldLabel>Premium (₹)</FieldLabel>
+                  <input type="number" className={inputCls} required min={1} value={editShowPricePrem} onChange={e => setEditShowPricePrem(e.target.value)} />
+                </div>
+                <div>
+                  <FieldLabel>Recliner (₹)</FieldLabel>
+                  <input type="number" className={inputCls} required min={1} value={editShowPriceRec} onChange={e => setEditShowPriceRec(e.target.value)} />
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2 border-t border-neutral-900">
+                <GhostBtn type="button" onClick={() => setEditingShow(null)}>Cancel</GhostBtn>
+                <GoldBtn type="submit" className="flex-1 justify-center">Save Changes</GoldBtn>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {editingMovie && (
       <div
         className="fixed inset-0 z-50 flex items-center justify-center p-4"

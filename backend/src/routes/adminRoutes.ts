@@ -4,7 +4,11 @@ import {
   addMovie,
   updateMovie,
   addShow,
+  addCity,
   addTheatre,
+  deleteTheatre,
+  deleteScreen,
+  updateShow,
   addScreen,
   addBulkScreens,
   generateShows,
@@ -33,6 +37,7 @@ router.get('/movies',   authenticateJWT, requireAdmin, getAllMovies);
 router.get('/shows',    authenticateJWT, requireAdmin, getAllShows);
 
 // ── Create ────────────────────────────────────────────────────────────────────
+router.post('/cities',         authenticateJWT, requireAdmin, addCity);
 router.post('/movies',         authenticateJWT, requireAdmin, addMovie);
 router.post('/shows',          authenticateJWT, requireAdmin, addShow);
 router.post('/theatres',       authenticateJWT, requireAdmin, addTheatre);
@@ -42,15 +47,16 @@ router.post('/generate-shows', authenticateJWT, requireAdmin, generateShows);
 
 // ── Update ────────────────────────────────────────────────────────────────────
 router.put('/movies/:id', authenticateJWT, requireAdmin, updateMovie);
+router.put('/shows/:id',  authenticateJWT, requireAdmin, updateShow);
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
-// Soft-expires all shows whose date < today (preserves booking history)
 router.post('/shows/expire', authenticateJWT, requireAdmin, expireShows);
 
 // ── Delete ────────────────────────────────────────────────────────────────────
-router.delete('/movies/:id',  authenticateJWT, requireAdmin, deleteMovie);
-router.delete('/shows/:id',   authenticateJWT, requireAdmin, deleteShow);
-// Bulk delete by scope: { scope: 'screen'|'theatre'|'city', scopeId: number }
-router.delete('/shows/bulk',  authenticateJWT, requireAdmin, bulkDeleteShows);
+router.delete('/movies/:id',    authenticateJWT, requireAdmin, deleteMovie);
+router.delete('/shows/bulk',    authenticateJWT, requireAdmin, bulkDeleteShows);
+router.delete('/shows/:id',     authenticateJWT, requireAdmin, deleteShow);
+router.delete('/theatres/:id',  authenticateJWT, requireAdmin, deleteTheatre);
+router.delete('/screens/:id',   authenticateJWT, requireAdmin, deleteScreen);
 
 export default router;

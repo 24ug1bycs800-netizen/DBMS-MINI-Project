@@ -392,6 +392,10 @@ export const addTheatre = async (req: Request, res: Response) => {
     if (!name || !address || Number.isNaN(parsedCityId)) {
       return res.status(400).json({ error: "Theatre name, city, and address are required" });
     }
+    if (String(name).trim().length > 255)
+      return res.status(400).json({ error: "Theatre name must be ≤ 255 characters" });
+    if (String(address).trim().length > 1000)
+      return res.status(400).json({ error: "Address is too long (max 1000 characters)" });
 
     const city = await db
       .select({ id: cities.id })
@@ -413,13 +417,10 @@ export const addTheatre = async (req: Request, res: Response) => {
     return res.status(201).json({ message: "Theatre added successfully", theatre: inserted[0] });
   } catch (err) {
     const cause = (err as any)?.cause;
-    console.error("Add theatre error:", err);
-    console.error("Add theatre cause:", cause);
-    const pgMsg: string =
-      (cause?.message as string | undefined) ??
-      ((err as any)?.message as string | undefined) ??
-      "Unknown DB error";
-    return res.status(500).json({ error: pgMsg });
+    console.error("Add theatre error:", err, cause);
+    const code: string = cause?.code ?? "";
+    if (code === "23503") return res.status(400).json({ error: "Selected city does not exist" });
+    return res.status(500).json({ error: "Failed to add theatre. Please try again." });
   }
 };
 
@@ -775,6 +776,75 @@ export const generateShows = async (req: Request, res: Response) => {
   } catch (err) {
     console.error("[admin:generateShows] failed", err);
     return res.status(500).json({ error: "Internal server error generating shows" });
+  }
+};
+
+// ─── ADD CITY ─────────────────────────────────────────────────────────────────
+
+export const addCity = async (req: Request, res: Response) => {
+  const raw = String(req.body?.name ?? "").trim();
+  if (!raw || raw.length > 100)
+    return res.status(400).json({ error: "City name must be 1–100 characters" });
+  const slug = raw.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  try {
+    const inserted = await db.insert(cities).values({ name: raw, slug }).returning();
+    return res.status(201).json({ message: "City added", city: inserted[0] });
+  } catch (err) {
+    const code = (err as any)?.cause?.code;
+    if (code === "23505") return res.status(409).json({ error: `City "${raw}" already exists` });
+    console.error("[admin:addCity]", err);
+    return res.status(500).json({ error: "Failed to add city" });
+  }
+};
+
+// ─── DELETE THEATRE ────────────────────────────────────────────────────────────
+
+export const deleteTheatre = async (req: Request, res: Response) => {
+  const id = parseInteger(req.params.id);
+  if (Number.isNaN(id)) return res.status(400).json({ error: "Invalid theatre ID" });
+  try {
+    await db.delete(theatres).where(eq(theatres.id, id));
+    return res.status(200).json({ message: "Theatre deleted" });
+  } catch (err) {
+    console.error("[admin:deleteTheatre]", err);
+    return res.status(500).json({ error: "Failed to delete theatre" });
+  }
+};
+
+// ─── DELETE SCREEN ─────────────────────────────────────────────────────────────
+
+export const deleteScreen = async (req: Request, res: Response) => {
+  const id = parseInteger(req.params.id);
+  if (Number.isNaN(id)) return res.status(400).json({ error: "Invalid screen ID" });
+  try {
+    await db.delete(screens).where(eq(screens.id, id));
+    return res.status(200).json({ message: "Screen deleted" });
+  } catch (err) {
+    console.error("[admin:deleteScreen]", err);
+    return res.status(500).json({ error: "Failed to delete screen" });
+  }
+};
+
+// ─── UPDATE SHOW ───────────────────────────────────────────────────────────────
+
+export const updateShow = async (req: Request, res: Response) => {
+  const id = parseInteger(req.params.id);
+  if (Number.isNaN(id)) return res.status(400).json({ error: "Invalid show ID" });
+  const { date, startTime, priceRegular, pricePremium, priceRecliner } = req.body;
+  const patch: Partial<typeof shows.$inferInsert> = {};
+  if (date) patch.date = String(date);
+  if (startTime) patch.startTime = String(startTime);
+  if (priceRegular !== undefined) patch.priceRegular = parseInteger(priceRegular);
+  if (pricePremium !== undefined) patch.pricePremium = parseInteger(pricePremium);
+  if (priceRecliner !== undefined) patch.priceRecliner = parseInteger(priceRecliner);
+  if (Object.keys(patch).length === 0)
+    return res.status(400).json({ error: "No fields to update" });
+  try {
+    const updated = await db.update(shows).set(patch).where(eq(shows.id, id)).returning();
+    return res.status(200).json({ message: "Show updated", show: updated[0] });
+  } catch (err) {
+    console.error("[admin:updateShow]", err);
+    return res.status(500).json({ error: "Failed to update show" });
   }
 };
 

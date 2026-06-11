@@ -78,6 +78,8 @@ export const SeatBooking: React.FC = () => {
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [lockExpiry, setLockExpiry] = useState<Date | null>(null);
+  const [timeLeft, setTimeLeft] = useState("");
 
   useEffect(() => {
     if (authLoading) return;
@@ -95,6 +97,37 @@ export const SeatBooking: React.FC = () => {
     };
     fetchSeats();
   }, [showId, user, authLoading]);
+
+  // Start 5-min countdown when first seat is selected; clear when all deselected
+  useEffect(() => {
+    if (selectedSeats.length > 0 && !lockExpiry) {
+      setLockExpiry(new Date(Date.now() + 5 * 60 * 1000));
+    }
+    if (selectedSeats.length === 0) {
+      setLockExpiry(null);
+      setTimeLeft("");
+    }
+  }, [selectedSeats.length]);
+
+  useEffect(() => {
+    if (!lockExpiry) return;
+    const tick = () => {
+      const remaining = lockExpiry.getTime() - Date.now();
+      if (remaining <= 0) {
+        setSelectedSeats([]);
+        setLockExpiry(null);
+        setTimeLeft("");
+        setError("Your seat selection expired. Please reselect.");
+        return;
+      }
+      const m = Math.floor(remaining / 60000);
+      const s = Math.floor((remaining % 60000) / 1000);
+      setTimeLeft(`${m}:${String(s).padStart(2, "0")}`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [lockExpiry]);
 
   const handleSeatClick = (seatId: number) => {
     const seat = seats.find((s) => s.id === seatId)!;
@@ -138,14 +171,12 @@ export const SeatBooking: React.FC = () => {
         order_id: res.data.razorpayOrderId,
         handler: async function (response: any) {
           try {
-            await api.post("/bookings/verify", {
+            const verifyRes = await api.post("/bookings/verify", {
               razorpayOrderId: response.razorpay_order_id,
               razorpayPaymentId: response.razorpay_payment_id,
             });
-            const refreshRes = await api.get(`/bookings/shows/${showId}/seats`);
-            setSeats(refreshRes.data.seats);
-            setSelectedSeats([]);
-            navigate("/dashboard");
+            const ticketCode: string = verifyRes.data.ticketCode;
+            navigate(`/booking/confirm/${ticketCode}`);
           } catch (err) { console.error(err); }
         },
         prefill: { name: user?.fullName, email: user?.email },
@@ -413,7 +444,14 @@ export const SeatBooking: React.FC = () => {
               {selectedSeats.length > 0 ? `Confirm & Pay ₹${calculateTotalPrice()}` : "Select Seats to Continue"}
             </button>
 
-            {selectedSeats.length > 0 && (
+            {selectedSeats.length > 0 && timeLeft && (
+              <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] font-inter"
+                style={{ color: parseInt(timeLeft) <= 1 ? "#f87171" : "rgba(212,175,55,0.6)" }}>
+                <span>Selection expires in</span>
+                <span className="font-black tabular-nums">{timeLeft}</span>
+              </div>
+            )}
+            {selectedSeats.length > 0 && !timeLeft && (
               <p className="text-[10px] text-neutral-700 text-center mt-3 font-inter">
                 Secure payment powered by Razorpay
               </p>

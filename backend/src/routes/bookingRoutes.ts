@@ -6,6 +6,7 @@ import {
   cancelBooking,
   verifyPayment,
   getMyBookings,
+  getBookingByCode,
   toggleWishlist,
   getMyWishlist,
   addReview,
@@ -24,6 +25,7 @@ router.patch(
   authenticateJWT,
   cancelBooking
 );
+router.get("/confirm/:code", authenticateJWT, getBookingByCode);
 router.post("/wishlist/toggle", authenticateJWT, toggleWishlist);
 router.get("/wishlist", authenticateJWT, getMyWishlist);
 router.post("/reviews", authenticateJWT, addReview);

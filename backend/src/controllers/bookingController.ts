@@ -374,6 +374,51 @@ export const getMyBookings = async (req: Request, res: Response) => {
   }
 };
  
+// GET BOOKING BY CODE (confirmation page)
+export const getBookingByCode = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { code } = req.params;
+
+    const rows = await db
+      .select({
+        booking: bookings,
+        show: shows,
+        movie: movies,
+        screen: screens,
+        theatre: theatres,
+      })
+      .from(bookings)
+      .innerJoin(shows, eq(bookings.showId, shows.id))
+      .innerJoin(movies, eq(shows.movieId, movies.id))
+      .innerJoin(screens, eq(shows.screenId, screens.id))
+      .innerJoin(theatres, eq(screens.theatreId, theatres.id))
+      .where(and(eq(bookings.code, code), eq(bookings.userId, user.id)))
+      .limit(1);
+
+    const row = rows[0];
+    if (!row) return res.status(404).json({ error: "Booking not found" });
+
+    const seatRows = await db
+      .select({ seat: seats })
+      .from(bookingSeats)
+      .innerJoin(seats, eq(bookingSeats.seatId, seats.id))
+      .where(eq(bookingSeats.bookingId, row.booking.id));
+
+    return res.status(200).json({
+      booking: row.booking,
+      show: row.show,
+      movie: row.movie,
+      screen: row.screen,
+      theatre: row.theatre,
+      seats: seatRows.map((r) => r.seat),
+    });
+  } catch (err) {
+    console.error("getBookingByCode error:", err);
+    return res.status(500).json({ error: "Booking not found" });
+  }
+};
+
 // TOGGLE WISHLIST
 export const toggleWishlist = async (req: Request, res: Response) => {
   try {
