@@ -220,18 +220,18 @@ export const AdminPanel: React.FC = () => {
   };
 
   const fetchAll = async () => {
-    try {
-      const [moviesRes, showsRes, citiesRes, theatresRes] = await Promise.all([
-        api.get("/admin/movies"),
-        api.get("/admin/shows"),
-        api.get("/admin/cities"),
-        api.get("/admin/theatres"),
-      ]);
-      setMovies(moviesRes.data || []);
-      setShows(showsRes.data || []);
-      setCityList(citiesRes.data || []);
-      setTheatreList(theatresRes.data || []);
-    } catch (e) { console.error("fetchAll error:", e); }
+    const [moviesRes, showsRes, citiesRes, theatresRes] = await Promise.allSettled([
+      api.get("/admin/movies"),
+      api.get("/admin/shows"),
+      api.get("/admin/cities"),
+      api.get("/admin/theatres"),
+    ]);
+    if (moviesRes.status === "fulfilled")   setMovies(moviesRes.value.data || []);
+    if (showsRes.status === "fulfilled")    setShows(showsRes.value.data || []);
+    if (citiesRes.status === "fulfilled")   setCityList(citiesRes.value.data || []);
+    if (theatresRes.status === "fulfilled") setTheatreList(theatresRes.value.data || []);
+    if (citiesRes.status === "rejected")    console.error("Cities load failed:", citiesRes.reason);
+    if (showsRes.status === "rejected")     console.error("Shows load failed:", showsRes.reason);
   };
 
   useEffect(() => {
@@ -331,17 +331,22 @@ export const AdminPanel: React.FC = () => {
   const handleAddTheatre = async (e: React.FormEvent) => {
     e.preventDefault();
     setMsg(""); setErr("");
+    const parsedCityId = parseInt(newTheatreCityId);
+    if (!newTheatreName.trim() || !newTheatreAddress.trim() || isNaN(parsedCityId)) {
+      setErr("Please fill in all fields and select a city.");
+      return;
+    }
     try {
       await api.post("/admin/theatres", {
-        name: newTheatreName,
-        cityId: parseInt(newTheatreCityId),
-        address: newTheatreAddress,
+        name: newTheatreName.trim(),
+        cityId: parsedCityId,
+        address: newTheatreAddress.trim(),
       });
       setMsg("Theatre added. Add screens to it before scheduling shows.");
-      setNewTheatreName(""); setNewTheatreAddress("");
+      setNewTheatreName(""); setNewTheatreAddress(""); setNewTheatreCityId("");
       fetchAll();
     } catch (error: any) {
-      setErr(error.response?.data?.error || "Failed to add theatre.");
+      setErr(error.response?.data?.error || "Failed to add theatre. Please try again.");
     }
   };
 
@@ -1302,7 +1307,7 @@ export const AdminPanel: React.FC = () => {
                 <Monitor className="w-5 h-5 text-accent" /> Add Screens to Theatre
               </h2>
               <p className="text-[10px] text-neutral-600 font-inter mb-4">
-                Adds multiple screens at once, auto-numbered from the next available slot. Each screen gets 60 seats (Regular / Premium / Recliner).
+                Adds multiple screens at once, auto-numbered from the next available slot. Seats are generated based on type: 2D → 60 seats, 3D → 88 seats, IMAX → 128 seats.
               </p>
               <form onSubmit={handleBulkScreens} className="grid grid-cols-1 md:grid-cols-4 gap-4 font-inter text-xs">
                 <div className="md:col-span-2">
