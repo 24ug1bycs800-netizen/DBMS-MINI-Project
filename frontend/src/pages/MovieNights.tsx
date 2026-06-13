@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext.js";
 import {
   Moon, Plus, Users, CheckCircle, Clock,
   Ticket, ArrowRight, Hash, LogIn, Star, Sparkles,
-  Film, Crown,
+  Film, Crown, XCircle, Ban,
 } from "lucide-react";
 import api from "../services/api.js";
 
@@ -26,6 +26,8 @@ const STATUS_META: Record<string, { label: string; color: string; bg: string; bo
   PAYMENT_PENDING:        { label: "Payment Pending",  color: "#fb923c", bg: "rgba(251,146,60,0.08)",  border: "rgba(251,146,60,0.25)",  icon: <Clock className="w-3 h-3" />, glow: "rgba(251,146,60,0.12)" },
   READY_TO_BOOK:          { label: "Ready to Book",    color: "#d4af37", bg: "rgba(212,175,55,0.08)",  border: "rgba(212,175,55,0.25)",  icon: <Ticket className="w-3 h-3" />, glow: "rgba(212,175,55,0.15)" },
   BOOKED:                 { label: "Booked ✓",         color: "#4ade80", bg: "rgba(74,222,128,0.08)",  border: "rgba(74,222,128,0.25)",  icon: <CheckCircle className="w-3 h-3" />, glow: "rgba(74,222,128,0.12)" },
+  REJECTED:               { label: "Rejected",          color: "#f87171", bg: "rgba(248,113,113,0.08)", border: "rgba(248,113,113,0.25)", icon: <XCircle className="w-3 h-3" />, glow: "rgba(248,113,113,0.12)" },
+  CANCELLED:              { label: "Cancelled",         color: "#6b7280", bg: "rgba(107,114,128,0.08)", border: "rgba(107,114,128,0.2)",  icon: <Ban className="w-3 h-3" />, glow: "rgba(107,114,128,0.08)" },
 };
 
 const STEP_ORDER = ["COLLECTING_PREFERENCES", "RECOMMENDED", "PAYMENT_PENDING", "READY_TO_BOOK", "BOOKED"];

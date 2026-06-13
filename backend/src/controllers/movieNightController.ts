@@ -76,7 +76,7 @@ export const joinMovieNight = async (req: Request, res: Response) => {
     const [night] = await db.select().from(movieNights)
       .where(eq(movieNights.inviteCode, inviteCode.toUpperCase()));
     if (!night) return res.status(404).json({ error: "Invalid invite code." });
-    if (night.status === "BOOKED") return res.status(400).json({ error: "This movie night is already booked." });
+    if (night.status === "BOOKED" || night.status === "CANCELLED") return res.status(400).json({ error: "This movie night is no longer accepting members." });
 
     const alreadyMember = await isMember(night.id, userId);
     if (alreadyMember) return res.json({ movieNight: night, alreadyMember: true });
@@ -283,6 +283,88 @@ export const submitPreferences = async (req: Request, res: Response) => {
   }
 };
 
+// ─── RECOMMENDATION ENGINE (shared) ──────────────────────────────────────────
+
+const runRecommendationEngine = async (movieNightId: number): Promise<{ error?: string }> => {
+  const prefs = await db.select().from(movieNightPreferences)
+    .where(eq(movieNightPreferences.movieNightId, movieNightId));
+  if (prefs.length === 0) return { error: "No preferences submitted yet." };
+
+  const parsedPrefs = prefs.map(p => ({
+    ...p,
+    preferredGenres: JSON.parse(p.preferredGenres) as string[],
+  }));
+  const memberCount = parsedPrefs.length;
+
+  const activeShows = await db
+    .select({
+      showId: shows.id, startTime: shows.startTime, date: shows.date,
+      priceRegular: shows.priceRegular, movieId: movies.id,
+      movieGenre: movies.genre, cityName: cities.name,
+    })
+    .from(shows)
+    .innerJoin(movies, eq(shows.movieId, movies.id))
+    .innerJoin(screens, eq(shows.screenId, screens.id))
+    .innerJoin(theatres, eq(screens.theatreId, theatres.id))
+    .innerJoin(cities, eq(theatres.cityId, cities.id))
+    .where(eq(shows.status, "active"));
+
+  if (activeShows.length === 0) return { error: "No active shows available to recommend." };
+
+  let best: { showId: number; movieId: number; genreScore: number; timeScore: number; budgetScore: number; locationScore: number; compatibilityScore: number } | null = null;
+
+  for (const show of activeShows) {
+    const showGenres = show.movieGenre.split("/").map(g => g.trim().toLowerCase());
+    const timeSlot = getTimeSlot(show.startTime);
+
+    const genreMatches = parsedPrefs.filter(p =>
+      p.preferredGenres.some(g => showGenres.includes(g.toLowerCase()))
+    ).length;
+    const genreScore = Math.round((genreMatches / memberCount) * 100);
+
+    const timeMatches = parsedPrefs.filter(p => p.preferredTime === timeSlot).length;
+    const timeScore = Math.round((timeMatches / memberCount) * 100);
+
+    const budgetMatches = parsedPrefs.filter(p => p.budgetLimit >= show.priceRegular).length;
+    const budgetScore = Math.round((budgetMatches / memberCount) * 100);
+
+    const locationPrefs = parsedPrefs.filter(p => p.preferredLocation);
+    const locationScore = locationPrefs.length === 0 ? 100 :
+      Math.round((locationPrefs.filter(p =>
+        p.preferredLocation!.toLowerCase().includes(show.cityName.toLowerCase()) ||
+        show.cityName.toLowerCase().includes(p.preferredLocation!.toLowerCase())
+      ).length / locationPrefs.length) * 100);
+
+    const compatibilityScore = Math.round(
+      genreScore * 0.4 + timeScore * 0.3 + budgetScore * 0.2 + locationScore * 0.1
+    );
+
+    if (!best || compatibilityScore > best.compatibilityScore) {
+      best = { showId: show.showId, movieId: show.movieId, genreScore, timeScore, budgetScore, locationScore, compatibilityScore };
+    }
+  }
+
+  if (!best) return { error: "Could not compute a recommendation." };
+
+  // Clear stale data and insert fresh recommendation + reset votes
+  await db.delete(movieNightRecommendations).where(eq(movieNightRecommendations.movieNightId, movieNightId));
+  await db.delete(movieNightVotes).where(eq(movieNightVotes.movieNightId, movieNightId));
+
+  await db.insert(movieNightRecommendations).values({
+    movieNightId,
+    movieId: best.movieId, showId: best.showId,
+    genreScore: best.genreScore, timeScore: best.timeScore,
+    budgetScore: best.budgetScore, locationScore: best.locationScore,
+    compatibilityScore: best.compatibilityScore,
+  });
+
+  await db.update(movieNights)
+    .set({ status: "RECOMMENDED", updatedAt: new Date() })
+    .where(eq(movieNights.id, movieNightId));
+
+  return {};
+};
+
 // ─── GENERATE RECOMMENDATION ──────────────────────────────────────────────────
 
 export const generateRecommendation = async (req: Request, res: Response) => {
@@ -295,94 +377,10 @@ export const generateRecommendation = async (req: Request, res: Response) => {
     if (night.organizerId !== userId) return res.status(403).json({ error: "Only the organizer can generate a recommendation." });
     if (night.status !== "COLLECTING_PREFERENCES") return res.status(400).json({ error: "Recommendation can only be generated while collecting preferences." });
 
-    // Get all member preferences
-    const prefs = await db.select().from(movieNightPreferences).where(eq(movieNightPreferences.movieNightId, movieNightId));
-    if (prefs.length === 0) return res.status(400).json({ error: "No preferences submitted yet." });
+    const { error } = await runRecommendationEngine(movieNightId);
+    if (error) return res.status(400).json({ error });
 
-    const parsedPrefs = prefs.map(p => ({
-      ...p,
-      preferredGenres: JSON.parse(p.preferredGenres) as string[],
-    }));
-    const memberCount = parsedPrefs.length;
-
-    // Get all active shows with movie + theatre + city info
-    const activeShows = await db
-      .select({
-        showId: shows.id,
-        startTime: shows.startTime,
-        date: shows.date,
-        priceRegular: shows.priceRegular,
-        movieId: movies.id,
-        movieGenre: movies.genre,
-        cityName: cities.name,
-      })
-      .from(shows)
-      .innerJoin(movies, eq(shows.movieId, movies.id))
-      .innerJoin(screens, eq(shows.screenId, screens.id))
-      .innerJoin(theatres, eq(screens.theatreId, theatres.id))
-      .innerJoin(cities, eq(theatres.cityId, cities.id))
-      .where(eq(shows.status, "active"));
-
-    if (activeShows.length === 0) return res.status(400).json({ error: "No active shows available to recommend." });
-
-    // Score each show
-    let best: { showId: number; movieId: number; genreScore: number; timeScore: number; budgetScore: number; locationScore: number; compatibilityScore: number } | null = null;
-
-    for (const show of activeShows) {
-      const showGenres = show.movieGenre.split("/").map(g => g.trim().toLowerCase());
-      const timeSlot = getTimeSlot(show.startTime);
-
-      // Genre score: % members who share at least one genre
-      const genreMatches = parsedPrefs.filter(p =>
-        p.preferredGenres.some(g => showGenres.includes(g.toLowerCase()))
-      ).length;
-      const genreScore = Math.round((genreMatches / memberCount) * 100);
-
-      // Time score: % members whose preferred time matches
-      const timeMatches = parsedPrefs.filter(p => p.preferredTime === timeSlot).length;
-      const timeScore = Math.round((timeMatches / memberCount) * 100);
-
-      // Budget score: % members whose budget >= show's regular price
-      const budgetMatches = parsedPrefs.filter(p => p.budgetLimit >= show.priceRegular).length;
-      const budgetScore = Math.round((budgetMatches / memberCount) * 100);
-
-      // Location score: among members with a location pref, % who match city
-      const locationPrefs = parsedPrefs.filter(p => p.preferredLocation);
-      const locationScore = locationPrefs.length === 0 ? 100 :
-        Math.round((locationPrefs.filter(p =>
-          p.preferredLocation!.toLowerCase().includes(show.cityName.toLowerCase()) ||
-          show.cityName.toLowerCase().includes(p.preferredLocation!.toLowerCase())
-        ).length / locationPrefs.length) * 100);
-
-      const compatibilityScore = Math.round(
-        genreScore * 0.4 + timeScore * 0.3 + budgetScore * 0.2 + locationScore * 0.1
-      );
-
-      if (!best || compatibilityScore > best.compatibilityScore) {
-        best = { showId: show.showId, movieId: show.movieId, genreScore, timeScore, budgetScore, locationScore, compatibilityScore };
-      }
-    }
-
-    if (!best) return res.status(400).json({ error: "Could not compute a recommendation." });
-
-    // Clear old recommendations and save new one
-    await db.delete(movieNightRecommendations).where(eq(movieNightRecommendations.movieNightId, movieNightId));
-    await db.delete(movieNightVotes).where(eq(movieNightVotes.movieNightId, movieNightId));
-
-    const [rec] = await db.insert(movieNightRecommendations).values({
-      movieNightId,
-      movieId: best.movieId,
-      showId: best.showId,
-      genreScore: best.genreScore,
-      timeScore: best.timeScore,
-      budgetScore: best.budgetScore,
-      locationScore: best.locationScore,
-      compatibilityScore: best.compatibilityScore,
-    }).returning();
-
-    await db.update(movieNights).set({ status: "RECOMMENDED", updatedAt: new Date() }).where(eq(movieNights.id, movieNightId));
-
-    return res.json({ recommendation: rec });
+    return res.json({ message: "Recommendation generated." });
   } catch (err) {
     console.error("[generateRecommendation]", err);
     return res.status(500).json({ error: "Failed to generate recommendation." });
@@ -453,10 +451,65 @@ export const voteRecommendation = async (req: Request, res: Response) => {
       return res.json({ message: "Majority accepted! Contributions created.", status: "PAYMENT_PENDING", perPerson, totalCost });
     }
 
+    // Check if majority rejected
+    const rejects = allVotes.filter(v => v.vote === "REJECT").length;
+    if (rejects >= majority) {
+      await db.update(movieNights)
+        .set({ status: "REJECTED", updatedAt: new Date() })
+        .where(eq(movieNights.id, movieNightId));
+      return res.json({ message: "Majority rejected the recommendation.", status: "REJECTED", rejects, totalMembers: members.length });
+    }
+
     return res.json({ message: "Vote recorded.", accepts, totalMembers: members.length });
   } catch (err) {
     console.error("[voteRecommendation]", err);
     return res.status(500).json({ error: "Failed to record vote." });
+  }
+};
+
+// ─── REGENERATE RECOMMENDATION (from REJECTED) ────────────────────────────────
+
+export const regenerateRecommendation = async (req: Request, res: Response) => {
+  const movieNightId = parseInt(req.params.id);
+  const userId = uid(req);
+
+  try {
+    const [night] = await db.select().from(movieNights).where(eq(movieNights.id, movieNightId));
+    if (!night) return res.status(404).json({ error: "Movie night not found." });
+    if (night.organizerId !== userId) return res.status(403).json({ error: "Only the organizer can regenerate a recommendation." });
+    if (night.status !== "REJECTED") return res.status(400).json({ error: "Can only regenerate from a rejected state." });
+
+    const { error } = await runRecommendationEngine(movieNightId);
+    if (error) return res.status(400).json({ error });
+
+    return res.json({ message: "New recommendation generated. Start a fresh vote!" });
+  } catch (err) {
+    console.error("[regenerateRecommendation]", err);
+    return res.status(500).json({ error: "Failed to regenerate recommendation." });
+  }
+};
+
+// ─── CANCEL MOVIE NIGHT ───────────────────────────────────────────────────────
+
+export const cancelMovieNight = async (req: Request, res: Response) => {
+  const movieNightId = parseInt(req.params.id);
+  const userId = uid(req);
+
+  try {
+    const [night] = await db.select().from(movieNights).where(eq(movieNights.id, movieNightId));
+    if (!night) return res.status(404).json({ error: "Movie night not found." });
+    if (night.organizerId !== userId) return res.status(403).json({ error: "Only the organizer can cancel this movie night." });
+    if (night.status === "BOOKED") return res.status(400).json({ error: "Cannot cancel an already booked movie night." });
+    if (night.status === "CANCELLED") return res.json({ message: "Already cancelled." });
+
+    await db.update(movieNights)
+      .set({ status: "CANCELLED", updatedAt: new Date() })
+      .where(eq(movieNights.id, movieNightId));
+
+    return res.json({ message: "Movie night cancelled successfully." });
+  } catch (err) {
+    console.error("[cancelMovieNight]", err);
+    return res.status(500).json({ error: "Failed to cancel movie night." });
   }
 };
 

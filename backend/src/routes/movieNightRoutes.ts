@@ -8,6 +8,8 @@ import {
   submitPreferences,
   generateRecommendation,
   voteRecommendation,
+  regenerateRecommendation,
+  cancelMovieNight,
   markContributionPaid,
   completeBooking,
 } from "../controllers/movieNightController";
@@ -21,6 +23,8 @@ router.get("/:id", authenticateJWT, getMovieNight);
 router.post("/:id/preferences", authenticateJWT, submitPreferences);
 router.post("/:id/recommend", authenticateJWT, generateRecommendation);
 router.post("/:id/vote", authenticateJWT, voteRecommendation);
+router.post("/:id/regenerate", authenticateJWT, regenerateRecommendation);
+router.post("/:id/cancel", authenticateJWT, cancelMovieNight);
 router.post("/:id/contributions/pay", authenticateJWT, markContributionPaid);
 router.post("/:id/book", authenticateJWT, completeBooking);
 

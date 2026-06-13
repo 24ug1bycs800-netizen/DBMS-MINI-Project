@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext.js";
 import {
   Moon, Users, Copy, Check, Star,
   Clock, MapPin, Ticket, CheckCircle, XCircle, Sparkles,
-  ArrowRight, AlertCircle, Wallet, Film, RefreshCw,
+  ArrowRight, AlertCircle, Wallet, Film, RefreshCw, Ban, Plus,
 } from "lucide-react";
 import api from "../services/api.js";
 
@@ -88,6 +88,8 @@ export const MovieNightDetail: React.FC = () => {
   const [voteLoading, setVoteLoading] = useState(false);
   const [payLoading, setPayLoading] = useState(false);
   const [bookLoading, setBookLoading] = useState(false);
+  const [regenLoading, setRegenLoading] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [actionMsg, setActionMsg] = useState("");
 
@@ -131,9 +133,9 @@ export const MovieNightDetail: React.FC = () => {
     if (!loading) fetchNight();
   }, [loading, user, fetchNight]);
 
-  // Poll every 5 s while page is open; stop once booked (terminal state)
+  // Poll every 5 s while page is open; stop on terminal statuses
   useEffect(() => {
-    if (!night || night.status === "BOOKED") return;
+    if (!night || night.status === "BOOKED" || night.status === "CANCELLED") return;
     const id = setInterval(() => fetchNight(true), 5000);
     return () => clearInterval(id);
   }, [night?.status, fetchNight]);
@@ -202,6 +204,28 @@ export const MovieNightDetail: React.FC = () => {
     } catch (e: any) { setActionMsg(e.response?.data?.error || "Failed."); setBookLoading(false); }
   };
 
+  // ── REGENERATE (from REJECTED) ───────────────────────────────────────────────
+  const handleRegenerate = async () => {
+    setRegenLoading(true); setActionMsg("");
+    try {
+      await api.post(`/movie-nights/${nightId}/regenerate`);
+      setActionMsg("New recommendation generated! Cast your votes.");
+      fetchNight();
+    } catch (e: any) { setActionMsg(e.response?.data?.error || "Failed."); }
+    finally { setRegenLoading(false); }
+  };
+
+  // ── CANCEL MOVIE NIGHT ───────────────────────────────────────────────────────
+  const handleCancel = async () => {
+    if (!window.confirm("Cancel this Movie Night? This cannot be undone.")) return;
+    setCancelLoading(true); setActionMsg("");
+    try {
+      await api.post(`/movie-nights/${nightId}/cancel`);
+      fetchNight();
+    } catch (e: any) { setActionMsg(e.response?.data?.error || "Failed."); }
+    finally { setCancelLoading(false); }
+  };
+
   const myVote = useMemo(() => votes.find(v => v.userId === user?.id)?.vote, [votes, user]);
   const myContrib = useMemo(() => contributions.find(c => c.userId === user?.id), [contributions, user]);
   const paidCount = useMemo(() => contributions.filter(c => c.status === "PAID").length, [contributions]);
@@ -261,20 +285,28 @@ export const MovieNightDetail: React.FC = () => {
             {(() => {
               const steps = ["COLLECTING_PREFERENCES", "RECOMMENDED", "PAYMENT_PENDING", "READY_TO_BOOK", "BOOKED"];
               const stepLabels = ["Preferences", "Recommendation", "Payment", "Ready", "Booked"];
-              const current = steps.indexOf(status === "APPROVED" ? "PAYMENT_PENDING" : status);
+              const isRejected = status === "REJECTED";
+              const isCancelled = status === "CANCELLED";
+              const current = isCancelled ? -1 : isRejected ? 1
+                : steps.indexOf(status === "APPROVED" ? "PAYMENT_PENDING" : status);
               return (
                 <div className="flex items-center gap-0">
                   {steps.map((s, i) => (
                     <React.Fragment key={s}>
                       <div className="flex flex-col items-center">
                         <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black transition-all"
-                          style={i <= current
-                            ? { background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000" }
-                            : { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.2)", border: "1px solid rgba(255,255,255,0.08)" }}
+                          style={
+                            isRejected && i === 1
+                              ? { background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)", color: "#f87171" }
+                              : i <= current
+                                ? { background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000" }
+                                : { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.2)", border: "1px solid rgba(255,255,255,0.08)" }
+                          }
                         >
-                          {i < current ? <Check className="w-3 h-3" /> : i + 1}
+                          {isRejected && i === 1 ? <XCircle className="w-3 h-3" /> : i < current ? <Check className="w-3 h-3" /> : i + 1}
                         </div>
-                        <span className="text-[8px] font-bold mt-1 hidden sm:block" style={{ color: i <= current ? "#d4af37" : "rgba(255,255,255,0.2)" }}>
+                        <span className="text-[8px] font-bold mt-1 hidden sm:block"
+                          style={{ color: isRejected && i === 1 ? "#f87171" : i <= current ? "#d4af37" : "rgba(255,255,255,0.2)" }}>
                           {stepLabels[i]}
                         </span>
                       </div>
@@ -627,6 +659,108 @@ export const MovieNightDetail: React.FC = () => {
                       {bookLoading ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : <><Ticket className="w-4 h-4" />Proceed to Book Seats<ArrowRight className="w-4 h-4" /></>}
                     </button>
                   </div>
+                )}
+              </div>
+            )}
+
+            {/* ── SECTION: REJECTED ─────────────────────────────────────────── */}
+            {status === "REJECTED" && (
+              <div className="space-y-4">
+                {/* Banner */}
+                <div className="p-8 rounded-2xl text-center space-y-4"
+                  style={{ background: "rgba(239,68,68,0.04)", border: "1px solid rgba(239,68,68,0.18)" }}>
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto"
+                    style={{ background: "rgba(239,68,68,0.1)" }}>
+                    <XCircle className="w-8 h-8 text-red-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-white mb-1">Recommendation Rejected</h3>
+                    <p className="text-sm text-neutral-500 font-inter">
+                      {isOrganizer
+                        ? "The majority voted against this pick. Regenerate to try again or cancel the night."
+                        : "The majority voted against this pick. Waiting for the organizer to decide next steps."}
+                    </p>
+                  </div>
+
+                  {/* Rejected rec summary */}
+                  {recommendation && (
+                    <div className="flex items-center gap-3 p-3 rounded-xl text-left mx-auto max-w-xs"
+                      style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                      <img src={getImageUrl(recommendation.movie.posterUrl)} alt=""
+                        className="w-10 h-14 rounded-lg object-cover flex-shrink-0 opacity-40" />
+                      <div>
+                        <p className="text-xs font-black text-neutral-500 line-through leading-snug">{recommendation.movie.title}</p>
+                        <p className="text-[9px] text-neutral-700 font-inter mt-1">{recommendation.show.startTime} · {recommendation.show.date}</p>
+                        <p className="text-[9px] text-neutral-700 font-inter">{recommendation.theatre.name}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Vote tally */}
+                  <div className="flex items-center justify-center gap-8 pt-2 border-t border-neutral-900">
+                    <div className="text-center">
+                      <div className="text-2xl font-black text-green-400">{votes.filter(v => v.vote === "ACCEPT").length}</div>
+                      <div className="text-[9px] text-neutral-600 uppercase tracking-widest font-bold mt-0.5">Accepted</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-black text-red-400">{votes.filter(v => v.vote === "REJECT").length}</div>
+                      <div className="text-[9px] text-neutral-600 uppercase tracking-widest font-bold mt-0.5">Rejected</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-black text-neutral-600">{members.length - votes.length}</div>
+                      <div className="text-[9px] text-neutral-600 uppercase tracking-widest font-bold mt-0.5">Abstained</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Organizer actions */}
+                {isOrganizer ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button onClick={handleRegenerate} disabled={regenLoading}
+                      className="py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] disabled:opacity-40"
+                      style={{ background: "rgba(192,132,252,0.08)", border: "1px solid rgba(192,132,252,0.25)", color: "#c084fc" }}>
+                      {regenLoading
+                        ? <div className="w-4 h-4 border-2 border-[#c084fc]/30 border-t-[#c084fc] rounded-full animate-spin" />
+                        : <><RefreshCw className="w-4 h-4" /> Regenerate Recommendation</>}
+                    </button>
+                    <button onClick={handleCancel} disabled={cancelLoading}
+                      className="py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] disabled:opacity-40"
+                      style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.18)", color: "#f87171" }}>
+                      {cancelLoading
+                        ? <div className="w-4 h-4 border-2 border-red-400/30 border-t-red-400 rounded-full animate-spin" />
+                        : <><Ban className="w-4 h-4" /> Cancel Movie Night</>}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-2xl text-center"
+                    style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
+                    <p className="text-xs text-neutral-600 font-inter">Waiting for the organizer to regenerate or cancel.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── SECTION: CANCELLED ─────────────────────────────────────────── */}
+            {status === "CANCELLED" && (
+              <div className="p-8 rounded-2xl text-center space-y-4"
+                style={{ background: "rgba(107,114,128,0.04)", border: "1px solid rgba(107,114,128,0.15)" }}>
+                <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto"
+                  style={{ background: "rgba(107,114,128,0.1)" }}>
+                  <Ban className="w-8 h-8 text-neutral-500" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-white mb-1">Movie Night Cancelled</h3>
+                  <p className="text-sm text-neutral-500 font-inter">
+                    This movie night has been cancelled by group consensus. No further actions are available.
+                  </p>
+                </div>
+                {isOrganizer && (
+                  <button
+                    onClick={() => navigate("/movie-nights/create")}
+                    className="px-6 py-3 rounded-xl font-black text-sm inline-flex items-center gap-2 hover:scale-105 transition-all"
+                    style={{ background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000", boxShadow: "0 6px 20px rgba(212,175,55,0.2)" }}>
+                    <Plus className="w-4 h-4" /> Plan a New Night
+                  </button>
                 )}
               </div>
             )}
