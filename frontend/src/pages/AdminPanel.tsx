@@ -169,23 +169,21 @@ export const AdminPanel: React.FC = () => {
   const handleSyncMovies = async () => {
     setSyncLoading(true); setSyncResult(null); setMsg(""); setErr("");
     try {
-      const tokenRes = await api.get("/admin/tmdb-token");
-      const apiKey: string = tokenRes.data.apiKey;
-      if (!apiKey) throw new Error("TMDB API key not configured on server");
+      // /api/tmdb is a Vercel serverless function — proxies TMDB from Vercel's
+      // US servers, bypassing India ISP blocks on themoviedb.org
+      const tmdbFetch = async (path: string) => {
+        const r = await fetch(`/api/tmdb?path=${encodeURIComponent(path)}`);
+        if (!r.ok) throw new Error(`TMDB proxy ${r.status}`);
+        return r.json();
+      };
 
-      // TMDB API supports CORS (Access-Control-Allow-Origin: *) — call directly
-      const npRes = await fetch(
-        `https://api.themoviedb.org/3/movie/now_playing?region=IN&language=en-US&page=1&api_key=${apiKey}`
-      );
-      if (!npRes.ok) throw new Error(`TMDB ${npRes.status}`);
-      const npData = await npRes.json();
+      const npData = await tmdbFetch("/movie/now_playing?region=IN&language=en-US&page=1");
       const nowPlaying: any[] = npData.results ?? [];
       if (!nowPlaying.length) throw new Error("TMDB returned no movies");
 
       const detailResults = await Promise.allSettled(
         nowPlaying.map((m: any) =>
-          fetch(`https://api.themoviedb.org/3/movie/${m.id}?append_to_response=release_dates&api_key=${apiKey}`)
-            .then(r => r.json())
+          tmdbFetch(`/movie/${m.id}?append_to_response=release_dates`)
         )
       );
       const details: Record<string, any> = {};
