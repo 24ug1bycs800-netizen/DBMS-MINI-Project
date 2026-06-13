@@ -262,7 +262,7 @@ export const MovieNightDetail: React.FC = () => {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 mb-1.5">
-                <div className="p-2 rounded-xl" style={{ background: "linear-gradient(135deg,#d4af37,#f4d03f)" }}>
+                <div className="p-2 rounded-xl" style={{ background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.2)" }}>
                   <Moon className="w-4 h-4 text-black" />
                 </div>
                 <h1 className="text-2xl font-black text-white tracking-tight">{night.title}</h1>
@@ -272,7 +272,7 @@ export const MovieNightDetail: React.FC = () => {
             {/* Invite code chip */}
             <button
               onClick={copyInvite}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs transition-all hover:scale-105 flex-shrink-0"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs transition-all transition-opacity hover:opacity-80 flex-shrink-0"
               style={{ background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.2)", color: "#d4af37" }}
             >
               {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
@@ -299,7 +299,7 @@ export const MovieNightDetail: React.FC = () => {
                             isRejected && i === 1
                               ? { background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)", color: "#f87171" }
                               : i <= current
-                                ? { background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000" }
+                                ? { background: "#c9a84c", color: "#000", borderRadius: 7 }
                                 : { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.2)", border: "1px solid rgba(255,255,255,0.08)" }
                           }
                         >
@@ -348,7 +348,7 @@ export const MovieNightDetail: React.FC = () => {
                 <div className={cardCls} style={cardStyle}>
                   <div className="flex items-center justify-between">
                     <h2 className="font-black text-sm text-white flex items-center gap-2">
-                      <Users className="w-4 h-4" style={{ color: "#6ee7e7" }} /> Members
+                      <Users className="w-4 h-4" style={{ color: "rgba(255,255,255,0.55)" }} /> Members
                       <span className="text-[10px] text-neutral-600 font-normal">({members.length})</span>
                     </h2>
                     <span className="text-[10px] text-neutral-600 font-inter">{preferences.length}/{members.length} submitted</span>
@@ -414,7 +414,7 @@ export const MovieNightDetail: React.FC = () => {
                             onClick={() => setSelectedTime(ts.value)}
                             className="p-3 rounded-xl text-left transition-all"
                             style={selectedTime === ts.value
-                              ? { background: "rgba(192,132,252,0.12)", border: "1px solid rgba(192,132,252,0.3)", color: "#c084fc" }
+                              ? { background: "rgba(201,168,76,0.10)", border: "1px solid rgba(201,168,76,0.10)", color: "rgba(201,168,76,0.8)" }
                               : { background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.3)" }}
                           >
                             <div className="text-base mb-1">{ts.icon}</div>
@@ -449,8 +449,8 @@ export const MovieNightDetail: React.FC = () => {
                     {prefMsg && <p className="text-xs font-inter" style={{ color: prefMsg.startsWith("✓") ? "#4ade80" : "#f87171" }}>{prefMsg}</p>}
 
                     <button type="submit" disabled={prefLoading}
-                      className="w-full py-3 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all hover:scale-[1.01] disabled:opacity-40"
-                      style={{ background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000" }}>
+                      className="w-full py-3 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all transition-opacity hover:opacity-85 disabled:opacity-40"
+                      style={{ background: "#c9a84c", color: "#000", borderRadius: 7 }}>
                       {prefLoading
                         ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
                         : <><Sparkles className="w-3.5 h-3.5" />{myPrefSubmitted ? "Update Preferences" : "Save Preferences"}</>}
@@ -469,8 +469,8 @@ export const MovieNightDetail: React.FC = () => {
                         </p>
                       </div>
                       <button onClick={handleGenerate} disabled={recLoading || preferences.length === 0}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs transition-all hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
-                        style={{ background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000" }}>
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs transition-all transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
+                        style={{ background: "#c9a84c", color: "#000", borderRadius: 7 }}>
                         {recLoading ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : <><Sparkles className="w-3.5 h-3.5" />Generate</>}
                       </button>
                     </div>
@@ -483,10 +483,10 @@ export const MovieNightDetail: React.FC = () => {
             {(status === "RECOMMENDED") && recommendation && (
               <>
                 {/* Recommendation card */}
-                <div className={cardCls} style={{ ...cardStyle, border: "1px solid rgba(192,132,252,0.2)" }}>
+                <div className={cardCls} style={{ ...cardStyle, border: "1px solid rgba(201,168,76,0.10)" }}>
                   <div className="flex items-center gap-2 mb-2">
-                    <Sparkles className="w-4 h-4" style={{ color: "#c084fc" }} />
-                    <h2 className="font-black text-sm" style={{ color: "#c084fc" }}>AI Recommendation</h2>
+                    <Sparkles className="w-4 h-4" style={{ color: "rgba(201,168,76,0.8)" }} />
+                    <h2 className="font-black text-sm" style={{ color: "rgba(201,168,76,0.8)" }}>AI Recommendation</h2>
                   </div>
                   <div className="flex gap-5">
                     {/* Poster */}
@@ -509,7 +509,7 @@ export const MovieNightDetail: React.FC = () => {
                         <p className="text-[10px] text-neutral-600 font-inter flex items-center gap-1">
                           <MapPin className="w-3 h-3" /> {recommendation.city.name} · {recommendation.theatre.address}
                         </p>
-                        <p className="text-[10px] font-bold mt-1" style={{ color: "#6ee7e7" }}>
+                        <p className="text-[10px] font-bold mt-1" style={{ color: "rgba(255,255,255,0.55)" }}>
                           Screen {recommendation.screenNumber} · {recommendation.screenType} · ₹{recommendation.show.priceRegular}/seat
                         </p>
                       </div>
@@ -520,12 +520,12 @@ export const MovieNightDetail: React.FC = () => {
                   <div className="mt-4 pt-4 border-t border-neutral-900">
                     <div className="flex items-center justify-between mb-4">
                       <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500">Compatibility Score</p>
-                      <div className="text-3xl font-black" style={{ color: "#c084fc" }}>{recommendation.compatibilityScore}%</div>
+                      <div className="text-3xl font-black" style={{ color: "rgba(201,168,76,0.8)" }}>{recommendation.compatibilityScore}%</div>
                     </div>
                     <div className="space-y-3">
                       <ScoreBar label="Genre Match (40%)" score={recommendation.genreScore} color="#d4af37" />
-                      <ScoreBar label="Time Match (30%)" score={recommendation.timeScore} color="#c084fc" />
-                      <ScoreBar label="Budget Match (20%)" score={recommendation.budgetScore} color="#6ee7e7" />
+                      <ScoreBar label="Time Match (30%)" score={recommendation.timeScore} color="rgba(201,168,76,0.7)" />
+                      <ScoreBar label="Budget Match (20%)" score={recommendation.budgetScore} color="rgba(255,255,255,0.45)" />
                       <ScoreBar label="Location Match (10%)" score={recommendation.locationScore} color="#4ade80" />
                     </div>
                   </div>
@@ -534,7 +534,7 @@ export const MovieNightDetail: React.FC = () => {
                 {/* Voting */}
                 <div className={cardCls} style={cardStyle}>
                   <h2 className="font-black text-sm text-white flex items-center gap-2">
-                    <Users className="w-4 h-4" style={{ color: "#6ee7e7" }} /> Vote
+                    <Users className="w-4 h-4" style={{ color: "rgba(255,255,255,0.55)" }} /> Vote
                     <span className="text-[10px] text-neutral-600 font-normal">
                       {votes.length}/{members.length} voted · {votes.filter(v => v.vote === "ACCEPT").length} accept
                     </span>
@@ -544,12 +544,12 @@ export const MovieNightDetail: React.FC = () => {
                   {!myVote ? (
                     <div className="flex gap-3">
                       <button onClick={() => handleVote("ACCEPT")} disabled={voteLoading}
-                        className="flex-1 py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] disabled:opacity-40"
+                        className="flex-1 py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all transition-opacity hover:opacity-85 disabled:opacity-40"
                         style={{ background: "rgba(74,222,128,0.12)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ade80" }}>
                         <CheckCircle className="w-4 h-4" /> Accept
                       </button>
                       <button onClick={() => handleVote("REJECT")} disabled={voteLoading}
-                        className="flex-1 py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] disabled:opacity-40"
+                        className="flex-1 py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all transition-opacity hover:opacity-85 disabled:opacity-40"
                         style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171" }}>
                         <XCircle className="w-4 h-4" /> Reject
                       </button>
@@ -608,7 +608,7 @@ export const MovieNightDetail: React.FC = () => {
                 {/* Progress bar */}
                 <div className="space-y-1">
                   <div className="h-2 rounded-full bg-neutral-900 overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${contributions.length ? (paidCount / contributions.length) * 100 : 0}%`, background: "linear-gradient(90deg,#fb923c,#f4d03f)" }} />
+                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${contributions.length ? (paidCount / contributions.length) * 100 : 0}%`, background: "#c9a84c" }} />
                   </div>
                   <p className="text-[10px] text-neutral-600 font-inter text-right">{paidCount} of {contributions.length} members paid</p>
                 </div>
@@ -640,7 +640,7 @@ export const MovieNightDetail: React.FC = () => {
                 {/* Mark as paid */}
                 {myContrib && myContrib.status === "PENDING" && status === "PAYMENT_PENDING" && (
                   <button onClick={handlePay} disabled={payLoading}
-                    className="w-full py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.01] disabled:opacity-40"
+                    className="w-full py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all transition-opacity hover:opacity-85 disabled:opacity-40"
                     style={{ background: "linear-gradient(135deg,#fb923c,#f59e0b)", color: "#000" }}>
                     {payLoading ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : <><Wallet className="w-4 h-4" />Mark My Contribution as Paid (₹{myContrib.contributionAmount})</>}
                   </button>
@@ -654,8 +654,8 @@ export const MovieNightDetail: React.FC = () => {
                       <p className="text-xs font-bold text-green-400">All contributions collected! Ready to book.</p>
                     </div>
                     <button onClick={handleBook} disabled={bookLoading}
-                      className="w-full py-3.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.01] disabled:opacity-40"
-                      style={{ background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000", boxShadow: "0 6px 24px rgba(212,175,55,0.25)" }}>
+                      className="w-full py-3.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all transition-opacity hover:opacity-85 disabled:opacity-40"
+                      style={{ background: "#c9a84c", color: "#000", borderRadius: 7 }}>
                       {bookLoading ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : <><Ticket className="w-4 h-4" />Proceed to Book Seats<ArrowRight className="w-4 h-4" /></>}
                     </button>
                   </div>
@@ -717,14 +717,14 @@ export const MovieNightDetail: React.FC = () => {
                 {isOrganizer ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <button onClick={handleRegenerate} disabled={regenLoading}
-                      className="py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] disabled:opacity-40"
-                      style={{ background: "rgba(192,132,252,0.08)", border: "1px solid rgba(192,132,252,0.25)", color: "#c084fc" }}>
+                      className="py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all transition-opacity hover:opacity-85 disabled:opacity-40"
+                      style={{ background: "rgba(201,168,76,0.10)", border: "1px solid rgba(201,168,76,0.10)", color: "rgba(201,168,76,0.8)" }}>
                       {regenLoading
                         ? <div className="w-4 h-4 border-2 border-[#c084fc]/30 border-t-[#c084fc] rounded-full animate-spin" />
                         : <><RefreshCw className="w-4 h-4" /> Regenerate Recommendation</>}
                     </button>
                     <button onClick={handleCancel} disabled={cancelLoading}
-                      className="py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] disabled:opacity-40"
+                      className="py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all transition-opacity hover:opacity-85 disabled:opacity-40"
                       style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.18)", color: "#f87171" }}>
                       {cancelLoading
                         ? <div className="w-4 h-4 border-2 border-red-400/30 border-t-red-400 rounded-full animate-spin" />
@@ -757,8 +757,8 @@ export const MovieNightDetail: React.FC = () => {
                 {isOrganizer && (
                   <button
                     onClick={() => navigate("/movie-nights/create")}
-                    className="px-6 py-3 rounded-xl font-black text-sm inline-flex items-center gap-2 hover:scale-105 transition-all"
-                    style={{ background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000", boxShadow: "0 6px 20px rgba(212,175,55,0.2)" }}>
+                    className="px-6 py-3 rounded-xl font-black text-sm inline-flex items-center gap-2 transition-opacity hover:opacity-80 transition-all"
+                    style={{ background: "#c9a84c", color: "#000", borderRadius: 7 }}>
                     <Plus className="w-4 h-4" /> Plan a New Night
                   </button>
                 )}
@@ -810,15 +810,15 @@ export const MovieNightDetail: React.FC = () => {
 
             {/* Recommendation mini card (if exists and status passed) */}
             {recommendation && status !== "COLLECTING_PREFERENCES" && (
-              <div className="p-4 rounded-2xl space-y-3" style={{ background: "#0d0d0d", border: "1px solid rgba(192,132,252,0.15)" }}>
-                <p className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: "rgba(192,132,252,0.6)" }}>Recommended</p>
+              <div className="p-4 rounded-2xl space-y-3" style={{ background: "#0d0d0d", border: "1px solid rgba(201,168,76,0.10)" }}>
+                <p className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: "rgba(201,168,76,0.10)" }}>Recommended</p>
                 <div className="flex gap-3 items-start">
                   <img src={getImageUrl(recommendation.movie.posterUrl)} alt=""
                     className="w-12 h-[72px] rounded-lg object-cover flex-shrink-0" />
                   <div>
                     <p className="text-xs font-black text-white leading-snug">{recommendation.movie.title}</p>
                     <p className="text-[9px] text-neutral-600 font-inter mt-1">{recommendation.show.startTime} · {recommendation.show.date}</p>
-                    <p className="text-[9px] font-bold mt-1" style={{ color: "#c084fc" }}>{recommendation.compatibilityScore}% match</p>
+                    <p className="text-[9px] font-bold mt-1" style={{ color: "rgba(201,168,76,0.8)" }}>{recommendation.compatibilityScore}% match</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 text-[10px] text-neutral-500 font-inter border-t border-neutral-900 pt-2">

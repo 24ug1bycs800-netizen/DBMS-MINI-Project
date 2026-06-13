@@ -10,28 +10,13 @@ export const Footer: React.FC = () => {
 
         .cc-footer {
           background: #050508;
-          border-top: 1px solid rgba(212, 168, 83, 0.15);
+          border-top: 1px solid rgba(255,255,255,0.06);
           font-family: 'Outfit', sans-serif;
           position: relative;
           overflow: hidden;
         }
-        .cc-footer::before {
-          content: '';
-          position: absolute;
-          top: 0; left: 50%;
-          transform: translateX(-50%);
-          width: 600px;
-          height: 1px;
-          background: linear-gradient(90deg, transparent, #D4A853, transparent);
-        }
-        .cc-footer-glow {
-          position: absolute;
-          top: -120px; left: 50%;
-          transform: translateX(-50%);
-          width: 500px; height: 200px;
-          background: radial-gradient(ellipse, rgba(212,168,83,0.06) 0%, transparent 70%);
-          pointer-events: none;
-        }
+        .cc-footer::before { display: none; }
+        .cc-footer-glow { display: none; }
         .cc-footer-inner {
           max-width: 1400px;
           margin: 0 auto;
@@ -57,19 +42,17 @@ export const Footer: React.FC = () => {
           align-items: center;
           gap: 10px;
           font-family: 'Playfair Display', serif;
-          font-size: 1.5rem;
+          font-size: 1.4rem;
           font-weight: 900;
-          background: linear-gradient(135deg, #D4A853 0%, #F0C070 50%, #B8860B 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
+          color: #c9a84c;
           margin-bottom: 1rem;
           text-decoration: none;
         }
         .cc-footer-logo-icon {
-          width: 30px; height: 30px;
-          background: linear-gradient(135deg, #D4A853, #F0C070);
-          border-radius: 7px;
+          width: 28px; height: 28px;
+          background: rgba(201,168,76,0.1);
+          border: 1px solid rgba(201,168,76,0.2);
+          border-radius: 6px;
           display: flex; align-items: center; justify-content: center;
           flex-shrink: 0;
         }
@@ -86,23 +69,23 @@ export const Footer: React.FC = () => {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          padding: 5px 12px;
-          background: rgba(212, 168, 83, 0.08);
-          border: 1px solid rgba(212, 168, 83, 0.2);
-          border-radius: 100px;
-          font-size: 0.7rem;
-          color: #D4A853;
-          letter-spacing: 0.08em;
+          padding: 4px 10px;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.07);
+          border-radius: 4px;
+          font-size: 0.65rem;
+          color: rgba(255,255,255,0.3);
+          letter-spacing: 0.1em;
           text-transform: uppercase;
           font-weight: 500;
         }
 
         .cc-footer-col h4 {
-          font-size: 0.7rem;
+          font-size: 0.65rem;
           font-weight: 600;
-          letter-spacing: 0.12em;
+          letter-spacing: 0.18em;
           text-transform: uppercase;
-          color: #D4A853;
+          color: rgba(255,255,255,0.28);
           margin-bottom: 1.25rem;
         }
         .cc-footer-col ul { list-style: none; padding: 0; margin: 0; }
@@ -124,13 +107,13 @@ export const Footer: React.FC = () => {
           font-size: 0.85rem;
           color: rgba(255,255,255,0.4);
         }
-        .cc-contact-item svg { color: #D4A853; flex-shrink: 0; }
+        .cc-contact-item svg { color: rgba(201,168,76,0.6); flex-shrink: 0; }
         .cc-contact-item a {
           color: rgba(255,255,255,0.4);
           text-decoration: none;
           transition: color 0.2s;
         }
-        .cc-contact-item a:hover { color: #D4A853; }
+        .cc-contact-item a:hover { color: rgba(255,255,255,0.75); }
 
         .cc-footer-bottom {
           display: flex;
@@ -153,10 +136,9 @@ export const Footer: React.FC = () => {
         }
 
         .cc-divider-line {
-          width: 30px; height: 2px;
-          background: linear-gradient(90deg, #D4A853, transparent);
+          width: 24px; height: 1px;
+          background: rgba(201,168,76,0.35);
           margin-bottom: 1.25rem;
-          border-radius: 2px;
         }
       `}</style>
 

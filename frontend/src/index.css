@@ -285,10 +285,10 @@
   margin-bottom: 2rem;
 }
 .section-heading-bar {
-  width: 4px;
-  height: 20px;
+  width: 2px;
+  height: 18px;
   background: var(--gold);
-  border-radius: 999px;
+  border-radius: 1px;
   flex-shrink: 0;
 }
 .section-heading-title {
@@ -334,7 +334,7 @@
   padding: 0.2rem 0.65rem;
   background: rgba(212, 175, 55, 0.1);
   border: 1px solid rgba(212, 175, 55, 0.25);
-  border-radius: 999px;
+  border-radius: 4px;
   color: var(--gold);
   font-size: 0.6rem;
   font-weight: 800;

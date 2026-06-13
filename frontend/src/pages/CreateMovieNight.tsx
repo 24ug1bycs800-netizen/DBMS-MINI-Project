@@ -46,7 +46,7 @@ export const CreateMovieNight: React.FC = () => {
         <div className="rounded-2xl overflow-hidden" style={{ background: "#0d0d0d", border: "1px solid rgba(212,175,55,0.15)", boxShadow: "0 24px 60px rgba(0,0,0,0.5)" }}>
           {/* Card header */}
           <div className="px-8 pt-8 pb-6 border-b border-neutral-900 flex items-center gap-3">
-            <div className="p-2.5 rounded-xl" style={{ background: "linear-gradient(135deg,#d4af37,#f4d03f)" }}>
+            <div className="p-2.5 rounded-xl" style={{ background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.2)" }}>
               <Moon className="w-5 h-5 text-black" />
             </div>
             <div>
@@ -108,8 +108,8 @@ export const CreateMovieNight: React.FC = () => {
             <button
               type="submit"
               disabled={submitting || !title.trim()}
-              className="w-full py-3.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{ background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000", boxShadow: "0 6px 24px rgba(212,175,55,0.25)" }}
+              className="w-full py-3.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all transition-opacity hover:opacity-85 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ background: "#c9a84c", color: "#000", borderRadius: 7 }}
             >
               {submitting
                 ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
