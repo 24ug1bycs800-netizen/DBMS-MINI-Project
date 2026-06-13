@@ -154,12 +154,37 @@ export const AdminPanel: React.FC = () => {
   const handleSyncMovies = async () => {
     setSyncLoading(true); setSyncResult(null); setMsg(""); setErr("");
     try {
-      const res = await api.post("/admin/sync-movies");
+      // 1. Get TMDB token from backend (kept server-side, never in frontend env)
+      const tokenRes = await api.get("/admin/tmdb-token");
+      const tmdbToken: string = tokenRes.data.token;
+
+      const tmdbFetch = (path: string) =>
+        fetch(`https://api.themoviedb.org/3${path}`, {
+          headers: { Authorization: `Bearer ${tmdbToken}`, Accept: "application/json" },
+        }).then(r => { if (!r.ok) throw new Error(`TMDB ${r.status}`); return r.json(); });
+
+      // 2. Fetch now-playing list directly from browser (no server outbound needed)
+      const nowPlayingData: any = await tmdbFetch("/movie/now_playing?region=IN&language=en-US&page=1");
+      const nowPlaying: any[] = nowPlayingData.results ?? [];
+
+      if (!nowPlaying.length) throw new Error("TMDB returned no movies");
+
+      // 3. Fetch detail (runtime + cert) for each movie in parallel
+      const detailResults = await Promise.allSettled(
+        nowPlaying.map((m: any) => tmdbFetch(`/movie/${m.id}?append_to_response=release_dates`))
+      );
+      const details: Record<string, any> = {};
+      detailResults.forEach((r, i) => {
+        if (r.status === "fulfilled") details[String(nowPlaying[i].id)] = r.value;
+      });
+
+      // 4. Post raw TMDB data to backend — backend handles upsert logic
+      const res = await api.post("/admin/sync-movies", { nowPlaying, details });
       setSyncResult(res.data);
       setMsg(`Sync complete — ${res.data.upserted} movies updated from TMDB.`);
       fetchAll();
     } catch (error: any) {
-      setErr(error.response?.data?.error ?? "TMDB sync failed");
+      setErr(error.response?.data?.error ?? error.message ?? "TMDB sync failed");
     } finally {
       setSyncLoading(false);
     }

@@ -23,6 +23,7 @@ import {
   getAllShows,
   syncMovies,
   getMovieNightAnalytics,
+  getTmdbToken,
 } from "../controllers/adminController";
 import { authenticateJWT, requireAdmin } from '../middleware/authMiddleware';
 
@@ -31,7 +32,8 @@ const router = Router();
 // ── Stats ─────────────────────────────────────────────────────────────────────
 router.get('/stats', authenticateJWT, requireAdmin, getDashboardStats);
 
-// ── TMDB Sync ─────────────────────────────────────────────────────────────────
+// ── TMDB ──────────────────────────────────────────────────────────────────────
+router.get('/tmdb-token',   authenticateJWT, requireAdmin, getTmdbToken);
 router.post('/sync-movies', authenticateJWT, requireAdmin, syncMovies);
 
 // ── Movie Night Analytics ─────────────────────────────────────────────────────

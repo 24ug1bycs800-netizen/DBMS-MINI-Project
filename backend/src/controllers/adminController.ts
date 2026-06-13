@@ -910,35 +910,49 @@ export const getAllScreens = async (req: Request, res: Response) => {
   }
 };
 
+// ─── TMDB TOKEN (admin-only — lets the browser call TMDB directly) ────────────
+
+export const getTmdbToken = (_req: Request, res: Response) => {
+  const token = process.env.TMDB_READ_TOKEN;
+  if (!token) return res.status(503).json({ error: "TMDB_READ_TOKEN not configured" });
+  return res.json({ token });
+};
+
 // ─── TMDB SYNC ────────────────────────────────────────────────────────────────
+// The browser fetches from TMDB (no outbound restriction) and posts raw data here.
 
-export const syncMovies = async (_req: Request, res: Response) => {
+export const syncMovies = async (req: Request, res: Response) => {
   try {
-    const nowPlaying = await fetchNowPlaying();
-    if (!nowPlaying.length) {
-      return res.status(502).json({ error: "TMDB returned no results" });
-    }
+    const { nowPlaying, details: detailsMap } = req.body as {
+      nowPlaying: Array<{
+        id: number; title: string; overview: string; genre_ids: number[];
+        release_date: string; vote_average: number;
+        poster_path: string | null; backdrop_path: string | null;
+      }>;
+      details: Record<string, {
+        runtime?: number;
+        release_dates?: { results: Array<{ iso_3166_1: string; release_dates: Array<{ certification: string; type: number }> }> };
+      }>;
+    };
 
-    const details = await Promise.allSettled(
-      nowPlaying.map(m => fetchMovieDetails(m.id))
-    );
+    if (!Array.isArray(nowPlaying) || !nowPlaying.length) {
+      return res.status(400).json({ error: "nowPlaying array is required" });
+    }
 
     let upserted = 0;
     let skipped = 0;
     const syncedTmdbIds: number[] = [];
 
-    for (let i = 0; i < nowPlaying.length; i++) {
-      const raw = nowPlaying[i];
-      const detailResult = details[i];
-      const detail = detailResult.status === "fulfilled" ? detailResult.value : null;
+    for (const raw of nowPlaying) {
+      const detail = detailsMap?.[String(raw.id)] ?? null;
 
       const runtime = detail?.runtime ?? 120;
-      const cert = detail ? ratingCertificate(detail) : "UA";
+      const cert = detail ? ratingCertificate(detail as any) : "UA";
       const genre = genreName(raw.genre_ids);
       const poster = posterUrl(raw.poster_path);
       const backdrop = backdropUrl(raw.backdrop_path ?? null);
       const release = raw.release_date || new Date().toISOString().slice(0, 10);
-      const ratingVal = String(raw.vote_average.toFixed(1));
+      const ratingVal = Number(raw.vote_average).toFixed(1);
 
       if (!poster) { skipped++; continue; }
 
@@ -951,58 +965,29 @@ export const syncMovies = async (_req: Request, res: Response) => {
         .limit(1);
 
       if (existing.length) {
-        await db
-          .update(movies)
-          .set({
-            title: raw.title,
-            overview: raw.overview || "",
-            genre,
-            durationMins: runtime,
-            rating: cert,
-            ratingValue: ratingVal,
-            releaseDate: release,
-            posterUrl: poster,
-            backdropUrl: backdrop || null,
-            isNowShowing: true,
-            isActive: true,
-            lastSyncedAt: new Date(),
-          })
-          .where(eq(movies.tmdbId, raw.id));
+        await db.update(movies).set({
+          title: raw.title, overview: raw.overview || "",
+          genre, durationMins: runtime, rating: cert, ratingValue: ratingVal,
+          releaseDate: release, posterUrl: poster, backdropUrl: backdrop || null,
+          isNowShowing: true, isActive: true, lastSyncedAt: new Date(),
+        }).where(eq(movies.tmdbId, raw.id));
       } else {
         await db.insert(movies).values({
-          title: raw.title,
-          description: raw.overview || raw.title,
-          overview: raw.overview || "",
-          genre,
-          language: "Hindi, English",
-          durationMins: runtime,
-          rating: cert,
-          ratingValue: ratingVal,
-          releaseDate: release,
-          posterUrl: poster,
-          backdropUrl: backdrop || null,
-          isNowShowing: true,
-          trending: false,
-          topRated: false,
-          tmdbId: raw.id,
-          isActive: true,
-          lastSyncedAt: new Date(),
+          title: raw.title, description: raw.overview || raw.title,
+          overview: raw.overview || "", genre, language: "Hindi, English",
+          durationMins: runtime, rating: cert, ratingValue: ratingVal,
+          releaseDate: release, posterUrl: poster, backdropUrl: backdrop || null,
+          isNowShowing: true, trending: false, topRated: false,
+          tmdbId: raw.id, isActive: true, lastSyncedAt: new Date(),
         });
       }
       upserted++;
     }
 
-    // Mark TMDB-synced movies that are no longer now_playing as inactive
     if (syncedTmdbIds.length > 0) {
-      await db
-        .update(movies)
-        .set({ isActive: false, isNowShowing: false })
-        .where(
-          and(
-            sql`${movies.tmdbId} IS NOT NULL`,
-            notInArray(movies.tmdbId as any, syncedTmdbIds)
-          )
-        );
+      await db.update(movies).set({ isActive: false, isNowShowing: false }).where(
+        and(sql`${movies.tmdbId} IS NOT NULL`, notInArray(movies.tmdbId as any, syncedTmdbIds))
+      );
     }
 
     return res.json({ upserted, skipped, total: nowPlaying.length });
