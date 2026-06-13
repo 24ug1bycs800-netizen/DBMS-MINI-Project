@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.js";
 import {
-  Moon, Users, Copy, Check, ChevronRight, Star,
+  Moon, Users, Copy, Check, Star,
   Clock, MapPin, Ticket, CheckCircle, XCircle, Sparkles,
   ArrowRight, AlertCircle, Wallet, Film, RefreshCw,
 } from "lucide-react";
@@ -92,9 +92,11 @@ export const MovieNightDetail: React.FC = () => {
   const [actionMsg, setActionMsg] = useState("");
 
   const nightId = parseInt(id!);
+  const prefFilledRef = useRef(false);
 
-  const fetch = useCallback(async () => {
-    setFetching(true); setErr("");
+  const fetchNight = useCallback(async (silent = false) => {
+    if (!silent) setFetching(true);
+    if (!silent) setErr("");
     try {
       const res = await api.get(`/movie-nights/${nightId}`);
       const d = res.data;
@@ -106,23 +108,35 @@ export const MovieNightDetail: React.FC = () => {
       setVotes(d.votes);
       setContributions(d.contributions);
 
-      // Pre-fill pref form if user already submitted
-      const myPref = d.preferences.find((p: Preference) => p.userId === user?.id);
-      if (myPref) {
-        setSelectedGenres(myPref.preferredGenres);
-        setSelectedTime(myPref.preferredTime);
-        setBudget(String(myPref.budgetLimit));
-        setLocation(myPref.preferredLocation || "");
+      // Pre-fill preference form only on first load
+      if (!prefFilledRef.current) {
+        prefFilledRef.current = true;
+        const myPref = d.preferences.find((p: Preference) => p.userId === user?.id);
+        if (myPref) {
+          setSelectedGenres(myPref.preferredGenres);
+          setSelectedTime(myPref.preferredTime);
+          setBudget(String(myPref.budgetLimit));
+          setLocation(myPref.preferredLocation || "");
+        }
       }
     } catch (e: any) {
-      setErr(e.response?.data?.error || "Failed to load.");
-    } finally { setFetching(false); }
+      if (!silent) setErr(e.response?.data?.error || "Failed to load.");
+    } finally {
+      if (!silent) setFetching(false);
+    }
   }, [nightId, user?.id]);
 
   useEffect(() => {
     if (!loading && !user) { navigate("/auth"); return; }
-    if (!loading) fetch();
-  }, [loading, user, fetch]);
+    if (!loading) fetchNight();
+  }, [loading, user, fetchNight]);
+
+  // Poll every 5 s while page is open; stop once booked (terminal state)
+  useEffect(() => {
+    if (!night || night.status === "BOOKED") return;
+    const id = setInterval(() => fetchNight(true), 5000);
+    return () => clearInterval(id);
+  }, [night?.status, fetchNight]);
 
   const copyInvite = () => {
     navigator.clipboard.writeText(night?.inviteCode ?? "");
@@ -141,7 +155,7 @@ export const MovieNightDetail: React.FC = () => {
         budgetLimit: parseInt(budget) || 300, preferredLocation: location.trim() || undefined,
       });
       setPrefMsg("✓ Preferences saved!");
-      fetch();
+      fetchNight();
     } catch (e: any) { setPrefMsg(e.response?.data?.error || "Failed to save."); }
     finally { setPrefLoading(false); }
   };
@@ -152,7 +166,7 @@ export const MovieNightDetail: React.FC = () => {
     try {
       await api.post(`/movie-nights/${nightId}/recommend`);
       setActionMsg("Recommendation generated!");
-      fetch();
+      fetchNight();
     } catch (e: any) { setActionMsg(e.response?.data?.error || "Failed."); }
     finally { setRecLoading(false); }
   };
@@ -163,7 +177,7 @@ export const MovieNightDetail: React.FC = () => {
     try {
       const res = await api.post(`/movie-nights/${nightId}/vote`, { vote: v });
       setActionMsg(res.data.message);
-      fetch();
+      fetchNight();
     } catch (e: any) { setActionMsg(e.response?.data?.error || "Failed."); }
     finally { setVoteLoading(false); }
   };
@@ -174,7 +188,7 @@ export const MovieNightDetail: React.FC = () => {
     try {
       const res = await api.post(`/movie-nights/${nightId}/contributions/pay`);
       setActionMsg(res.data.message);
-      fetch();
+      fetchNight();
     } catch (e: any) { setActionMsg(e.response?.data?.error || "Failed."); }
     finally { setPayLoading(false); }
   };
