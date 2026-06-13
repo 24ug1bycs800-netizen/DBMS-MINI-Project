@@ -233,7 +233,7 @@ export const Dashboard: React.FC = () => {
             {[
               { val: bookings.length, label: "Tickets" },
               { val: wishlist.length, label: "Saved" },
-              { val: rooms.length, label: "Rooms" },
+              { val: nights.length, label: "Nights" },
             ].map(({ val, label }) => (
               <div key={label} className="flex flex-col items-center py-3" style={{ borderColor: "rgba(212,175,55,0.08)" }}>
                 <span className="text-lg font-black" style={{ color: "#d4af37" }}>{val}</span>
