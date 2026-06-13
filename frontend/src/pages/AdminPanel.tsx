@@ -169,22 +169,26 @@ export const AdminPanel: React.FC = () => {
   const handleSyncMovies = async () => {
     setSyncLoading(true); setSyncResult(null); setMsg(""); setErr("");
     try {
-      // 1. Get TMDB token from backend (kept server-side, never in frontend env)
+      // 1. Get API key (extracted from Bearer JWT on backend)
       const tokenRes = await api.get("/admin/tmdb-token");
-      const tmdbToken: string = tokenRes.data.token;
+      const apiKey: string = tokenRes.data.apiKey;
+      if (!apiKey) throw new Error("TMDB API key not available");
 
-      const tmdbFetch = (path: string) =>
-        fetch(`https://api.themoviedb.org/3${path}`, {
-          headers: { Authorization: `Bearer ${tmdbToken}`, Accept: "application/json" },
-        }).then(r => { if (!r.ok) throw new Error(`TMDB ${r.status}`); return r.json(); });
+      // 2. Route through corsproxy.io — bypasses ISP/network blocks on api.themoviedb.org
+      //    Uses v3 ?api_key= param so no Authorization header is needed (proxy-friendly)
+      const PROXY = "https://corsproxy.io/?url=";
+      const tmdbFetch = (path: string) => {
+        const sep = path.includes("?") ? "&" : "?";
+        const url = `https://api.themoviedb.org/3${path}${sep}api_key=${apiKey}`;
+        return fetch(PROXY + encodeURIComponent(url))
+          .then(r => { if (!r.ok) throw new Error(`TMDB ${r.status}`); return r.json(); });
+      };
 
-      // 2. Fetch now-playing list directly from browser (no server outbound needed)
       const nowPlayingData: any = await tmdbFetch("/movie/now_playing?region=IN&language=en-US&page=1");
       const nowPlaying: any[] = nowPlayingData.results ?? [];
-
       if (!nowPlaying.length) throw new Error("TMDB returned no movies");
 
-      // 3. Fetch detail (runtime + cert) for each movie in parallel
+      // 3. Fetch runtime + cert for each movie
       const detailResults = await Promise.allSettled(
         nowPlaying.map((m: any) => tmdbFetch(`/movie/${m.id}?append_to_response=release_dates`))
       );
@@ -193,7 +197,7 @@ export const AdminPanel: React.FC = () => {
         if (r.status === "fulfilled") details[String(nowPlaying[i].id)] = r.value;
       });
 
-      // 4. Post raw TMDB data to backend — backend handles upsert logic
+      // 4. Backend upserts the raw TMDB data
       const res = await api.post("/admin/sync-movies", { nowPlaying, details });
       setSyncResult(res.data);
       setMsg(`Sync complete — ${res.data.upserted} movies updated from TMDB.`);

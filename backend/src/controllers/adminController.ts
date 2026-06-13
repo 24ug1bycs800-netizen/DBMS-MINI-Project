@@ -915,7 +915,14 @@ export const getAllScreens = async (req: Request, res: Response) => {
 export const getTmdbToken = (_req: Request, res: Response) => {
   const token = process.env.TMDB_READ_TOKEN;
   if (!token) return res.status(503).json({ error: "TMDB_READ_TOKEN not configured" });
-  return res.json({ token });
+  // The v4 Bearer JWT embeds the v3 API key in its `aud` claim — extract it
+  // so the browser can call TMDB v3 with ?api_key= (no Auth header needed, proxy-friendly)
+  try {
+    const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64").toString());
+    return res.json({ token, apiKey: payload.aud as string });
+  } catch {
+    return res.json({ token });
+  }
 };
 
 // ─── TMDB SYNC ────────────────────────────────────────────────────────────────
