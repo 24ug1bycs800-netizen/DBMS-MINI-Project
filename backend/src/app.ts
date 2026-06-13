@@ -83,6 +83,22 @@ app.use((err: any, req: any, res: any, next: any) => {
 
 /* ---------------- START SERVER ---------------- */
 
+const runMigrations = async () => {
+  try {
+    await db.execute(sql.raw(`
+      ALTER TABLE movies
+        ADD COLUMN IF NOT EXISTS tmdb_id integer UNIQUE,
+        ADD COLUMN IF NOT EXISTS backdrop_url text,
+        ADD COLUMN IF NOT EXISTS overview text,
+        ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT true,
+        ADD COLUMN IF NOT EXISTS last_synced_at timestamp
+    `));
+    console.log("✅ TMDB migration applied");
+  } catch (err) {
+    console.warn("⚠️  Migration skipped:", (err as Error).message);
+  }
+};
+
 const fixSequences = async () => {
   const tables = [
     "cities", "users", "movies", "theatres", "screens", "seats",
@@ -107,6 +123,7 @@ const fixSequences = async () => {
 
 app.listen(PORT, async () => {
   console.log(`🎬 CineCircle Backend running on http://localhost:${PORT}`);
+  await runMigrations();
   await fixSequences();
   startCleanupScheduler();
 });
