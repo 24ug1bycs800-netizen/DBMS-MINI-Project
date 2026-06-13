@@ -196,7 +196,9 @@ export const AdminPanel: React.FC = () => {
       setMsg(`Sync complete — ${res.data.upserted} movies updated from TMDB.`);
       fetchAll();
     } catch (error: any) {
-      setErr(error.response?.data?.error ?? error.message ?? "TMDB sync failed");
+      const d = error.response?.data;
+      setErr(d?.error ?? error.message ?? "TMDB sync failed");
+      if (d?.detail) console.error("Sync detail:", d.detail);
     } finally {
       setSyncLoading(false);
     }

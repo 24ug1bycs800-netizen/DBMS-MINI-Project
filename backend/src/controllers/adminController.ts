@@ -930,6 +930,16 @@ export const getTmdbToken = (_req: Request, res: Response) => {
 
 export const syncMovies = async (req: Request, res: Response) => {
   try {
+    // Ensure TMDB columns exist — idempotent, safe to run on every call
+    await db.execute(sql.raw(`
+      ALTER TABLE movies
+        ADD COLUMN IF NOT EXISTS tmdb_id integer UNIQUE,
+        ADD COLUMN IF NOT EXISTS backdrop_url text,
+        ADD COLUMN IF NOT EXISTS overview text,
+        ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT true,
+        ADD COLUMN IF NOT EXISTS last_synced_at timestamp
+    `));
+
     const { nowPlaying, details: detailsMap } = req.body as {
       nowPlaying: Array<{
         id: number; title: string; overview: string; genre_ids: number[];
@@ -1000,7 +1010,7 @@ export const syncMovies = async (req: Request, res: Response) => {
     return res.json({ upserted, skipped, total: nowPlaying.length });
   } catch (err: any) {
     console.error("TMDB sync error:", err);
-    return res.status(500).json({ error: err.message ?? "Sync failed" });
+    return res.status(500).json({ error: err.message ?? "Sync failed", detail: String(err) });
   }
 };
 
