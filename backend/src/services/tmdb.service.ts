@@ -1,10 +1,7 @@
-const TMDB_BASE = "https://api.themoviedb.org/3";
-const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p";
+import https from "https";
 
-const tmdbHeaders = () => ({
-  Authorization: `Bearer ${process.env.TMDB_READ_TOKEN}`,
-  "Content-Type": "application/json",
-});
+const TMDB_BASE = "api.themoviedb.org";
+const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p";
 
 const GENRE_MAP: Record<number, string> = {
   28: "Action", 12: "Adventure", 16: "Animation", 35: "Comedy",
@@ -31,6 +28,40 @@ export interface TmdbMovieDetail extends TmdbMovie {
   release_dates?: { results: Array<{ iso_3166_1: string; release_dates: Array<{ certification: string; type: number }> }> };
 }
 
+function tmdbGet<T>(path: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const options: https.RequestOptions = {
+      hostname: TMDB_BASE,
+      path,
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${process.env.TMDB_READ_TOKEN}`,
+        Accept: "application/json",
+      },
+    };
+
+    const req = https.request(options, (res) => {
+      let raw = "";
+      res.on("data", (chunk) => { raw += chunk; });
+      res.on("end", () => {
+        if (res.statusCode && res.statusCode >= 400) {
+          reject(new Error(`TMDB ${path} returned ${res.statusCode}: ${raw.slice(0, 200)}`));
+          return;
+        }
+        try {
+          resolve(JSON.parse(raw) as T);
+        } catch {
+          reject(new Error(`TMDB invalid JSON from ${path}`));
+        }
+      });
+    });
+
+    req.on("error", reject);
+    req.setTimeout(10000, () => { req.destroy(new Error(`TMDB timeout: ${path}`)); });
+    req.end();
+  });
+}
+
 export const posterUrl = (path: string | null, size = "w500") =>
   path ? `${TMDB_IMAGE_BASE}/${size}${path}` : "";
 
@@ -54,20 +85,14 @@ export const ratingCertificate = (detail: TmdbMovieDetail): string => {
 };
 
 export async function fetchNowPlaying(): Promise<TmdbMovie[]> {
-  const res = await fetch(
-    `${TMDB_BASE}/movie/now_playing?region=IN&language=en-US&page=1`,
-    { headers: tmdbHeaders() }
+  const data = await tmdbGet<{ results?: TmdbMovie[] }>(
+    "/3/movie/now_playing?region=IN&language=en-US&page=1"
   );
-  if (!res.ok) throw new Error(`TMDB now_playing failed: ${res.status}`);
-  const data = (await res.json()) as { results?: TmdbMovie[] };
   return data.results ?? [];
 }
 
 export async function fetchMovieDetails(tmdbId: number): Promise<TmdbMovieDetail> {
-  const res = await fetch(
-    `${TMDB_BASE}/movie/${tmdbId}?append_to_response=release_dates`,
-    { headers: tmdbHeaders() }
+  return tmdbGet<TmdbMovieDetail>(
+    `/3/movie/${tmdbId}?append_to_response=release_dates`
   );
-  if (!res.ok) throw new Error(`TMDB detail failed for ${tmdbId}: ${res.status}`);
-  return (await res.json()) as TmdbMovieDetail;
 }
