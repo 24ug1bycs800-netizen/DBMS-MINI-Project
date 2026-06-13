@@ -361,3 +361,104 @@ export const wishlistRelations = relations(wishlist, ({ one }) => ({
   user: one(users, { fields: [wishlist.userId], references: [users.id] }),
   movie: one(movies, { fields: [wishlist.movieId], references: [movies.id] }),
 }));
+
+// ─── MOVIE NIGHTS ─────────────────────────────────────────────────────────────
+
+export const movieNights = pgTable("movie_nights", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  organizerId: integer("organizer_id").references(() => users.id).notNull(),
+  inviteCode: varchar("invite_code", { length: 100 }).notNull().unique(),
+  status: varchar("status", { length: 50 }).notNull().default("COLLECTING_PREFERENCES"),
+  // COLLECTING_PREFERENCES | RECOMMENDED | APPROVED | PAYMENT_PENDING | READY_TO_BOOK | BOOKED
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const movieNightMembers = pgTable("movie_night_members", {
+  id: serial("id").primaryKey(),
+  movieNightId: integer("movie_night_id").references(() => movieNights.id, { onDelete: "cascade" }).notNull(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  role: varchar("role", { length: 50 }).notNull().default("MEMBER"), // ORGANIZER | MEMBER
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+});
+
+export const movieNightPreferences = pgTable("movie_night_preferences", {
+  id: serial("id").primaryKey(),
+  movieNightId: integer("movie_night_id").references(() => movieNights.id, { onDelete: "cascade" }).notNull(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  preferredGenres: text("preferred_genres").notNull().default("[]"), // JSON array of genre strings
+  preferredTime: varchar("preferred_time", { length: 20 }).notNull(), // MORNING|AFTERNOON|EVENING|NIGHT
+  budgetLimit: integer("budget_limit").notNull(),
+  preferredLocation: text("preferred_location"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const movieNightRecommendations = pgTable("movie_night_recommendations", {
+  id: serial("id").primaryKey(),
+  movieNightId: integer("movie_night_id").references(() => movieNights.id, { onDelete: "cascade" }).notNull(),
+  movieId: integer("movie_id").references(() => movies.id).notNull(),
+  showId: integer("show_id").references(() => shows.id).notNull(),
+  genreScore: integer("genre_score").notNull(),
+  timeScore: integer("time_score").notNull(),
+  budgetScore: integer("budget_score").notNull(),
+  locationScore: integer("location_score").notNull(),
+  compatibilityScore: integer("compatibility_score").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const movieNightVotes = pgTable("movie_night_votes", {
+  id: serial("id").primaryKey(),
+  movieNightId: integer("movie_night_id").references(() => movieNights.id, { onDelete: "cascade" }).notNull(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  vote: varchar("vote", { length: 20 }).notNull(), // ACCEPT | REJECT
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const movieNightContributions = pgTable("movie_night_contributions", {
+  id: serial("id").primaryKey(),
+  movieNightId: integer("movie_night_id").references(() => movieNights.id, { onDelete: "cascade" }).notNull(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  contributionAmount: integer("contribution_amount").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("PENDING"), // PENDING | PAID
+  paymentId: text("payment_id"),
+  paidAt: timestamp("paid_at"),
+});
+
+// ─── MOVIE NIGHT RELATIONS ────────────────────────────────────────────────────
+
+export const movieNightsRelations = relations(movieNights, ({ one, many }) => ({
+  organizer: one(users, { fields: [movieNights.organizerId], references: [users.id] }),
+  members: many(movieNightMembers),
+  preferences: many(movieNightPreferences),
+  recommendations: many(movieNightRecommendations),
+  votes: many(movieNightVotes),
+  contributions: many(movieNightContributions),
+}));
+
+export const movieNightMembersRelations = relations(movieNightMembers, ({ one }) => ({
+  movieNight: one(movieNights, { fields: [movieNightMembers.movieNightId], references: [movieNights.id] }),
+  user: one(users, { fields: [movieNightMembers.userId], references: [users.id] }),
+}));
+
+export const movieNightPreferencesRelations = relations(movieNightPreferences, ({ one }) => ({
+  movieNight: one(movieNights, { fields: [movieNightPreferences.movieNightId], references: [movieNights.id] }),
+  user: one(users, { fields: [movieNightPreferences.userId], references: [users.id] }),
+}));
+
+export const movieNightRecommendationsRelations = relations(movieNightRecommendations, ({ one }) => ({
+  movieNight: one(movieNights, { fields: [movieNightRecommendations.movieNightId], references: [movieNights.id] }),
+  movie: one(movies, { fields: [movieNightRecommendations.movieId], references: [movies.id] }),
+  show: one(shows, { fields: [movieNightRecommendations.showId], references: [shows.id] }),
+}));
+
+export const movieNightVotesRelations = relations(movieNightVotes, ({ one }) => ({
+  movieNight: one(movieNights, { fields: [movieNightVotes.movieNightId], references: [movieNights.id] }),
+  user: one(users, { fields: [movieNightVotes.userId], references: [users.id] }),
+}));
+
+export const movieNightContributionsRelations = relations(movieNightContributions, ({ one }) => ({
+  movieNight: one(movieNights, { fields: [movieNightContributions.movieNightId], references: [movieNights.id] }),
+  user: one(users, { fields: [movieNightContributions.userId], references: [users.id] }),
+}));

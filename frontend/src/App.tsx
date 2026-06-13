@@ -13,6 +13,9 @@ const GroupRoomsList = lazy(() => import('./pages/GroupRoomsList.js').then(m => 
 const Dashboard = lazy(() => import('./pages/Dashboard.js').then(m => ({ default: m.Dashboard })));
 const AdminPanel = lazy(() => import('./pages/AdminPanel.js').then(m => ({ default: m.AdminPanel })));
 const BookingConfirmation = lazy(() => import('./pages/BookingConfirmation.js').then(m => ({ default: m.BookingConfirmation })));
+const MovieNights = lazy(() => import('./pages/MovieNights.js').then(m => ({ default: m.MovieNights })));
+const CreateMovieNight = lazy(() => import('./pages/CreateMovieNight.js').then(m => ({ default: m.CreateMovieNight })));
+const MovieNightDetail = lazy(() => import('./pages/MovieNightDetail.js').then(m => ({ default: m.MovieNightDetail })));
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center" style={{ background: '#080808' }}>
@@ -38,6 +41,9 @@ function App() {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/booking/confirm/:code" element={<BookingConfirmation />} />
                 <Route path="/admin" element={<AdminPanel />} />
+                <Route path="/movie-nights" element={<MovieNights />} />
+                <Route path="/movie-nights/create" element={<CreateMovieNight />} />
+                <Route path="/movie-nights/:id" element={<MovieNightDetail />} />
               </Routes>
             </Suspense>
           </div>

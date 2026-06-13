@@ -1,0 +1,688 @@
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "../context/AuthContext.js";
+import {
+  Moon, Users, Copy, Check, ChevronRight, Star,
+  Clock, MapPin, Ticket, CheckCircle, XCircle, Sparkles,
+  ArrowRight, AlertCircle, Wallet, Film, RefreshCw,
+} from "lucide-react";
+import api from "../services/api.js";
+
+// ─── TYPES ────────────────────────────────────────────────────────────────────
+
+interface Member { userId: number; fullName: string; email: string; profilePic?: string; role: string; joinedAt: string; }
+interface Preference { userId: number; preferredGenres: string[]; preferredTime: string; budgetLimit: number; preferredLocation?: string; }
+interface Recommendation {
+  id: number;
+  genreScore: number; timeScore: number; budgetScore: number; locationScore: number; compatibilityScore: number;
+  movie: { id: number; title: string; posterUrl: string; genre: string; language: string; durationMins: number; rating: string; ratingValue: string; };
+  show: { id: number; startTime: string; date: string; priceRegular: number; pricePremium: number; priceRecliner: number; language: string; };
+  theatre: { id: number; name: string; address: string; };
+  city: { id: number; name: string; };
+  screenType: string; screenNumber: number;
+}
+interface Vote { userId: number; vote: string; fullName: string; }
+interface Contribution { id: number; userId: number; contributionAmount: number; status: string; paidAt?: string; fullName: string; profilePic?: string; }
+interface MovieNight { id: number; title: string; description?: string; organizerId: number; inviteCode: string; status: string; createdAt: string; }
+
+// ─── GENRE OPTIONS ────────────────────────────────────────────────────────────
+
+const GENRES = ["Action", "Drama", "Comedy", "Thriller", "Horror", "Romance", "Sci-Fi", "Animation", "Crime", "Adventure"];
+const TIME_SLOTS = [
+  { value: "MORNING", label: "Morning", sub: "6 AM – 12 PM", icon: "🌅" },
+  { value: "AFTERNOON", label: "Afternoon", sub: "12 PM – 6 PM", icon: "☀️" },
+  { value: "EVENING", label: "Evening", sub: "6 PM – 9 PM", icon: "🌆" },
+  { value: "NIGHT", label: "Night", sub: "9 PM – 12 AM", icon: "🌙" },
+];
+
+const getImageUrl = (url?: string) => {
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  return `${import.meta.env.VITE_API_URL}${url}`;
+};
+
+// ─── SMALL UI ATOMS ───────────────────────────────────────────────────────────
+
+const ScoreBar: React.FC<{ label: string; score: number; color: string }> = ({ label, score, color }) => (
+  <div className="space-y-1">
+    <div className="flex justify-between text-[10px] font-bold font-inter">
+      <span className="text-neutral-500">{label}</span>
+      <span style={{ color }}>{score}%</span>
+    </div>
+    <div className="h-1.5 rounded-full bg-neutral-900 overflow-hidden">
+      <div className="h-full rounded-full transition-all duration-700" style={{ width: `${score}%`, background: color }} />
+    </div>
+  </div>
+);
+
+const cardCls = "rounded-2xl p-6 space-y-4" as const;
+const cardStyle = { background: "#0d0d0d", border: "1px solid rgba(255,255,255,0.06)" } as const;
+
+// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
+
+export const MovieNightDetail: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  const [night, setNight] = useState<MovieNight | null>(null);
+  const [myRole, setMyRole] = useState("MEMBER");
+  const [members, setMembers] = useState<Member[]>([]);
+  const [preferences, setPreferences] = useState<Preference[]>([]);
+  const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
+  const [votes, setVotes] = useState<Vote[]>([]);
+  const [contributions, setContributions] = useState<Contribution[]>([]);
+  const [fetching, setFetching] = useState(true);
+  const [err, setErr] = useState("");
+
+  // Preference form state
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [selectedTime, setSelectedTime] = useState("");
+  const [budget, setBudget] = useState("300");
+  const [location, setLocation] = useState("");
+  const [prefLoading, setPrefLoading] = useState(false);
+  const [prefMsg, setPrefMsg] = useState("");
+
+  // Misc loading states
+  const [recLoading, setRecLoading] = useState(false);
+  const [voteLoading, setVoteLoading] = useState(false);
+  const [payLoading, setPayLoading] = useState(false);
+  const [bookLoading, setBookLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [actionMsg, setActionMsg] = useState("");
+
+  const nightId = parseInt(id!);
+
+  const fetch = useCallback(async () => {
+    setFetching(true); setErr("");
+    try {
+      const res = await api.get(`/movie-nights/${nightId}`);
+      const d = res.data;
+      setNight(d.movieNight);
+      setMyRole(d.myRole);
+      setMembers(d.members);
+      setPreferences(d.preferences);
+      setRecommendation(d.recommendation);
+      setVotes(d.votes);
+      setContributions(d.contributions);
+
+      // Pre-fill pref form if user already submitted
+      const myPref = d.preferences.find((p: Preference) => p.userId === user?.id);
+      if (myPref) {
+        setSelectedGenres(myPref.preferredGenres);
+        setSelectedTime(myPref.preferredTime);
+        setBudget(String(myPref.budgetLimit));
+        setLocation(myPref.preferredLocation || "");
+      }
+    } catch (e: any) {
+      setErr(e.response?.data?.error || "Failed to load.");
+    } finally { setFetching(false); }
+  }, [nightId, user?.id]);
+
+  useEffect(() => {
+    if (!loading && !user) { navigate("/auth"); return; }
+    if (!loading) fetch();
+  }, [loading, user, fetch]);
+
+  const copyInvite = () => {
+    navigator.clipboard.writeText(night?.inviteCode ?? "");
+    setCopied(true); setTimeout(() => setCopied(false), 2000);
+  };
+
+  // ── PREFERENCE SUBMIT ────────────────────────────────────────────────────────
+  const handleSubmitPrefs = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedGenres.length === 0) { setPrefMsg("Select at least one genre."); return; }
+    if (!selectedTime) { setPrefMsg("Select a preferred time."); return; }
+    setPrefLoading(true); setPrefMsg("");
+    try {
+      await api.post(`/movie-nights/${nightId}/preferences`, {
+        preferredGenres: selectedGenres, preferredTime: selectedTime,
+        budgetLimit: parseInt(budget) || 300, preferredLocation: location.trim() || undefined,
+      });
+      setPrefMsg("✓ Preferences saved!");
+      fetch();
+    } catch (e: any) { setPrefMsg(e.response?.data?.error || "Failed to save."); }
+    finally { setPrefLoading(false); }
+  };
+
+  // ── GENERATE RECOMMENDATION ──────────────────────────────────────────────────
+  const handleGenerate = async () => {
+    setRecLoading(true); setActionMsg("");
+    try {
+      await api.post(`/movie-nights/${nightId}/recommend`);
+      setActionMsg("Recommendation generated!");
+      fetch();
+    } catch (e: any) { setActionMsg(e.response?.data?.error || "Failed."); }
+    finally { setRecLoading(false); }
+  };
+
+  // ── VOTE ────────────────────────────────────────────────────────────────────
+  const handleVote = async (v: "ACCEPT" | "REJECT") => {
+    setVoteLoading(true); setActionMsg("");
+    try {
+      const res = await api.post(`/movie-nights/${nightId}/vote`, { vote: v });
+      setActionMsg(res.data.message);
+      fetch();
+    } catch (e: any) { setActionMsg(e.response?.data?.error || "Failed."); }
+    finally { setVoteLoading(false); }
+  };
+
+  // ── MARK PAID ───────────────────────────────────────────────────────────────
+  const handlePay = async () => {
+    setPayLoading(true); setActionMsg("");
+    try {
+      const res = await api.post(`/movie-nights/${nightId}/contributions/pay`);
+      setActionMsg(res.data.message);
+      fetch();
+    } catch (e: any) { setActionMsg(e.response?.data?.error || "Failed."); }
+    finally { setPayLoading(false); }
+  };
+
+  // ── COMPLETE BOOKING ─────────────────────────────────────────────────────────
+  const handleBook = async () => {
+    setBookLoading(true); setActionMsg("");
+    try {
+      const res = await api.post(`/movie-nights/${nightId}/book`);
+      navigate(`/shows/${res.data.showId}/booking`);
+    } catch (e: any) { setActionMsg(e.response?.data?.error || "Failed."); setBookLoading(false); }
+  };
+
+  const myVote = useMemo(() => votes.find(v => v.userId === user?.id)?.vote, [votes, user]);
+  const myContrib = useMemo(() => contributions.find(c => c.userId === user?.id), [contributions, user]);
+  const paidCount = useMemo(() => contributions.filter(c => c.status === "PAID").length, [contributions]);
+  const myPrefSubmitted = useMemo(() => preferences.some(p => p.userId === user?.id), [preferences, user]);
+
+  const inputCls = "w-full p-3 bg-neutral-950 border border-neutral-800 rounded-xl focus:border-[#d4af37] focus:outline-none text-white text-xs font-inter transition-colors";
+
+  if (loading || fetching) return (
+    <div className="min-h-screen bg-[#080808] flex items-center justify-center">
+      <div className="w-10 h-10 rounded-full border-t-2 animate-spin" style={{ borderColor: "#d4af37" }} />
+    </div>
+  );
+
+  if (err || !night) return (
+    <div className="min-h-screen bg-[#080808] flex flex-col items-center justify-center gap-4 text-white">
+      <AlertCircle className="w-10 h-10 text-red-400" />
+      <p className="text-red-400 font-inter">{err || "Movie night not found."}</p>
+      <button onClick={() => navigate("/movie-nights")} className="text-[#d4af37] font-bold text-sm hover:underline">← Back</button>
+    </div>
+  );
+
+  const isOrganizer = myRole === "ORGANIZER";
+  const status = night.status;
+
+  return (
+    <div className="min-h-screen bg-[#080808] text-white pb-24 font-poppins">
+
+      {/* ── HERO HEADER ──────────────────────────────────────────────────────── */}
+      <div className="px-6 sm:px-16 pt-10 pb-8 border-b border-neutral-900" style={{ background: "linear-gradient(180deg, rgba(212,175,55,0.04) 0%, transparent 100%)" }}>
+        <div className="max-w-5xl mx-auto">
+          <button onClick={() => navigate("/movie-nights")} className="flex items-center gap-1.5 text-neutral-600 hover:text-white transition-colors text-xs font-semibold mb-5">
+            ← All Movie Nights
+          </button>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3 mb-1.5">
+                <div className="p-2 rounded-xl" style={{ background: "linear-gradient(135deg,#d4af37,#f4d03f)" }}>
+                  <Moon className="w-4 h-4 text-black" />
+                </div>
+                <h1 className="text-2xl font-black text-white tracking-tight">{night.title}</h1>
+              </div>
+              {night.description && <p className="text-sm text-neutral-500 font-inter ml-11">{night.description}</p>}
+            </div>
+            {/* Invite code chip */}
+            <button
+              onClick={copyInvite}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs transition-all hover:scale-105 flex-shrink-0"
+              style={{ background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.2)", color: "#d4af37" }}
+            >
+              {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? "Copied!" : night.inviteCode}
+            </button>
+          </div>
+
+          {/* Status progress bar */}
+          <div className="mt-6 ml-0">
+            {(() => {
+              const steps = ["COLLECTING_PREFERENCES", "RECOMMENDED", "PAYMENT_PENDING", "READY_TO_BOOK", "BOOKED"];
+              const stepLabels = ["Preferences", "Recommendation", "Payment", "Ready", "Booked"];
+              const current = steps.indexOf(status === "APPROVED" ? "PAYMENT_PENDING" : status);
+              return (
+                <div className="flex items-center gap-0">
+                  {steps.map((s, i) => (
+                    <React.Fragment key={s}>
+                      <div className="flex flex-col items-center">
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black transition-all"
+                          style={i <= current
+                            ? { background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000" }
+                            : { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.2)", border: "1px solid rgba(255,255,255,0.08)" }}
+                        >
+                          {i < current ? <Check className="w-3 h-3" /> : i + 1}
+                        </div>
+                        <span className="text-[8px] font-bold mt-1 hidden sm:block" style={{ color: i <= current ? "#d4af37" : "rgba(255,255,255,0.2)" }}>
+                          {stepLabels[i]}
+                        </span>
+                      </div>
+                      {i < steps.length - 1 && (
+                        <div className="flex-1 h-0.5 mx-1" style={{ background: i < current ? "linear-gradient(to right,#d4af37,#d4af37)" : "rgba(255,255,255,0.06)" }} />
+                      )}
+                    </React.Fragment>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      </div>
+
+      {/* ── BODY ──────────────────────────────────────────────────────────────── */}
+      <div className="max-w-5xl mx-auto px-6 sm:px-16 pt-8 space-y-6">
+
+        {/* Action feedback */}
+        {actionMsg && (
+          <div className="p-3.5 rounded-xl text-sm font-inter flex items-center gap-2"
+            style={{ background: actionMsg.includes("Failed") || actionMsg.includes("Error") ? "rgba(239,68,68,0.1)" : "rgba(74,222,128,0.08)",
+              border: `1px solid ${actionMsg.includes("Failed") ? "rgba(239,68,68,0.3)" : "rgba(74,222,128,0.2)"}`,
+              color: actionMsg.includes("Failed") ? "#f87171" : "#4ade80" }}>
+            {actionMsg.includes("Failed") ? <AlertCircle className="w-4 h-4 flex-shrink-0" /> : <CheckCircle className="w-4 h-4 flex-shrink-0" />}
+            {actionMsg}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+          {/* ── LEFT COLUMN ─────────────────────────────────────────────────── */}
+          <div className="lg:col-span-2 space-y-6">
+
+            {/* ── SECTION: COLLECTING PREFERENCES ───────────────────────────── */}
+            {(status === "COLLECTING_PREFERENCES") && (
+              <>
+                {/* Member list */}
+                <div className={cardCls} style={cardStyle}>
+                  <div className="flex items-center justify-between">
+                    <h2 className="font-black text-sm text-white flex items-center gap-2">
+                      <Users className="w-4 h-4" style={{ color: "#6ee7e7" }} /> Members
+                      <span className="text-[10px] text-neutral-600 font-normal">({members.length})</span>
+                    </h2>
+                    <span className="text-[10px] text-neutral-600 font-inter">{preferences.length}/{members.length} submitted</span>
+                  </div>
+                  <div className="space-y-2">
+                    {members.map(m => {
+                      const hasPref = preferences.some(p => p.userId === m.userId);
+                      return (
+                        <div key={m.userId} className="flex items-center justify-between px-3 py-2.5 rounded-xl"
+                          style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black" style={{ background: "rgba(212,175,55,0.12)", color: "#d4af37" }}>
+                              {m.fullName.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-white">{m.fullName}</p>
+                              <p className="text-[9px] text-neutral-600 font-inter">{m.role === "ORGANIZER" ? "Organizer" : "Member"}</p>
+                            </div>
+                          </div>
+                          <span className="text-[9px] font-black px-2 py-1 rounded-lg" style={hasPref
+                            ? { background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", color: "#4ade80" }
+                            : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.2)" }}>
+                            {hasPref ? "✓ Submitted" : "Pending"}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Preference form */}
+                <div className={cardCls} style={{ ...cardStyle, border: myPrefSubmitted ? "1px solid rgba(74,222,128,0.15)" : "1px solid rgba(212,175,55,0.15)" }}>
+                  <h2 className="font-black text-sm text-white flex items-center gap-2">
+                    <Sparkles className="w-4 h-4" style={{ color: "#d4af37" }} />
+                    {myPrefSubmitted ? "Update Your Preferences" : "Submit Your Preferences"}
+                  </h2>
+                  <form onSubmit={handleSubmitPrefs} className="space-y-5">
+                    {/* Genres */}
+                    <div>
+                      <label className="block text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-2">Preferred Genres *</label>
+                      <div className="flex flex-wrap gap-2">
+                        {GENRES.map(g => {
+                          const sel = selectedGenres.includes(g);
+                          return (
+                            <button key={g} type="button"
+                              onClick={() => setSelectedGenres(prev => sel ? prev.filter(x => x !== g) : [...prev, g])}
+                              className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
+                              style={sel
+                                ? { background: "rgba(212,175,55,0.15)", border: "1px solid rgba(212,175,55,0.35)", color: "#d4af37" }
+                                : { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.35)" }}
+                            >{g}</button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Time slot */}
+                    <div>
+                      <label className="block text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-2">Preferred Time *</label>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {TIME_SLOTS.map(ts => (
+                          <button key={ts.value} type="button"
+                            onClick={() => setSelectedTime(ts.value)}
+                            className="p-3 rounded-xl text-left transition-all"
+                            style={selectedTime === ts.value
+                              ? { background: "rgba(192,132,252,0.12)", border: "1px solid rgba(192,132,252,0.3)", color: "#c084fc" }
+                              : { background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.3)" }}
+                          >
+                            <div className="text-base mb-1">{ts.icon}</div>
+                            <div className="text-xs font-bold">{ts.label}</div>
+                            <div className="text-[9px] font-inter mt-0.5 opacity-60">{ts.sub}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Budget */}
+                    <div>
+                      <label className="block text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-2">
+                        Budget Limit — ₹{parseInt(budget) || 0} per ticket
+                      </label>
+                      <input type="range" min="100" max="1000" step="50" value={budget} onChange={e => setBudget(e.target.value)}
+                        className="w-full accent-[#d4af37]" />
+                      <div className="flex justify-between text-[9px] text-neutral-700 font-inter mt-1">
+                        <span>₹100</span><span>₹1000</span>
+                      </div>
+                    </div>
+
+                    {/* Location */}
+                    <div>
+                      <label className="block text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-2 flex items-center gap-1">
+                        <MapPin className="w-3 h-3" /> Preferred City
+                        <span className="normal-case font-normal ml-1 text-neutral-700">(optional)</span>
+                      </label>
+                      <input className={inputCls} placeholder="e.g. Bengaluru" value={location} onChange={e => setLocation(e.target.value)} />
+                    </div>
+
+                    {prefMsg && <p className="text-xs font-inter" style={{ color: prefMsg.startsWith("✓") ? "#4ade80" : "#f87171" }}>{prefMsg}</p>}
+
+                    <button type="submit" disabled={prefLoading}
+                      className="w-full py-3 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all hover:scale-[1.01] disabled:opacity-40"
+                      style={{ background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000" }}>
+                      {prefLoading
+                        ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                        : <><Sparkles className="w-3.5 h-3.5" />{myPrefSubmitted ? "Update Preferences" : "Save Preferences"}</>}
+                    </button>
+                  </form>
+                </div>
+
+                {/* Generate recommendation (organizer) */}
+                {isOrganizer && (
+                  <div className="p-5 rounded-2xl" style={{ background: "rgba(212,175,55,0.04)", border: "1px solid rgba(212,175,55,0.12)" }}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-black text-white">Generate Recommendation</p>
+                        <p className="text-[11px] text-neutral-600 font-inter mt-0.5">
+                          {preferences.length}/{members.length} members submitted preferences
+                        </p>
+                      </div>
+                      <button onClick={handleGenerate} disabled={recLoading || preferences.length === 0}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs transition-all hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
+                        style={{ background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000" }}>
+                        {recLoading ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : <><Sparkles className="w-3.5 h-3.5" />Generate</>}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* ── SECTION: RECOMMENDATION / VOTING ──────────────────────────── */}
+            {(status === "RECOMMENDED") && recommendation && (
+              <>
+                {/* Recommendation card */}
+                <div className={cardCls} style={{ ...cardStyle, border: "1px solid rgba(192,132,252,0.2)" }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="w-4 h-4" style={{ color: "#c084fc" }} />
+                    <h2 className="font-black text-sm" style={{ color: "#c084fc" }}>AI Recommendation</h2>
+                  </div>
+                  <div className="flex gap-5">
+                    {/* Poster */}
+                    <div className="w-24 h-36 rounded-xl overflow-hidden flex-shrink-0 bg-neutral-900">
+                      <img src={getImageUrl(recommendation.movie.posterUrl)} alt={recommendation.movie.title}
+                        className="w-full h-full object-cover" loading="lazy" />
+                    </div>
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <h3 className="font-black text-lg text-white leading-tight">{recommendation.movie.title}</h3>
+                      <p className="text-[11px] text-neutral-500 font-inter">{recommendation.movie.genre} · {recommendation.movie.language} · {recommendation.movie.durationMins}min</p>
+                      <div className="flex items-center gap-2 flex-wrap text-[10px] font-bold">
+                        <span className="flex items-center gap-1" style={{ color: "#d4af37" }}><Star className="w-3 h-3 fill-[#d4af37]" />{recommendation.movie.ratingValue}</span>
+                        <span className="text-neutral-700">·</span>
+                        <span className="text-neutral-400 flex items-center gap-1"><Clock className="w-3 h-3" />{recommendation.show.startTime}</span>
+                        <span className="text-neutral-700">·</span>
+                        <span className="text-neutral-400">{recommendation.show.date}</span>
+                      </div>
+                      <div className="pt-1 space-y-0.5">
+                        <p className="text-xs font-bold text-white">{recommendation.theatre.name}</p>
+                        <p className="text-[10px] text-neutral-600 font-inter flex items-center gap-1">
+                          <MapPin className="w-3 h-3" /> {recommendation.city.name} · {recommendation.theatre.address}
+                        </p>
+                        <p className="text-[10px] font-bold mt-1" style={{ color: "#6ee7e7" }}>
+                          Screen {recommendation.screenNumber} · {recommendation.screenType} · ₹{recommendation.show.priceRegular}/seat
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Compatibility score */}
+                  <div className="mt-4 pt-4 border-t border-neutral-900">
+                    <div className="flex items-center justify-between mb-4">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500">Compatibility Score</p>
+                      <div className="text-3xl font-black" style={{ color: "#c084fc" }}>{recommendation.compatibilityScore}%</div>
+                    </div>
+                    <div className="space-y-3">
+                      <ScoreBar label="Genre Match (40%)" score={recommendation.genreScore} color="#d4af37" />
+                      <ScoreBar label="Time Match (30%)" score={recommendation.timeScore} color="#c084fc" />
+                      <ScoreBar label="Budget Match (20%)" score={recommendation.budgetScore} color="#6ee7e7" />
+                      <ScoreBar label="Location Match (10%)" score={recommendation.locationScore} color="#4ade80" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Voting */}
+                <div className={cardCls} style={cardStyle}>
+                  <h2 className="font-black text-sm text-white flex items-center gap-2">
+                    <Users className="w-4 h-4" style={{ color: "#6ee7e7" }} /> Vote
+                    <span className="text-[10px] text-neutral-600 font-normal">
+                      {votes.length}/{members.length} voted · {votes.filter(v => v.vote === "ACCEPT").length} accept
+                    </span>
+                  </h2>
+
+                  {/* My vote */}
+                  {!myVote ? (
+                    <div className="flex gap-3">
+                      <button onClick={() => handleVote("ACCEPT")} disabled={voteLoading}
+                        className="flex-1 py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] disabled:opacity-40"
+                        style={{ background: "rgba(74,222,128,0.12)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ade80" }}>
+                        <CheckCircle className="w-4 h-4" /> Accept
+                      </button>
+                      <button onClick={() => handleVote("REJECT")} disabled={voteLoading}
+                        className="flex-1 py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] disabled:opacity-40"
+                        style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171" }}>
+                        <XCircle className="w-4 h-4" /> Reject
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold"
+                      style={myVote === "ACCEPT"
+                        ? { background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", color: "#4ade80" }
+                        : { background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171" }}>
+                      {myVote === "ACCEPT" ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                      You voted {myVote}
+                    </div>
+                  )}
+
+                  {/* Votes list */}
+                  {votes.length > 0 && (
+                    <div className="space-y-2 pt-2 border-t border-neutral-900">
+                      {votes.map(v => (
+                        <div key={v.userId} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: "rgba(255,255,255,0.02)" }}>
+                          <span className="text-xs font-bold text-white">{v.fullName}</span>
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-lg"
+                            style={v.vote === "ACCEPT"
+                              ? { background: "rgba(74,222,128,0.08)", color: "#4ade80" }
+                              : { background: "rgba(239,68,68,0.08)", color: "#f87171" }}>
+                            {v.vote}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Re-generate option for organizer */}
+                  {isOrganizer && (
+                    <button onClick={handleGenerate} disabled={recLoading}
+                      className="w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all hover:border-neutral-700 disabled:opacity-40"
+                      style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.3)" }}>
+                      <RefreshCw className="w-3.5 h-3.5" /> Re-generate recommendation
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* ── SECTION: CONTRIBUTIONS ────────────────────────────────────── */}
+            {(status === "PAYMENT_PENDING" || status === "READY_TO_BOOK" || status === "BOOKED") && (
+              <div className={cardCls} style={{ ...cardStyle, border: "1px solid rgba(251,146,60,0.15)" }}>
+                <div className="flex items-center justify-between">
+                  <h2 className="font-black text-sm text-white flex items-center gap-2">
+                    <Wallet className="w-4 h-4" style={{ color: "#fb923c" }} /> Contributions
+                  </h2>
+                  <span className="text-[10px] font-black px-2.5 py-1 rounded-lg" style={{ background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.2)", color: "#fb923c" }}>
+                    {paidCount}/{contributions.length} Paid
+                  </span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="space-y-1">
+                  <div className="h-2 rounded-full bg-neutral-900 overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${contributions.length ? (paidCount / contributions.length) * 100 : 0}%`, background: "linear-gradient(90deg,#fb923c,#f4d03f)" }} />
+                  </div>
+                  <p className="text-[10px] text-neutral-600 font-inter text-right">{paidCount} of {contributions.length} members paid</p>
+                </div>
+
+                {/* Contribution rows */}
+                <div className="space-y-2">
+                  {contributions.map(c => (
+                    <div key={c.id} className="flex items-center justify-between px-3 py-3 rounded-xl"
+                      style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black" style={{ background: "rgba(212,175,55,0.1)", color: "#d4af37" }}>
+                          {c.fullName.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-white">{c.fullName}</p>
+                          <p className="text-[9px] text-neutral-600 font-inter">₹{c.contributionAmount}</p>
+                        </div>
+                      </div>
+                      <span className="text-[9px] font-black px-2 py-1 rounded-lg"
+                        style={c.status === "PAID"
+                          ? { background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", color: "#4ade80" }
+                          : { background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.2)", color: "#fb923c" }}>
+                        {c.status === "PAID" ? "✓ Paid" : "Pending"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Mark as paid */}
+                {myContrib && myContrib.status === "PENDING" && status === "PAYMENT_PENDING" && (
+                  <button onClick={handlePay} disabled={payLoading}
+                    className="w-full py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.01] disabled:opacity-40"
+                    style={{ background: "linear-gradient(135deg,#fb923c,#f59e0b)", color: "#000" }}>
+                    {payLoading ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : <><Wallet className="w-4 h-4" />Mark My Contribution as Paid (₹{myContrib.contributionAmount})</>}
+                  </button>
+                )}
+
+                {/* Book now */}
+                {status === "READY_TO_BOOK" && isOrganizer && (
+                  <div className="pt-2">
+                    <div className="flex items-center gap-2 mb-3 p-3 rounded-xl" style={{ background: "rgba(74,222,128,0.06)", border: "1px solid rgba(74,222,128,0.2)" }}>
+                      <CheckCircle className="w-4 h-4 text-green-400" />
+                      <p className="text-xs font-bold text-green-400">All contributions collected! Ready to book.</p>
+                    </div>
+                    <button onClick={handleBook} disabled={bookLoading}
+                      className="w-full py-3.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.01] disabled:opacity-40"
+                      style={{ background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000", boxShadow: "0 6px 24px rgba(212,175,55,0.25)" }}>
+                      {bookLoading ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : <><Ticket className="w-4 h-4" />Proceed to Book Seats<ArrowRight className="w-4 h-4" /></>}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── SECTION: BOOKED ───────────────────────────────────────────── */}
+            {status === "BOOKED" && (
+              <div className="p-8 rounded-2xl text-center" style={{ background: "rgba(74,222,128,0.05)", border: "1px solid rgba(74,222,128,0.2)" }}>
+                <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "rgba(74,222,128,0.1)" }}>
+                  <CheckCircle className="w-8 h-8 text-green-400" />
+                </div>
+                <h3 className="text-xl font-black text-white mb-2">Movie Night Booked!</h3>
+                <p className="text-sm text-neutral-500 font-inter">Your squad's booking is confirmed. Enjoy the movie! 🎬</p>
+              </div>
+            )}
+
+          </div>
+
+          {/* ── RIGHT COLUMN: sidebar info ──────────────────────────────────── */}
+          <div className="space-y-4">
+            {/* Members summary */}
+            <div className="p-4 rounded-2xl" style={{ background: "#0d0d0d", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500 mb-3 flex items-center gap-1.5">
+                <Users className="w-3 h-3" /> Squad ({members.length})
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {members.map(m => (
+                  <div key={m.userId} title={m.fullName}
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-black" style={{ background: "rgba(212,175,55,0.12)", color: "#d4af37", border: "2px solid rgba(212,175,55,0.2)" }}>
+                    {m.fullName.charAt(0).toUpperCase()}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Invite code card */}
+            <div className="p-4 rounded-2xl" style={{ background: "#0d0d0d", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500 mb-2">Invite Code</p>
+              <div className="text-2xl font-black tracking-[0.2em] text-center py-3 rounded-xl" style={{ background: "rgba(212,175,55,0.06)", color: "#d4af37" }}>
+                {night.inviteCode}
+              </div>
+              <button onClick={copyInvite}
+                className="w-full mt-2 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all"
+                style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.15)", color: "#d4af37" }}>
+                {copied ? <><Check className="w-3.5 h-3.5" />Copied!</> : <><Copy className="w-3.5 h-3.5" />Copy Code</>}
+              </button>
+            </div>
+
+            {/* Recommendation mini card (if exists and status passed) */}
+            {recommendation && status !== "COLLECTING_PREFERENCES" && (
+              <div className="p-4 rounded-2xl space-y-3" style={{ background: "#0d0d0d", border: "1px solid rgba(192,132,252,0.15)" }}>
+                <p className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: "rgba(192,132,252,0.6)" }}>Recommended</p>
+                <div className="flex gap-3 items-start">
+                  <img src={getImageUrl(recommendation.movie.posterUrl)} alt=""
+                    className="w-12 h-[72px] rounded-lg object-cover flex-shrink-0" />
+                  <div>
+                    <p className="text-xs font-black text-white leading-snug">{recommendation.movie.title}</p>
+                    <p className="text-[9px] text-neutral-600 font-inter mt-1">{recommendation.show.startTime} · {recommendation.show.date}</p>
+                    <p className="text-[9px] font-bold mt-1" style={{ color: "#c084fc" }}>{recommendation.compatibilityScore}% match</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 text-[10px] text-neutral-500 font-inter border-t border-neutral-900 pt-2">
+                  <Film className="w-3 h-3" />
+                  <span>{recommendation.theatre.name} · {recommendation.city.name}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+};

@@ -8,6 +8,7 @@ import movieRoutes from "./routes/movieRoutes";
 import bookingRoutes from "./routes/bookingRoutes";
 import groupRoutes from "./routes/groupRoutes";
 import adminRoutes from "./routes/adminRoutes";
+import movieNightRoutes from "./routes/movieNightRoutes";
 import { startCleanupScheduler } from "./jobs/cleanupShows";
 import { db } from "./db/db";
 import { sql } from "drizzle-orm";
@@ -69,6 +70,7 @@ app.use("/api", movieRoutes);        // ⚠️ IMPORTANT: /api depends on movieR
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/movie-nights", movieNightRoutes);
 
 /* ---------------- ERROR HANDLER ---------------- */
 
@@ -86,6 +88,8 @@ const fixSequences = async () => {
     "cities", "users", "movies", "theatres", "screens", "seats",
     "shows", "bookings", "booking_seats", "payments", "seat_locks",
     "reviews", "wishlist", "notifications", "group_rooms", "group_members", "votes",
+    "movie_nights", "movie_night_members", "movie_night_preferences",
+    "movie_night_recommendations", "movie_night_votes", "movie_night_contributions",
   ];
   try {
     await Promise.all(
