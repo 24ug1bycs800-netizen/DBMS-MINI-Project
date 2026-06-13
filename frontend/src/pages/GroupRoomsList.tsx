@@ -11,6 +11,7 @@ import {
   Users,
   Copy,
   Check,
+  Trash2,
 } from "lucide-react";
 import api from "../services/api.js";
 
@@ -25,6 +26,7 @@ export const GroupRoomsList: React.FC = () => {
   const [err, setErr] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const fetchRooms = async () => {
     try {
@@ -74,6 +76,20 @@ export const GroupRoomsList: React.FC = () => {
     }
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleDeleteRoom = async (e: React.MouseEvent, roomId: number) => {
+    e.stopPropagation();
+    if (!window.confirm("Delete this room? This cannot be undone.")) return;
+    setDeletingId(roomId);
+    try {
+      await api.delete(`/groups/${roomId}`);
+      setRooms(prev => prev.filter(r => r.id !== roomId));
+    } catch (error: any) {
+      setErr(error.response?.data?.error || "Failed to delete room.");
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const handleCreateRoom = async (e: React.FormEvent) => {
@@ -301,7 +317,7 @@ export const GroupRoomsList: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-2">
                     <span
                       className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider"
                       style={
@@ -312,6 +328,19 @@ export const GroupRoomsList: React.FC = () => {
                     >
                       {room.status}
                     </span>
+                    {room.creator?.id === user?.id && (
+                      <button
+                        onClick={(e) => handleDeleteRoom(e, room.id)}
+                        disabled={deletingId === room.id}
+                        className="p-1.5 rounded-lg transition-colors hover:bg-red-900/20 disabled:opacity-40"
+                        style={{ color: "rgba(239,68,68,0.5)" }}
+                        title="Delete room"
+                      >
+                        {deletingId === room.id
+                          ? <Loader className="w-3.5 h-3.5 animate-spin" />
+                          : <Trash2 className="w-3.5 h-3.5" />}
+                      </button>
+                    )}
                     <ArrowRight
                       className="w-4 h-4 transition-all group-hover:translate-x-1"
                       style={{ color: "rgba(212,175,55,0.3)" }}

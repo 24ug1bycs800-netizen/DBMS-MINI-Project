@@ -201,6 +201,29 @@ export const finalizeSelections = async (req: Request, res: Response) => {
   }
 };
  
+// DELETE GROUP ROOM
+export const deleteGroupRoom = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const roomId = parseInt(req.params.id);
+    if (isNaN(roomId)) return res.status(400).json({ error: "Invalid room ID" });
+
+    const [room] = await db.select().from(groupRooms).where(eq(groupRooms.id, roomId)).limit(1);
+    if (!room) return res.status(404).json({ error: "Room not found" });
+    if (room.creatorId !== user.id) return res.status(403).json({ error: "Only the room creator can delete this room" });
+
+    // Cascade-delete members and votes first, then the room
+    await db.delete(votes).where(eq(votes.roomId, roomId));
+    await db.delete(groupMembers).where(eq(groupMembers.roomId, roomId));
+    await db.delete(groupRooms).where(eq(groupRooms.id, roomId));
+
+    return res.status(200).json({ message: "Group room deleted successfully" });
+  } catch (err) {
+    console.error("Delete group room error:", err);
+    return res.status(500).json({ error: "Internal server error deleting group room" });
+  }
+};
+
 // GET MY GROUP ROOMS
 export const getMyGroupRooms = async (req: Request, res: Response) => {
   try {

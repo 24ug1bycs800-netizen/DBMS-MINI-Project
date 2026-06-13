@@ -6,6 +6,7 @@ import {
   castVote,
   finalizeSelections,
   getMyGroupRooms,
+  deleteGroupRoom,
 } from "../controllers/groupController";
 import { authenticateJWT } from "../middleware/authMiddleware";
 
@@ -17,5 +18,6 @@ router.post("/join", authenticateJWT, joinGroupRoom);
 router.get("/:inviteCode", authenticateJWT, getGroupRoom);
 router.post("/:id/vote", authenticateJWT, castVote);
 router.post("/:id/finalize", authenticateJWT, finalizeSelections);
+router.delete("/:id", authenticateJWT, deleteGroupRoom);
 
 export default router;
