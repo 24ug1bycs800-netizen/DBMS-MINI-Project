@@ -512,13 +512,6 @@ export const Dashboard: React.FC = () => {
               ) : (
                 <EmptyState icon={<Moon className="w-8 h-8" />} message="No movie nights yet. Plan one with your squad!" />
               )}
-              <button
-                onClick={() => navigate("/movie-nights")}
-                className="w-full py-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all hover:scale-[1.01] mt-2"
-                style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.15)", color: "#d4af37" }}
-              >
-                <Moon className="w-3.5 h-3.5" /> Go to Movie Nights
-              </button>
             </div>
           )}
         </div>

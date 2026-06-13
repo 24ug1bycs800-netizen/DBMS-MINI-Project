@@ -515,7 +515,7 @@ export const SeatBooking: React.FC = () => {
               </div>
               <div className="flex justify-between">
                 <span>Seat Count</span>
-                <span className="font-black text-white">{selectedSeats.length}</span>
+                <span className="font-black text-white">{selectedSeats.length} <span className="text-neutral-700 font-normal">/ 6 max</span></span>
               </div>
             </div>
 

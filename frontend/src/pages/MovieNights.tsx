@@ -356,32 +356,6 @@ export const MovieNights: React.FC = () => {
                 );
               })}
 
-              {/* Create new card */}
-              <div
-                onClick={() => navigate("/movie-nights/create")}
-                className="group cursor-pointer rounded-2xl transition-all duration-300 flex flex-col items-center justify-center gap-3 min-h-[180px]"
-                style={{
-                  background: "transparent",
-                  border: "1px dashed rgba(255,255,255,0.08)",
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = "rgba(212,175,55,0.3)";
-                  e.currentTarget.style.background = "rgba(212,175,55,0.03)";
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
-                  e.currentTarget.style.background = "transparent";
-                }}
-              >
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 group-hover:scale-110"
-                  style={{ background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.15)", color: "#d4af37" }}>
-                  <Plus className="w-5 h-5" />
-                </div>
-                <div className="text-center">
-                  <p className="text-xs font-black text-neutral-600 group-hover:text-[#d4af37] transition-colors">New Movie Night</p>
-                  <p className="text-[10px] text-neutral-700 font-inter mt-0.5">Start planning</p>
-                </div>
-              </div>
             </div>
           </>
         )}
