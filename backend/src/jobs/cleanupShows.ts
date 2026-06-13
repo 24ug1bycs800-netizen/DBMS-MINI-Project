@@ -1,6 +1,6 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db/db";
-import { groupRooms, movies, seatLocks, shows } from "../db/schema";
+import { groupRooms, movieNightRecommendations, movies, seatLocks, shows } from "../db/schema";
 
 const getToday = () => new Date().toISOString().slice(0, 10);
 
@@ -54,6 +54,10 @@ export const deletePastShows = async () => {
       .update(groupRooms)
       .set({ selectedShowId: null })
       .where(inArray(groupRooms.selectedShowId as any, allExpiredIds));
+    // Remove movie night recommendations referencing these shows before deleting
+    await db.delete(movieNightRecommendations).where(
+      inArray(movieNightRecommendations.showId, allExpiredIds)
+    );
     await db.delete(shows).where(inArray(shows.id, allExpiredIds));
 
     console.log(`[cleanup] Deleted ${allExpiredIds.length} expired show(s) at ${now.toLocaleTimeString()}`);
