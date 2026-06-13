@@ -186,9 +186,13 @@ export const AdminPanel: React.FC = () => {
           tmdbFetch(`/movie/${m.id}?append_to_response=release_dates`)
         )
       );
+      // Only send the fields the backend needs — runtime + release_dates
       const details: Record<string, any> = {};
       detailResults.forEach((r, i) => {
-        if (r.status === "fulfilled") details[String(nowPlaying[i].id)] = r.value;
+        if (r.status === "fulfilled") {
+          const { runtime, release_dates } = r.value;
+          details[String(nowPlaying[i].id)] = { runtime, release_dates };
+        }
       });
 
       const res = await api.post("/admin/sync-movies", { nowPlaying, details });
