@@ -958,7 +958,7 @@ export const syncMovies = async (req: Request, res: Response) => {
 
     let upserted = 0;
     let skipped = 0;
-    const syncedTmdbIds: number[] = [];
+    const syncedDbIds: number[] = [];
 
     for (const raw of nowPlaying) {
       const detail = detailsMap?.[String(raw.id)] ?? null;
@@ -973,8 +973,6 @@ export const syncMovies = async (req: Request, res: Response) => {
 
       if (!poster) { skipped++; continue; }
 
-      syncedTmdbIds.push(raw.id);
-
       const existing = await db
         .select({ id: movies.id })
         .from(movies)
@@ -982,29 +980,32 @@ export const syncMovies = async (req: Request, res: Response) => {
         .limit(1);
 
       if (existing.length) {
+        syncedDbIds.push(existing[0].id);
         await db.update(movies).set({
           title: raw.title, overview: raw.overview || "",
           genre, durationMins: runtime, rating: cert, ratingValue: ratingVal,
           releaseDate: release, posterUrl: poster, backdropUrl: backdrop || null,
           isNowShowing: true, isActive: true, lastSyncedAt: new Date(),
-        }).where(eq(movies.tmdbId, raw.id));
+        }).where(eq(movies.id, existing[0].id));
       } else {
-        await db.insert(movies).values({
+        const inserted = await db.insert(movies).values({
           title: raw.title, description: raw.overview || raw.title,
           overview: raw.overview || "", genre, language: "Hindi, English",
           durationMins: runtime, rating: cert, ratingValue: ratingVal,
           releaseDate: release, posterUrl: poster, backdropUrl: backdrop || null,
           isNowShowing: true, trending: false, topRated: false,
           tmdbId: raw.id, isActive: true, lastSyncedAt: new Date(),
-        });
+        }).returning({ id: movies.id });
+        syncedDbIds.push(inserted[0].id);
       }
       upserted++;
     }
 
-    if (syncedTmdbIds.length > 0) {
-      await db.update(movies).set({ isActive: false, isNowShowing: false }).where(
-        and(sql`${movies.tmdbId} IS NOT NULL`, notInArray(movies.tmdbId as any, syncedTmdbIds))
-      );
+    // Deactivate ALL movies not in this sync — includes old seeded movies
+    if (syncedDbIds.length > 0) {
+      await db.update(movies)
+        .set({ isActive: false, isNowShowing: false })
+        .where(notInArray(movies.id, syncedDbIds));
     }
 
     return res.json({ upserted, skipped, total: nowPlaying.length });
