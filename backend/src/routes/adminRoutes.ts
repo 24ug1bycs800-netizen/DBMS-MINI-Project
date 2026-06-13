@@ -21,6 +21,8 @@ import {
   getAllTheatres,
   getAllScreens,
   getAllShows,
+  syncMovies,
+  getMovieNightAnalytics,
 } from "../controllers/adminController";
 import { authenticateJWT, requireAdmin } from '../middleware/authMiddleware';
 
@@ -28,6 +30,12 @@ const router = Router();
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 router.get('/stats', authenticateJWT, requireAdmin, getDashboardStats);
+
+// ── TMDB Sync ─────────────────────────────────────────────────────────────────
+router.post('/sync-movies', authenticateJWT, requireAdmin, syncMovies);
+
+// ── Movie Night Analytics ─────────────────────────────────────────────────────
+router.get('/movie-nights', authenticateJWT, requireAdmin, getMovieNightAnalytics);
 
 // ── Read ──────────────────────────────────────────────────────────────────────
 router.get('/cities',   authenticateJWT, requireAdmin, getAllCities);

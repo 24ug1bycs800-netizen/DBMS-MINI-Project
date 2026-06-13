@@ -285,11 +285,11 @@ export const Home: React.FC = () => {
             backgroundClip: "text",
           }}
         >
-          Experience Cinema<br />
-          <span style={{ color: "#d4af37", WebkitTextFillColor: "#d4af37" }}>Like Never Before</span>
+          Plan Movie Nights<br />
+          <span style={{ color: "#d4af37", WebkitTextFillColor: "#d4af37" }}>Together</span>
         </h2>
         <p className="text-neutral-600 mt-4 max-w-md mx-auto font-inter text-sm leading-relaxed">
-          Book tickets, watch trailers and discover the latest blockbusters with your squad.
+          Decide, coordinate, and book cinema tickets with your crew — all in one place.
         </p>
       </div>
 

@@ -44,6 +44,12 @@ export const movies = pgTable("movies", {
   isNowShowing: boolean("is_now_showing").default(true).notNull(),
   trending: boolean("trending").default(false).notNull(),
   topRated: boolean("top_rated").default(false).notNull(),
+  // TMDB integration
+  tmdbId: integer("tmdb_id").unique(),
+  backdropUrl: text("backdrop_url"),
+  overview: text("overview"),
+  isActive: boolean("is_active").default(true).notNull(),
+  lastSyncedAt: timestamp("last_synced_at"),
 });
 
 // THEATRES TABLE

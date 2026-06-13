@@ -1,10 +1,12 @@
 import { Request, Response } from "express";
-import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne, notInArray, sql } from "drizzle-orm";
 import { db } from "../db/db";
 import {
   bookings,
   cities,
   groupRooms,
+  movieNights,
+  movieNightMembers,
   movies,
   screens,
   seats,
@@ -13,6 +15,14 @@ import {
   theatres,
   users,
 } from "../db/schema";
+import {
+  fetchNowPlaying,
+  fetchMovieDetails,
+  posterUrl,
+  backdropUrl,
+  genreName,
+  ratingCertificate,
+} from "../services/tmdb.service";
 
 const DEFAULT_PRICES = {
   regular: 150,
@@ -897,6 +907,149 @@ export const getAllScreens = async (req: Request, res: Response) => {
   } catch (err) {
     console.error("Get screens error:", err);
     return res.status(500).json({ error: "Failed to fetch screens" });
+  }
+};
+
+// ─── TMDB SYNC ────────────────────────────────────────────────────────────────
+
+export const syncMovies = async (_req: Request, res: Response) => {
+  try {
+    const nowPlaying = await fetchNowPlaying();
+    if (!nowPlaying.length) {
+      return res.status(502).json({ error: "TMDB returned no results" });
+    }
+
+    const details = await Promise.allSettled(
+      nowPlaying.map(m => fetchMovieDetails(m.id))
+    );
+
+    let upserted = 0;
+    let skipped = 0;
+    const syncedTmdbIds: number[] = [];
+
+    for (let i = 0; i < nowPlaying.length; i++) {
+      const raw = nowPlaying[i];
+      const detailResult = details[i];
+      const detail = detailResult.status === "fulfilled" ? detailResult.value : null;
+
+      const runtime = detail?.runtime ?? 120;
+      const cert = detail ? ratingCertificate(detail) : "UA";
+      const genre = genreName(raw.genre_ids);
+      const poster = posterUrl(raw.poster_path);
+      const backdrop = backdropUrl(raw.backdrop_path ?? null);
+      const release = raw.release_date || new Date().toISOString().slice(0, 10);
+      const ratingVal = String(raw.vote_average.toFixed(1));
+
+      if (!poster) { skipped++; continue; }
+
+      syncedTmdbIds.push(raw.id);
+
+      const existing = await db
+        .select({ id: movies.id })
+        .from(movies)
+        .where(eq(movies.tmdbId, raw.id))
+        .limit(1);
+
+      if (existing.length) {
+        await db
+          .update(movies)
+          .set({
+            title: raw.title,
+            overview: raw.overview || "",
+            genre,
+            durationMins: runtime,
+            rating: cert,
+            ratingValue: ratingVal,
+            releaseDate: release,
+            posterUrl: poster,
+            backdropUrl: backdrop || null,
+            isNowShowing: true,
+            isActive: true,
+            lastSyncedAt: new Date(),
+          })
+          .where(eq(movies.tmdbId, raw.id));
+      } else {
+        await db.insert(movies).values({
+          title: raw.title,
+          description: raw.overview || raw.title,
+          overview: raw.overview || "",
+          genre,
+          language: "Hindi, English",
+          durationMins: runtime,
+          rating: cert,
+          ratingValue: ratingVal,
+          releaseDate: release,
+          posterUrl: poster,
+          backdropUrl: backdrop || null,
+          isNowShowing: true,
+          trending: false,
+          topRated: false,
+          tmdbId: raw.id,
+          isActive: true,
+          lastSyncedAt: new Date(),
+        });
+      }
+      upserted++;
+    }
+
+    // Mark TMDB-synced movies that are no longer now_playing as inactive
+    if (syncedTmdbIds.length > 0) {
+      await db
+        .update(movies)
+        .set({ isActive: false, isNowShowing: false })
+        .where(
+          and(
+            sql`${movies.tmdbId} IS NOT NULL`,
+            notInArray(movies.tmdbId as any, syncedTmdbIds)
+          )
+        );
+    }
+
+    return res.json({ upserted, skipped, total: nowPlaying.length });
+  } catch (err: any) {
+    console.error("TMDB sync error:", err);
+    return res.status(500).json({ error: err.message ?? "Sync failed" });
+  }
+};
+
+// ─── MOVIE NIGHT ANALYTICS ────────────────────────────────────────────────────
+
+export const getMovieNightAnalytics = async (_req: Request, res: Response) => {
+  try {
+    const [totalResult, byStatusResult, recentResult] = await Promise.all([
+      db.select({ count: sql<number>`count(*)::int` }).from(movieNights),
+      db
+        .select({ status: movieNights.status, count: sql<number>`count(*)::int` })
+        .from(movieNights)
+        .groupBy(movieNights.status),
+      db
+        .select({
+          id: movieNights.id,
+          title: movieNights.title,
+          status: movieNights.status,
+          memberCount: sql<number>`count(${movieNightMembers.id})::int`,
+          createdAt: movieNights.createdAt,
+        })
+        .from(movieNights)
+        .leftJoin(movieNightMembers, eq(movieNightMembers.movieNightId, movieNights.id))
+        .groupBy(movieNights.id, movieNights.title, movieNights.status, movieNights.createdAt)
+        .orderBy(desc(movieNights.createdAt))
+        .limit(10),
+    ]);
+
+    const statusMap: Record<string, number> = {};
+    for (const row of byStatusResult) {
+      statusMap[row.status] = row.count;
+    }
+
+    return res.json({
+      total: totalResult[0]?.count ?? 0,
+      byStatus: statusMap,
+      recent: recentResult,
+    });
+  } catch (err) {
+    console.error("Movie night analytics error:", err);
+    return res.status(500).json({ error: "Failed to fetch analytics" });
   }
 };
 

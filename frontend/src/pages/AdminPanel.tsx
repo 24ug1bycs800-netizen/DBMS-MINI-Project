@@ -6,6 +6,7 @@ import {
   CheckCircle, BarChart3, LineChart, PieChart, Users, Wallet,
   Compass, Trash2, Search, MapPin, ChevronRight, ChevronDown,
   Check, X, Plus, Layers, Pencil, Building2, Monitor, CalendarX,
+  RefreshCw, Moon, Sparkles,
 } from "lucide-react";
 import api from "../services/api.js";
 
@@ -30,8 +31,8 @@ const getToday = () => {
 };
 
 const TAB_LABELS: Record<string, string> = {
-  dashboard: "Analytics", "add-movie": "Add Movie",
-  "add-show": "Schedule Show", manage: "Manage Data",
+  dashboard: "Analytics", "movie-hub": "Movie Hub",
+  "add-show": "Schedule Show", manage: "Manage Data", "movie-nights": "Movie Nights",
 };
 
 const MOVIE_LANGUAGES = ["Hindi", "Kannada", "Tamil", "Telugu", "Malayalam", "English"];
@@ -132,9 +133,37 @@ export const AdminPanel: React.FC = () => {
   const [theatreList, setTheatreList] = useState<AdminTheatre[]>([]);
 
   // ── UI state ─────────────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<"dashboard" | "add-movie" | "add-show" | "manage">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "movie-hub" | "add-show" | "manage" | "movie-nights">("dashboard");
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+
+  // ── Movie Hub / TMDB Sync ─────────────────────────────────────────────────────
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ upserted: number; skipped: number; total: number } | null>(null);
+
+  // ── Movie Nights analytics ────────────────────────────────────────────────────
+  const [mnAnalytics, setMnAnalytics] = useState<{ total: number; byStatus: Record<string, number>; recent: any[] } | null>(null);
+
+  const fetchMnAnalytics = async () => {
+    try {
+      const res = await api.get("/admin/movie-nights");
+      setMnAnalytics(res.data);
+    } catch (e) { console.error(e); }
+  };
+
+  const handleSyncMovies = async () => {
+    setSyncLoading(true); setSyncResult(null); setMsg(""); setErr("");
+    try {
+      const res = await api.post("/admin/sync-movies");
+      setSyncResult(res.data);
+      setMsg(`Sync complete — ${res.data.upserted} movies updated from TMDB.`);
+      fetchAll();
+    } catch (error: any) {
+      setErr(error.response?.data?.error ?? "TMDB sync failed");
+    } finally {
+      setSyncLoading(false);
+    }
+  };
 
   // ── Add Movie form ────────────────────────────────────────────────────────────
   const [movieTitle, setMovieTitle] = useState("");
@@ -255,6 +284,10 @@ export const AdminPanel: React.FC = () => {
     fetchStats();
     fetchAll();
   }, [user, authLoading]);
+
+  useEffect(() => {
+    if (activeTab === "movie-nights") fetchMnAnalytics();
+  }, [activeTab]);
 
   // Cascade: city → theatres
   useEffect(() => {
@@ -615,8 +648,9 @@ export const AdminPanel: React.FC = () => {
         <nav className="flex-1 p-3 space-y-1">
           {([
             { id: "dashboard" as const, icon: <LayoutDashboard className="w-4 h-4" />, label: "Analytics", color: "#d4af37", bg: "rgba(212,175,55,0.12)", bdr: "rgba(212,175,55,0.22)" },
-            { id: "add-movie" as const, icon: <Film className="w-4 h-4" />, label: "Add Movie", color: "#6ee7e7", bg: "rgba(110,231,231,0.1)", bdr: "rgba(110,231,231,0.2)" },
-            { id: "add-show" as const, icon: <Calendar className="w-4 h-4" />, label: "Schedule Show", color: "#c084fc", bg: "rgba(192,132,252,0.1)", bdr: "rgba(192,132,252,0.2)" },
+            { id: "movie-hub" as const, icon: <Film className="w-4 h-4" />, label: "Movie Hub", color: "#6ee7e7", bg: "rgba(110,231,231,0.1)", bdr: "rgba(110,231,231,0.2)" },
+            { id: "movie-nights" as const, icon: <Moon className="w-4 h-4" />, label: "Movie Nights", color: "#c084fc", bg: "rgba(192,132,252,0.1)", bdr: "rgba(192,132,252,0.2)" },
+            { id: "add-show" as const, icon: <Calendar className="w-4 h-4" />, label: "Schedule Show", color: "#4ade80", bg: "rgba(74,222,128,0.1)", bdr: "rgba(74,222,128,0.2)" },
             { id: "manage" as const, icon: <Layers className="w-4 h-4" />, label: "Manage Data", color: "#fb923c", bg: "rgba(251,146,60,0.1)", bdr: "rgba(251,146,60,0.2)" },
           ]).map(({ id, icon, label, color, bg, bdr }) => (
             <button
@@ -782,104 +816,239 @@ export const AdminPanel: React.FC = () => {
         ))}
 
         {/* ══════════════════════════════════════════════════════════════════ */}
-        {/* ── ADD MOVIE ──────────────────────────────────────────────────── */}
+        {/* ── MOVIE HUB ──────────────────────────────────────────────────── */}
         {/* ══════════════════════════════════════════════════════════════════ */}
-        {activeTab === "add-movie" && (
-          <div className={`${cardDark} max-w-3xl mx-auto w-full`}>
-            <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-              <PlusCircle className="w-5 h-5 text-primary" /> Add New Movie
-            </h2>
-            <form onSubmit={handleAddMovie} className="grid grid-cols-1 md:grid-cols-2 gap-5 font-inter text-xs">
-              <div>
-                <FieldLabel>Movie Title</FieldLabel>
-                <input className={inputCls} required placeholder="e.g. Karuppu" value={movieTitle} onChange={e => setMovieTitle(e.target.value)} />
-              </div>
-              <div>
-                <FieldLabel>Genre Tags</FieldLabel>
-                <input className={inputCls} required placeholder="e.g. Action/Thriller" value={movieGenre} onChange={e => setMovieGenre(e.target.value)} />
-              </div>
-              <div className="md:col-span-2">
-                <FieldLabel>Synopsis</FieldLabel>
-                <textarea className={inputCls} required rows={4} placeholder="Write a description..." value={movieDesc} onChange={e => setMovieDesc(e.target.value)} style={{ resize: "none" }} />
-              </div>
-              <div>
-                <FieldLabel>Languages</FieldLabel>
-                <div className="grid grid-cols-2 gap-2">
-                  {MOVIE_LANGUAGES.map(language => {
-                    const selected = movieLangs.includes(language);
-                    return (
-                      <label
-                        key={language}
-                        className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${
-                          selected
-                            ? "border-[#d4af37] bg-[#d4af37]/10 text-white"
-                            : "border-neutral-800 bg-neutral-950 text-neutral-500 hover:border-neutral-700"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selected}
-                          onChange={() => toggleMovieLanguage(language)}
-                          className="w-3.5 h-3.5 rounded"
-                        />
-                        <span className="font-bold">{language}</span>
-                      </label>
-                    );
-                  })}
+        {activeTab === "movie-hub" && (
+          <div className="space-y-8 max-w-4xl mx-auto w-full">
+
+            {/* TMDB Sync card */}
+            <div className={cardDark}>
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div>
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2 mb-1">
+                    <Sparkles className="w-5 h-5" style={{ color: "#6ee7e7" }} /> TMDB Sync
+                  </h2>
+                  <p className="text-xs text-neutral-500 font-inter max-w-sm">
+                    Pull latest now-playing movies from TMDB (India region) and upsert them into the catalog automatically.
+                  </p>
                 </div>
+                <button
+                  onClick={handleSyncMovies}
+                  disabled={syncLoading}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-xs transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ background: "linear-gradient(135deg, #6ee7e7, #22d3ee)", color: "#000" }}
+                >
+                  <RefreshCw className={`w-4 h-4 ${syncLoading ? "animate-spin" : ""}`} />
+                  {syncLoading ? "Syncing…" : "Sync from TMDB"}
+                </button>
               </div>
-              <div>
-                <FieldLabel>Duration (Minutes)</FieldLabel>
-                <input className={inputCls} type="number" required value={movieDur} onChange={e => setMovieDur(e.target.value)} />
+              {syncResult && (
+                <div className="mt-4 flex gap-4 font-inter text-xs flex-wrap">
+                  <span className="px-3 py-1.5 rounded-lg" style={{ background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", color: "#4ade80" }}>
+                    ✓ {syncResult.upserted} upserted
+                  </span>
+                  <span className="px-3 py-1.5 rounded-lg" style={{ background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.2)", color: "#fb923c" }}>
+                    ⊘ {syncResult.skipped} skipped (no poster)
+                  </span>
+                  <span className="px-3 py-1.5 rounded-lg" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.4)" }}>
+                    {syncResult.total} total from TMDB
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Movie catalog list */}
+            <div className={cardDark}>
+              <h3 className="font-bold text-sm text-white mb-4 flex items-center gap-2 border-b border-neutral-900 pb-3">
+                <Film className="w-4 h-4" style={{ color: "#6ee7e7" }} /> Catalog ({movies.length} movies)
+              </h3>
+              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                {movies.length === 0 ? (
+                  <p className="text-xs text-neutral-600 font-inter py-4 text-center">No movies yet. Run a TMDB sync or add manually below.</p>
+                ) : movies.map(m => (
+                  <div key={m.id} className="flex items-center gap-3 p-2.5 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
+                    <img src={m.posterUrl} alt={m.title} loading="lazy"
+                      className="w-8 h-11 object-cover rounded-lg flex-shrink-0 bg-neutral-900"
+                      onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-white truncate">{m.title}</p>
+                      <p className="text-[10px] text-neutral-500 font-inter">{m.genre} · {m.durationMins} min · {m.rating}</p>
+                    </div>
+                    <StatusPill status={m.isNowShowing ? "active" : "inactive"} />
+                  </div>
+                ))}
               </div>
-              <div>
-                <FieldLabel>Censor Rating</FieldLabel>
-                <select className={selectCls} value={movieRating} onChange={e => setMovieRating(e.target.value)}>
-                  <option value="U">U (Universal)</option>
-                  <option value="UA">UA (Parental Guidance)</option>
-                  <option value="A">A (Adults Only)</option>
-                </select>
+            </div>
+
+            {/* Manual add form */}
+            <div className={cardDark}>
+              <h2 className="text-base font-bold mb-5 flex items-center gap-2 border-b border-neutral-900 pb-3">
+                <PlusCircle className="w-4 h-4 text-primary" /> Add Movie Manually
+              </h2>
+              <form onSubmit={handleAddMovie} className="grid grid-cols-1 md:grid-cols-2 gap-5 font-inter text-xs">
+                <div>
+                  <FieldLabel>Movie Title</FieldLabel>
+                  <input className={inputCls} required placeholder="e.g. Karuppu" value={movieTitle} onChange={e => setMovieTitle(e.target.value)} />
+                </div>
+                <div>
+                  <FieldLabel>Genre Tags</FieldLabel>
+                  <input className={inputCls} required placeholder="e.g. Action/Thriller" value={movieGenre} onChange={e => setMovieGenre(e.target.value)} />
+                </div>
+                <div className="md:col-span-2">
+                  <FieldLabel>Synopsis</FieldLabel>
+                  <textarea className={inputCls} required rows={3} placeholder="Write a description..." value={movieDesc} onChange={e => setMovieDesc(e.target.value)} style={{ resize: "none" }} />
+                </div>
+                <div>
+                  <FieldLabel>Languages</FieldLabel>
+                  <div className="grid grid-cols-2 gap-2">
+                    {MOVIE_LANGUAGES.map(language => {
+                      const selected = movieLangs.includes(language);
+                      return (
+                        <label key={language} className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${selected ? "border-[#d4af37] bg-[#d4af37]/10 text-white" : "border-neutral-800 bg-neutral-950 text-neutral-500 hover:border-neutral-700"}`}>
+                          <input type="checkbox" checked={selected} onChange={() => toggleMovieLanguage(language)} className="w-3.5 h-3.5 rounded" />
+                          <span className="font-bold">{language}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <FieldLabel>Duration (Minutes)</FieldLabel>
+                    <input className={inputCls} type="number" required value={movieDur} onChange={e => setMovieDur(e.target.value)} />
+                  </div>
+                  <div>
+                    <FieldLabel>Censor Rating</FieldLabel>
+                    <select className={selectCls} value={movieRating} onChange={e => setMovieRating(e.target.value)}>
+                      <option value="U">U (Universal)</option>
+                      <option value="UA">UA (Parental Guidance)</option>
+                      <option value="A">A (Adults Only)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <FieldLabel>Release Date</FieldLabel>
+                    <input className={inputCls} type="date" required value={movieRel} min={getToday()} onChange={e => setMovieRel(e.target.value)} />
+                  </div>
+                </div>
+                <div className="md:col-span-2">
+                  <FieldLabel>Poster Image URL</FieldLabel>
+                  <input className={inputCls} type="text" value={moviePoster} onChange={e => setMoviePoster(e.target.value)} placeholder="Paste poster URL" />
+                  {moviePoster && (
+                    <img src={moviePoster} alt="Preview" loading="lazy" decoding="async"
+                      className="mt-3 w-20 h-28 object-cover rounded-lg border border-neutral-800"
+                      onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                  )}
+                </div>
+                <div className="md:col-span-2">
+                  <FieldLabel>YouTube Trailer URL (Optional)</FieldLabel>
+                  <input className={inputCls} type="text" value={movieTrailer} onChange={e => setMovieTrailer(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." />
+                  {movieTrailer && (
+                    <a href={movieTrailer} target="_blank" rel="noopener noreferrer"
+                      className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-bold" style={{ color: "#d4af37" }}>
+                      ▶ Preview trailer
+                    </a>
+                  )}
+                </div>
+                <div className="flex items-center gap-3.5 mt-1">
+                  <input type="checkbox" id="showing" checked={movieShowing} onChange={e => setMovieShowing(e.target.checked)} className="w-4 h-4 rounded" />
+                  <label htmlFor="showing" className="font-bold text-white cursor-pointer text-xs">Set as Now Showing</label>
+                </div>
+                <GoldBtn type="submit" className="md:col-span-2">Add Movie to Catalog</GoldBtn>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {/* ── MOVIE NIGHTS ANALYTICS ─────────────────────────────────────── */}
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {activeTab === "movie-nights" && (
+          <div className="space-y-6 max-w-4xl mx-auto w-full">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-neutral-500 font-inter">Live data from all Movie Night sessions.</p>
+              <button
+                onClick={fetchMnAnalytics}
+                className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all hover:text-white"
+                style={{ color: "#c084fc", background: "rgba(192,132,252,0.08)", border: "1px solid rgba(192,132,252,0.15)" }}
+              >
+                <RefreshCw className="w-3 h-3" /> Refresh
+              </button>
+            </div>
+
+            {!mnAnalytics ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {[0,1,2].map(i => (
+                  <div key={i} className={`${cardDark} animate-pulse`}>
+                    <div className="w-16 h-2.5 rounded-full bg-neutral-800 mb-3" />
+                    <div className="w-10 h-6 rounded-full bg-neutral-800" />
+                  </div>
+                ))}
               </div>
-              <div>
-                <FieldLabel>Release Date</FieldLabel>
-                <input className={inputCls} type="date" required value={movieRel} min={getToday()} onChange={e => setMovieRel(e.target.value)} />
-              </div>
-              <div className="md:col-span-2">
-                <FieldLabel>Poster Image URL</FieldLabel>
-                <input className={inputCls} type="text" value={moviePoster} onChange={e => setMoviePoster(e.target.value)} placeholder="Paste poster URL" />
-                {moviePoster && (
-                  <img src={moviePoster} alt="Preview" loading="lazy" decoding="async"
-                    className="mt-3 w-24 h-36 object-cover rounded-lg border border-neutral-800"
-                    onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                )}
-              </div>
-              <div className="md:col-span-2">
-                <FieldLabel>YouTube Trailer URL (Optional)</FieldLabel>
-                <input
-                  className={inputCls}
-                  type="text"
-                  value={movieTrailer}
-                  onChange={e => setMovieTrailer(e.target.value)}
-                  placeholder="e.g. https://www.youtube.com/watch?v=..."
-                />
-                {movieTrailer && (
-                  <a
-                    href={movieTrailer}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-bold"
-                    style={{ color: "#d4af37" }}
-                  >
-                    ▶ Preview trailer
-                  </a>
-                )}
-              </div>
-              <div className="flex items-center gap-3.5 mt-2">
-                <input type="checkbox" id="showing" checked={movieShowing} onChange={e => setMovieShowing(e.target.checked)} className="w-4 h-4 rounded" />
-                <label htmlFor="showing" className="font-bold text-white cursor-pointer text-xs">Set as Now Showing</label>
-              </div>
-              <GoldBtn type="submit" className="md:col-span-2">Add Movie to Catalog</GoldBtn>
-            </form>
+            ) : (
+              <>
+                {/* KPI row */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    { label: "Total Nights", value: mnAnalytics.total, color: "#c084fc" },
+                    { label: "Collecting Prefs", value: mnAnalytics.byStatus["COLLECTING_PREFERENCES"] ?? 0, color: "#6ee7e7" },
+                    { label: "Recommended", value: mnAnalytics.byStatus["RECOMMENDED"] ?? 0, color: "#d4af37" },
+                    { label: "Booked", value: mnAnalytics.byStatus["BOOKED"] ?? 0, color: "#4ade80" },
+                  ].map(({ label, value, color }) => (
+                    <div key={label} className={cardDark}>
+                      <p className="text-[10px] font-black tracking-widest uppercase mb-2" style={{ color: "rgba(255,255,255,0.3)" }}>{label}</p>
+                      <p className="text-2xl font-black" style={{ color }}>{value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Status breakdown */}
+                <div className={cardDark}>
+                  <h3 className="font-bold text-sm text-white mb-4 flex items-center gap-2 border-b border-neutral-900 pb-3">
+                    <BarChart3 className="w-4 h-4" style={{ color: "#c084fc" }} /> Status Breakdown
+                  </h3>
+                  <div className="space-y-3">
+                    {Object.entries(mnAnalytics.byStatus).map(([status, count]) => {
+                      const total = mnAnalytics.total || 1;
+                      const pct = Math.round((count / total) * 100);
+                      return (
+                        <div key={status} className="space-y-1 font-inter text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-white font-semibold">{status.replace(/_/g, " ")}</span>
+                            <span className="text-neutral-500">{count} ({pct}%)</span>
+                          </div>
+                          <div className="w-full h-2 bg-neutral-900 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "#c084fc" }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Recent nights */}
+                <div className={cardDark}>
+                  <h3 className="font-bold text-sm text-white mb-4 flex items-center gap-2 border-b border-neutral-900 pb-3">
+                    <Moon className="w-4 h-4" style={{ color: "#c084fc" }} /> Recent Movie Nights
+                  </h3>
+                  <div className="space-y-2">
+                    {mnAnalytics.recent.length === 0 ? (
+                      <p className="text-xs text-neutral-600 font-inter py-3 text-center">No movie nights yet.</p>
+                    ) : mnAnalytics.recent.map((n: any) => (
+                      <div key={n.id} className="flex items-center justify-between gap-3 p-2.5 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-white truncate">{n.title}</p>
+                          <p className="text-[10px] text-neutral-500 font-inter">{n.memberCount} members · {new Date(n.createdAt).toLocaleDateString()}</p>
+                        </div>
+                        <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-lg flex-shrink-0"
+                          style={{ background: "rgba(192,132,252,0.1)", border: "1px solid rgba(192,132,252,0.2)", color: "#c084fc" }}>
+                          {n.status.replace(/_/g, " ")}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
 
