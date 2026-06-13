@@ -174,14 +174,15 @@ export const AdminPanel: React.FC = () => {
       const apiKey: string = tokenRes.data.apiKey;
       if (!apiKey) throw new Error("TMDB API key not available");
 
-      // 2. Route through corsproxy.io — bypasses ISP/network blocks on api.themoviedb.org
-      //    Uses v3 ?api_key= param so no Authorization header is needed (proxy-friendly)
-      const PROXY = "https://corsproxy.io/?url=";
-      const tmdbFetch = (path: string) => {
+      // 2. Route through allorigins.win — relays from their server, bypasses local network block
+      //    Response is wrapped: { contents: "<json string>" }
+      const tmdbFetch = async (path: string) => {
         const sep = path.includes("?") ? "&" : "?";
-        const url = `https://api.themoviedb.org/3${path}${sep}api_key=${apiKey}`;
-        return fetch(PROXY + encodeURIComponent(url))
-          .then(r => { if (!r.ok) throw new Error(`TMDB ${r.status}`); return r.json(); });
+        const target = `https://api.themoviedb.org/3${path}${sep}api_key=${apiKey}`;
+        const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(target)}`);
+        if (!r.ok) throw new Error(`Proxy ${r.status}`);
+        const wrapper = await r.json();
+        return JSON.parse(wrapper.contents);
       };
 
       const nowPlayingData: any = await tmdbFetch("/movie/now_playing?region=IN&language=en-US&page=1");
