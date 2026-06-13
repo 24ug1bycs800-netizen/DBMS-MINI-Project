@@ -181,19 +181,17 @@ export const AdminPanel: React.FC = () => {
       const nowPlaying: any[] = npData.results ?? [];
       if (!nowPlaying.length) throw new Error("TMDB returned no movies");
 
-      const detailResults = await Promise.allSettled(
-        nowPlaying.map((m: any) =>
-          tmdbFetch(`/movie/${m.id}?append_to_response=release_dates,videos`)
-        )
-      );
-      // Only send the fields the backend needs
+      // Fetch details sequentially to avoid TMDB rate limits
       const details: Record<string, any> = {};
-      detailResults.forEach((r, i) => {
-        if (r.status === "fulfilled") {
-          const { runtime, release_dates, videos } = r.value;
-          details[String(nowPlaying[i].id)] = { runtime, release_dates, videos };
+      for (const m of nowPlaying) {
+        try {
+          const d = await tmdbFetch(`/movie/${m.id}?append_to_response=release_dates,videos`);
+          const { runtime, release_dates, videos } = d;
+          details[String(m.id)] = { runtime, release_dates, videos };
+        } catch {
+          // skip — backend will use defaults
         }
-      });
+      }
 
       const res = await api.post("/admin/sync-movies", { nowPlaying, details });
       setSyncResult(res.data);
