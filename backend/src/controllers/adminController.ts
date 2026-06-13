@@ -971,6 +971,15 @@ export const syncMovies = async (req: Request, res: Response) => {
       const release = raw.release_date || new Date().toISOString().slice(0, 10);
       const ratingVal = Number(raw.vote_average).toFixed(1);
 
+      // Pick first official YouTube trailer
+      const videoResults: any[] = (detail as any)?.videos?.results ?? [];
+      const trailerKey = (
+        videoResults.find((v: any) => v.site === "YouTube" && v.type === "Trailer" && v.official) ??
+        videoResults.find((v: any) => v.site === "YouTube" && v.type === "Trailer") ??
+        videoResults.find((v: any) => v.site === "YouTube")
+      )?.key ?? null;
+      const trailerYt = trailerKey ? `https://www.youtube.com/embed/${trailerKey}` : null;
+
       if (!poster) { skipped++; continue; }
 
       const existing = await db
@@ -985,7 +994,7 @@ export const syncMovies = async (req: Request, res: Response) => {
           title: raw.title, overview: raw.overview || "",
           genre, durationMins: runtime, rating: cert, ratingValue: ratingVal,
           releaseDate: release, posterUrl: poster, backdropUrl: backdrop || null,
-          isNowShowing: true, isActive: true, lastSyncedAt: new Date(),
+          trailerUrl: trailerYt, isNowShowing: true, isActive: true, lastSyncedAt: new Date(),
         }).where(eq(movies.id, existing[0].id));
       } else {
         const inserted = await db.insert(movies).values({
@@ -993,7 +1002,7 @@ export const syncMovies = async (req: Request, res: Response) => {
           overview: raw.overview || "", genre, language: "Hindi, English",
           durationMins: runtime, rating: cert, ratingValue: ratingVal,
           releaseDate: release, posterUrl: poster, backdropUrl: backdrop || null,
-          isNowShowing: true, trending: false, topRated: false,
+          trailerUrl: trailerYt, isNowShowing: true, trending: false, topRated: false,
           tmdbId: raw.id, isActive: true, lastSyncedAt: new Date(),
         }).returning({ id: movies.id });
         syncedDbIds.push(inserted[0].id);

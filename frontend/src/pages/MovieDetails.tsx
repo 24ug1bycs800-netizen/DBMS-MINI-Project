@@ -105,6 +105,7 @@ interface Movie {
   id: number;
   title: string;
   description: string;
+  overview?: string;
   genre: string;
   language: string;
   durationMins: number;
@@ -113,7 +114,16 @@ interface Movie {
   releaseDate: string;
   trailerUrl?: string;
   posterUrl: string;
+  backdropUrl?: string;
   isNowShowing: boolean;
+  tmdbId?: number;
+}
+
+interface CastMember {
+  id: number;
+  name: string;
+  character: string;
+  profile_path: string | null;
 }
 
 interface Show {
@@ -276,6 +286,7 @@ export const MovieDetails: React.FC = () => {
   const [movie, setMovie] = useState<Movie | null>(null);
   const [reviews, setReviews] = useState<any[]>([]);
   const [shows, setShows] = useState<Show[]>([]);
+  const [cast, setCast] = useState<CastMember[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(DATE_OPTIONS[0]);
   const [selectedLanguage, setSelectedLanguage] = useState("");
   const [trailerOpen, setTrailerOpen] = useState(false);
@@ -308,9 +319,7 @@ export const MovieDetails: React.FC = () => {
   useEffect(() => {
     const fetchShows = async () => {
       try {
-        const res = await api.get(
-          `/shows?movieId=${id}&citySlug=${selectedCity.slug}`,
-        );
+        const res = await api.get(`/shows?movieId=${id}&citySlug=${selectedCity.slug}`);
         setShows(res.data.shows);
       } catch (err) {
         console.error("Failed to load showtimes:", err);
@@ -318,6 +327,14 @@ export const MovieDetails: React.FC = () => {
     };
     if (movie?.isNowShowing) fetchShows();
   }, [id, movie, selectedCity]);
+
+  useEffect(() => {
+    if (!movie?.tmdbId) return;
+    fetch(`/api/tmdb?path=${encodeURIComponent(`/movie/${movie.tmdbId}/credits`)}`)
+      .then(r => r.json())
+      .then(data => setCast((data.cast ?? []).slice(0, 12)))
+      .catch(() => {});
+  }, [movie?.tmdbId]);
 
   const handleToggleWishlist = async () => {
     if (!user) {
@@ -400,8 +417,8 @@ export const MovieDetails: React.FC = () => {
         <div
           className="absolute inset-0 bg-cover bg-center scale-105"
           style={{
-            backgroundImage: `url(${getImageUrl(movie.posterUrl)})`,
-            filter: "brightness(0.25)",
+            backgroundImage: `url(${getImageUrl(movie.backdropUrl || movie.posterUrl)})`,
+            filter: "brightness(0.28)",
           }}
         />
         <div
@@ -487,7 +504,7 @@ export const MovieDetails: React.FC = () => {
             </div>
 
             <p className="text-sm text-neutral-500 font-inter mb-7 leading-relaxed max-w-2xl line-clamp-3">
-              {movie.description}
+              {movie.overview || movie.description}
             </p>
 
             {/* ACTION BUTTONS */}
@@ -596,6 +613,40 @@ export const MovieDetails: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* ── CAST ──────────────────────────────────────────────────── */}
+        {cast.length > 0 && (
+          <div className="lg:col-span-3 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-1 h-5 rounded-full" style={{ background: "#d4af37" }} />
+              <h2 className="text-lg font-black text-white">Cast</h2>
+            </div>
+            <div className="flex gap-4 overflow-x-auto pb-2">
+              {cast.map(member => (
+                <div key={member.id} className="flex-shrink-0 w-24 text-center">
+                  <div
+                    className="w-24 h-24 rounded-2xl overflow-hidden mx-auto mb-2"
+                    style={{ border: "1px solid rgba(255,255,255,0.07)", background: "#111" }}
+                  >
+                    {member.profile_path ? (
+                      <img
+                        src={`https://image.tmdb.org/t/p/w185${member.profile_path}`}
+                        alt={member.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-neutral-700 text-2xl">
+                        👤
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs font-black text-white leading-tight line-clamp-2">{member.name}</p>
+                  <p className="text-[10px] text-neutral-600 font-inter mt-0.5 line-clamp-1">{member.character}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── SHOWTIMES ─────────────────────────────────────────────── */}
         <div className="lg:col-span-2 space-y-6">

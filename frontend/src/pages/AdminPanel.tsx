@@ -183,15 +183,15 @@ export const AdminPanel: React.FC = () => {
 
       const detailResults = await Promise.allSettled(
         nowPlaying.map((m: any) =>
-          tmdbFetch(`/movie/${m.id}?append_to_response=release_dates`)
+          tmdbFetch(`/movie/${m.id}?append_to_response=release_dates,videos`)
         )
       );
-      // Only send the fields the backend needs — runtime + release_dates
+      // Only send the fields the backend needs
       const details: Record<string, any> = {};
       detailResults.forEach((r, i) => {
         if (r.status === "fulfilled") {
-          const { runtime, release_dates } = r.value;
-          details[String(nowPlaying[i].id)] = { runtime, release_dates };
+          const { runtime, release_dates, videos } = r.value;
+          details[String(nowPlaying[i].id)] = { runtime, release_dates, videos };
         }
       });
 
