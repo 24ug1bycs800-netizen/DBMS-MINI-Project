@@ -151,21 +151,6 @@ export const AdminPanel: React.FC = () => {
     } catch (e) { console.error(e); }
   };
 
-  const [seedLoading, setSeedLoading] = useState(false);
-
-  const handleSeedMovies = async () => {
-    setSeedLoading(true); setMsg(""); setErr("");
-    try {
-      const res = await api.post("/admin/seed-movies");
-      setMsg(`Seeded ${res.data.inserted} movies (${res.data.skipped} already existed).`);
-      fetchAll();
-    } catch (error: any) {
-      setErr(error.response?.data?.error ?? "Seed failed");
-    } finally {
-      setSeedLoading(false);
-    }
-  };
-
   const handleSyncMovies = async () => {
     setSyncLoading(true); setSyncResult(null); setMsg(""); setErr("");
     try {
@@ -240,11 +225,14 @@ export const AdminPanel: React.FC = () => {
   // Step 2 – Movie
   const [wMovie, setWMovie] = useState<AdminMovie | null>(null);
   const [wMovieSearch, setWMovieSearch] = useState("");
-  const [wShowLanguage, setWShowLanguage] = useState("");
   // Step 3 – Schedule
+  const [wLanguageTimes, setWLanguageTimes] = useState<Array<{ language: string; times: string[] }>>([
+    { language: "Hindi", times: ["10:00 AM", "02:00 PM"] }
+  ]);
+  const [wActiveLangTab, setWActiveLangTab] = useState(0);
   const [wMode, setWMode] = useState<"auto7" | "custom">("auto7");
   const [wCustomDate, setWCustomDate] = useState(getToday());
-  const [wTimes, setWTimes] = useState(["10:00 AM", "02:00 PM"]);
+  const [wScreenTypes, setWScreenTypes] = useState<string[]>(["2D", "3D", "IMAX"]);
   const [wPrices, setWPrices] = useState({
     "2D":   { reg: "150", prem: "250", rec: "450" },
     "3D":   { reg: "200", prem: "320", rec: "550" },
@@ -357,9 +345,11 @@ export const AdminPanel: React.FC = () => {
   // ─── WIZARD HANDLERS ───────────────────────────────────────────────────────
   const resetWizard = () => {
     setWStep(1); setWCity(null); setWTheatre(null); setWScreen(null);
-    setWMovie(null); setWMovieSearch(""); setWShowLanguage("");
+    setWMovie(null); setWMovieSearch("");
+    setWLanguageTimes([{ language: "Hindi", times: ["10:00 AM", "02:00 PM"] }]);
+    setWActiveLangTab(0);
+    setWScreenTypes(["2D", "3D", "IMAX"]);
     setWMode("auto7"); setWCustomDate(getToday());
-    setWTimes(["10:00 AM", "02:00 PM"]);
     setWPrices({ "2D": { reg: "150", prem: "250", rec: "450" }, "3D": { reg: "200", prem: "320", rec: "550" }, "IMAX": { reg: "280", prem: "420", rec: "700" } });
   };
 
@@ -372,8 +362,8 @@ export const AdminPanel: React.FC = () => {
         cityIds: wCity ? [wCity.id] : cityList.map((c: any) => c.id),
         theatreIds: wCity && wTheatre ? [wTheatre.id] : [],
         screenIds: wCity && wScreen ? [wScreen.id] : [],
-        startTimes: wTimes,
-        language: wShowLanguage || wMovie.language.split(",")[0]?.trim(),
+        languageTimes: wLanguageTimes.map(lt => ({ language: lt.language, startTimes: lt.times })),
+        screenTypes: wScreenTypes,
         pricesByType: {
           "2D":   { regular: parseInt(wPrices["2D"].reg)||150,   premium: parseInt(wPrices["2D"].prem)||250,   recliner: parseInt(wPrices["2D"].rec)||450   },
           "3D":   { regular: parseInt(wPrices["3D"].reg)||200,   premium: parseInt(wPrices["3D"].prem)||320,   recliner: parseInt(wPrices["3D"].rec)||550   },
@@ -660,14 +650,46 @@ export const AdminPanel: React.FC = () => {
     [wMovie]
   );
 
+  // ─── LANGUAGE-TIME HELPERS ─────────────────────────────────────────────────
+  const addWLanguage = (lang: string) => {
+    if (wLanguageTimes.some(lt => lt.language === lang)) return;
+    const newIndex = wLanguageTimes.length;
+    setWLanguageTimes(prev => [...prev, { language: lang, times: ["10:00 AM", "02:00 PM"] }]);
+    setWActiveLangTab(newIndex);
+  };
+
+  const removeWLanguage = (index: number) => {
+    setWLanguageTimes(prev => prev.filter((_, i) => i !== index));
+    setWActiveLangTab(prev => (prev >= index && prev > 0 ? prev - 1 : prev));
+  };
+
+  const addAllWLanguages = () => {
+    const existing = new Set(wLanguageTimes.map(lt => lt.language));
+    const toAdd = movieLanguageOptions.filter(l => !existing.has(l));
+    if (toAdd.length === 0) return;
+    setWLanguageTimes(prev => [...prev, ...toAdd.map(l => ({ language: l, times: ["10:00 AM", "02:00 PM"] }))]);
+  };
+
+  const toggleLangTime = (langIndex: number, time: string) => {
+    setWLanguageTimes(prev => prev.map((lt, i) => {
+      if (i !== langIndex) return lt;
+      const inTimes = lt.times.includes(time);
+      const times = inTimes
+        ? (lt.times.length > 2 ? lt.times.filter(t => t !== time) : lt.times)
+        : [...lt.times, time];
+      return { ...lt, times };
+    }));
+  };
+
   // ─── ESTIMATED SHOWS COUNT ─────────────────────────────────────────────────
   const estimatedShows = useMemo(() => {
     const days = wMode === "auto7" ? 7 : 1;
     // When All Cities: we don't have exact screen counts, show per-city estimate × city count
     if (!wCity) return `${cityList.length}+ cities`;
     const screensCount = wScreen ? 1 : wTheatre ? wScreens.length : wTheatres.length || 1;
-    return days * wTimes.length * screensCount;
-  }, [wMode, wScreen, wTheatre, wScreens, wCity, wTheatres, wTimes, cityList]);
+    const totalSlots = wLanguageTimes.reduce((sum, lt) => sum + lt.times.length, 0);
+    return days * totalSlots * screensCount;
+  }, [wMode, wScreen, wTheatre, wScreens, wCity, wTheatres, wLanguageTimes, cityList]);
 
   // ─── CARD ─────────────────────────────────────────────────────────────────
   const card = "p-6 rounded-2xl border border-neutral-900"
@@ -692,26 +714,25 @@ export const AdminPanel: React.FC = () => {
             </div>
           </div>
         </div>
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 p-3 space-y-0.5">
           {([
-            { id: "dashboard" as const, icon: <LayoutDashboard className="w-4 h-4" />, label: "Analytics", color: "#d4af37", bg: "rgba(212,175,55,0.12)", bdr: "rgba(212,175,55,0.22)" },
-            { id: "movie-hub" as const, icon: <Film className="w-4 h-4" />, label: "Movie Hub", color: "#6ee7e7", bg: "rgba(110,231,231,0.1)", bdr: "rgba(110,231,231,0.2)" },
-            { id: "movie-nights" as const, icon: <Moon className="w-4 h-4" />, label: "Movie Nights", color: "#c084fc", bg: "rgba(192,132,252,0.1)", bdr: "rgba(192,132,252,0.2)" },
-            { id: "add-show" as const, icon: <Calendar className="w-4 h-4" />, label: "Schedule Show", color: "#4ade80", bg: "rgba(74,222,128,0.1)", bdr: "rgba(74,222,128,0.2)" },
-            { id: "manage" as const, icon: <Layers className="w-4 h-4" />, label: "Manage Data", color: "#fb923c", bg: "rgba(251,146,60,0.1)", bdr: "rgba(251,146,60,0.2)" },
-          ]).map(({ id, icon, label, color, bg, bdr }) => (
+            { id: "dashboard"    as const, icon: <LayoutDashboard className="w-4 h-4" />, label: "Analytics"     },
+            { id: "movie-hub"    as const, icon: <Film className="w-4 h-4" />,             label: "Movie Hub"     },
+            { id: "movie-nights" as const, icon: <Moon className="w-4 h-4" />,             label: "Movie Nights"  },
+            { id: "add-show"     as const, icon: <Calendar className="w-4 h-4" />,         label: "Schedule Show" },
+            { id: "manage"       as const, icon: <Layers className="w-4 h-4" />,           label: "Manage Data"   },
+          ]).map(({ id, icon, label }) => (
             <button
               key={id}
               onClick={() => { setActiveTab(id); setMsg(""); setErr(""); }}
-              className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all"
               style={activeTab === id
-                ? { background: bg, border: `1px solid ${bdr}`, color }
-                : { background: "transparent", border: "1px solid transparent", color: "rgba(255,255,255,0.3)" }
+                ? { background: "rgba(212,175,55,0.09)", borderLeft: "2px solid #d4af37", color: "#fff", paddingLeft: "10px" }
+                : { background: "transparent", borderLeft: "2px solid transparent", color: "rgba(255,255,255,0.35)", paddingLeft: "10px" }
               }
             >
-              <span style={{ color: activeTab === id ? color : "rgba(255,255,255,0.28)" }}>{icon}</span>
-              <span className="text-xs font-bold">{label}</span>
-              {activeTab === id && <ChevronRight className="w-3 h-3 ml-auto shrink-0" style={{ color }} />}
+              <span style={{ color: activeTab === id ? "#d4af37" : "rgba(255,255,255,0.28)" }}>{icon}</span>
+              <span className="text-xs font-medium">{label}</span>
             </button>
           ))}
         </nav>
@@ -759,34 +780,36 @@ export const AdminPanel: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-8">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { icon: <Wallet className="w-5 h-5 text-primary" />, label: "Total Revenue", value: `Rs ${kpi.totalRevenue}`, bg: "bg-primary/10" },
-                { icon: <Film className="w-5 h-5 text-accent" />, label: "Total Bookings", value: `${kpi.totalBookings} tickets`, bg: "bg-accent/10" },
-                { icon: <Users className="w-5 h-5 text-indigo-400" />, label: "Registered Users", value: `${kpi.totalUsers} users`, bg: "bg-indigo-600/10" },
-                { icon: <BarChart3 className="w-5 h-5 text-success" />, label: "Movie Nights", value: `${kpi.activeGroupRooms} active`, bg: "bg-success/10" },
-              ].map(({ icon, label, value, bg }) => (
-                <div key={label} className={cardDark}>
-                  <div className={`p-2.5 rounded-xl w-fit mb-4 ${bg}`}>{icon}</div>
-                  <span className="block text-xs text-neutral-500 font-inter">{label}</span>
-                  <strong className="text-xl sm:text-2xl font-black text-white mt-1.5 block">{value}</strong>
+                { icon: <Wallet className="w-4 h-4" />,   label: "Total Revenue",    value: `₹${kpi.totalRevenue.toLocaleString()}` },
+                { icon: <Film className="w-4 h-4" />,     label: "Total Bookings",   value: `${kpi.totalBookings}` },
+                { icon: <Users className="w-4 h-4" />,    label: "Registered Users", value: `${kpi.totalUsers}` },
+                { icon: <BarChart3 className="w-4 h-4" />,label: "Movie Nights",     value: `${kpi.activeGroupRooms}` },
+              ].map(({ icon, label, value }) => (
+                <div key={label} className="p-5 rounded-xl" style={{ background: "#0d0d0d", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-[10px] font-semibold tracking-widest uppercase text-neutral-600">{label}</span>
+                    <span style={{ color: "rgba(212,175,55,0.6)" }}>{icon}</span>
+                  </div>
+                  <strong className="text-2xl font-bold text-white">{value}</strong>
                 </div>
               ))}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Daily Revenue */}
               <div className={cardDark}>
-                <h3 className="font-bold text-sm text-white mb-6 flex items-center gap-2 border-b border-neutral-900 pb-3">
-                  <LineChart className="w-4 h-4 text-primary" /> Daily Revenue Trends
+                <h3 className="font-semibold text-sm text-white mb-5 flex items-center gap-2 border-b border-neutral-900 pb-3">
+                  <LineChart className="w-4 h-4" style={{ color: "rgba(212,175,55,0.7)" }} /> Daily Revenue
                 </h3>
-                <div className="h-48 flex items-end gap-3 justify-around pt-6 font-inter text-[9px] text-neutral-500">
+                <div className="h-48 flex items-end gap-2 justify-around pt-4 font-inter text-[9px] text-neutral-600">
                   {charts.dailyBookings.map((p: any, idx: number) => {
                     const maxVal = Math.max(...charts.dailyBookings.map((x: any) => x.revenue), 1);
                     return (
-                      <div key={idx} className="flex flex-col items-center gap-2 w-full">
-                        <span className="text-white font-bold">Rs {p.revenue}</span>
-                        <div className="w-full bg-neutral-900 rounded-lg overflow-hidden h-32 flex items-end">
-                          <div className="w-full bg-primary rounded-lg" style={{ height: `${Math.max(8, (p.revenue / maxVal) * 100)}%` }} />
+                      <div key={idx} className="flex flex-col items-center gap-1.5 w-full">
+                        <span className="text-neutral-400 font-medium">₹{p.revenue}</span>
+                        <div className="w-full bg-neutral-900 rounded overflow-hidden h-28 flex items-end">
+                          <div className="w-full rounded-sm" style={{ height: `${Math.max(6, (p.revenue / maxVal) * 100)}%`, background: "rgba(212,175,55,0.55)" }} />
                         </div>
                         <span className="truncate max-w-10">{p.date.substring(5)}</span>
                       </div>
@@ -796,20 +819,20 @@ export const AdminPanel: React.FC = () => {
               </div>
               {/* Popular Movies */}
               <div className={cardDark}>
-                <h3 className="font-bold text-sm text-white mb-6 flex items-center gap-2 border-b border-neutral-900 pb-3">
-                  <BarChart3 className="w-4 h-4 text-accent" /> Popular Movies by Revenue
+                <h3 className="font-semibold text-sm text-white mb-5 flex items-center gap-2 border-b border-neutral-900 pb-3">
+                  <BarChart3 className="w-4 h-4" style={{ color: "rgba(212,175,55,0.7)" }} /> Movies by Revenue
                 </h3>
-                <div className="space-y-4 pt-2">
+                <div className="space-y-4 pt-1">
                   {charts.popularMovies.slice(0, 4).map((p: any, idx: number) => {
                     const maxVal = Math.max(...charts.popularMovies.map((x: any) => x.revenue), 1);
                     return (
-                      <div key={idx} className="space-y-1 font-inter text-xs">
-                        <div className="flex justify-between font-semibold">
-                          <span className="text-white">{p.title}</span>
-                          <span className="text-neutral-500">Rs {p.revenue} ({p.bookings})</span>
+                      <div key={idx} className="space-y-1.5 font-inter text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-white font-medium">{p.title}</span>
+                          <span className="text-neutral-500">₹{p.revenue}</span>
                         </div>
-                        <div className="w-full h-3 bg-neutral-900 rounded-full overflow-hidden">
-                          <div className="h-full bg-accent rounded-full" style={{ width: `${(p.revenue / maxVal) * 100}%` }} />
+                        <div className="w-full h-1.5 bg-neutral-900 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${(p.revenue / maxVal) * 100}%`, background: "rgba(212,175,55,0.6)" }} />
                         </div>
                       </div>
                     );
@@ -818,20 +841,20 @@ export const AdminPanel: React.FC = () => {
               </div>
               {/* Cities */}
               <div className={cardDark}>
-                <h3 className="font-bold text-sm text-white mb-6 flex items-center gap-2 border-b border-neutral-900 pb-3">
-                  <Compass className="w-4 h-4 text-indigo-400" /> Location Breakdown
+                <h3 className="font-semibold text-sm text-white mb-5 flex items-center gap-2 border-b border-neutral-900 pb-3">
+                  <Compass className="w-4 h-4" style={{ color: "rgba(212,175,55,0.7)" }} /> Location Breakdown
                 </h3>
-                <div className="space-y-4 pt-2">
+                <div className="space-y-4 pt-1">
                   {charts.popularCities.slice(0, 4).map((p: any, idx: number) => {
                     const maxVal = Math.max(...charts.popularCities.map((x: any) => x.bookings), 1);
                     return (
-                      <div key={idx} className="space-y-1 font-inter text-xs">
-                        <div className="flex justify-between font-semibold">
-                          <span className="text-white">{p.name}</span>
+                      <div key={idx} className="space-y-1.5 font-inter text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-white font-medium">{p.name}</span>
                           <span className="text-neutral-500">{p.bookings} tickets</span>
                         </div>
-                        <div className="w-full h-3 bg-neutral-900 rounded-full overflow-hidden">
-                          <div className="h-full bg-indigo-600 rounded-full" style={{ width: `${(p.bookings / maxVal) * 100}%` }} />
+                        <div className="w-full h-1.5 bg-neutral-900 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${(p.bookings / maxVal) * 100}%`, background: "rgba(255,255,255,0.2)" }} />
                         </div>
                       </div>
                     );
@@ -840,18 +863,18 @@ export const AdminPanel: React.FC = () => {
               </div>
               {/* Booking Mix */}
               <div className={cardDark}>
-                <h3 className="font-bold text-sm text-white mb-6 flex items-center gap-2 border-b border-neutral-900 pb-3">
-                  <PieChart className="w-4 h-4 text-success" /> Booking Model Mix
+                <h3 className="font-semibold text-sm text-white mb-5 flex items-center gap-2 border-b border-neutral-900 pb-3">
+                  <PieChart className="w-4 h-4" style={{ color: "rgba(212,175,55,0.7)" }} /> Booking Model Mix
                 </h3>
                 <div className="flex items-center justify-around h-40 pt-4">
                   {charts.groupBookingUsage.map((u: any, idx: number) => {
                     const totalVal = charts.groupBookingUsage.reduce((s: number, x: any) => s + x.value, 0) || 1;
                     return (
                       <div key={idx} className="text-center font-inter">
-                        <div className={`text-3xl font-black ${idx === 0 ? "text-primary" : "text-success"}`}>
+                        <div className="text-3xl font-bold" style={{ color: idx === 0 ? "#d4af37" : "rgba(255,255,255,0.7)" }}>
                           {Math.round((u.value / totalVal) * 100)}%
                         </div>
-                        <div className="text-xs text-neutral-500 font-semibold mt-2">{u.name}</div>
+                        <div className="text-xs text-neutral-500 font-medium mt-2">{u.name}</div>
                         <div className="text-[10px] text-neutral-600 mt-1">{u.value} bookings</div>
                       </div>
                     );
@@ -872,44 +895,35 @@ export const AdminPanel: React.FC = () => {
             <div className={cardDark}>
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div>
-                  <h2 className="text-lg font-bold text-white flex items-center gap-2 mb-1">
-                    <Sparkles className="w-5 h-5" style={{ color: "#6ee7e7" }} /> Movie Catalog
+                  <h2 className="text-base font-semibold text-white flex items-center gap-2 mb-1">
+                    <Sparkles className="w-4 h-4" style={{ color: "rgba(212,175,55,0.8)" }} /> Movie Catalog
                   </h2>
                   <p className="text-xs text-neutral-500 font-inter max-w-sm">
-                    Seed popular Indian films instantly, or sync live data from TMDB if your network allows it.
+                    Sync live data from TMDB to populate your movie library.
                   </p>
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   <button
-                    onClick={handleSeedMovies}
-                    disabled={seedLoading}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-xs transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{ background: "linear-gradient(135deg, #d4af37, #f4d03f)", color: "#000" }}
-                  >
-                    <Film className={`w-4 h-4 ${seedLoading ? "animate-pulse" : ""}`} />
-                    {seedLoading ? "Seeding…" : "Seed Movies"}
-                  </button>
-                  <button
                     onClick={handleSyncMovies}
                     disabled={syncLoading}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-xs transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{ background: "linear-gradient(135deg, #6ee7e7, #22d3ee)", color: "#000" }}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.8)" }}
                   >
-                    <RefreshCw className={`w-4 h-4 ${syncLoading ? "animate-spin" : ""}`} />
+                    <RefreshCw className={`w-3.5 h-3.5 ${syncLoading ? "animate-spin" : ""}`} />
                     {syncLoading ? "Syncing…" : "Sync from TMDB"}
                   </button>
                 </div>
               </div>
               {syncResult && (
-                <div className="mt-4 flex gap-4 font-inter text-xs flex-wrap">
-                  <span className="px-3 py-1.5 rounded-lg" style={{ background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", color: "#4ade80" }}>
-                    ✓ {syncResult.upserted} upserted
+                <div className="mt-4 flex gap-3 font-inter text-xs flex-wrap">
+                  <span className="px-3 py-1.5 rounded-lg" style={{ background: "rgba(212,175,55,0.07)", border: "1px solid rgba(212,175,55,0.18)", color: "#d4af37" }}>
+                    {syncResult.upserted} synced
                   </span>
-                  <span className="px-3 py-1.5 rounded-lg" style={{ background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.2)", color: "#fb923c" }}>
-                    ⊘ {syncResult.skipped} skipped (no poster)
+                  <span className="px-3 py-1.5 rounded-lg" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.35)" }}>
+                    {syncResult.skipped} skipped
                   </span>
-                  <span className="px-3 py-1.5 rounded-lg" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.4)" }}>
-                    {syncResult.total} total from TMDB
+                  <span className="px-3 py-1.5 rounded-lg" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.25)" }}>
+                    {syncResult.total} total
                   </span>
                 </div>
               )}
@@ -917,8 +931,8 @@ export const AdminPanel: React.FC = () => {
 
             {/* Movie catalog list */}
             <div className={cardDark}>
-              <h3 className="font-bold text-sm text-white mb-4 flex items-center gap-2 border-b border-neutral-900 pb-3">
-                <Film className="w-4 h-4" style={{ color: "#6ee7e7" }} /> Catalog ({movies.length} movies)
+              <h3 className="font-semibold text-sm text-white mb-4 flex items-center gap-2 border-b border-neutral-900 pb-3">
+                <Film className="w-4 h-4" style={{ color: "rgba(212,175,55,0.6)" }} /> Catalog ({movies.length} movies)
               </h3>
               <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
                 {movies.length === 0 ? (
@@ -1026,8 +1040,8 @@ export const AdminPanel: React.FC = () => {
               <p className="text-xs text-neutral-500 font-inter">Live data from all Movie Night sessions.</p>
               <button
                 onClick={fetchMnAnalytics}
-                className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all hover:text-white"
-                style={{ color: "#c084fc", background: "rgba(192,132,252,0.08)", border: "1px solid rgba(192,132,252,0.15)" }}
+                className="flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg transition-all hover:text-white"
+                style={{ color: "rgba(255,255,255,0.45)", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
               >
                 <RefreshCw className="w-3 h-3" /> Refresh
               </button>
@@ -1047,22 +1061,22 @@ export const AdminPanel: React.FC = () => {
                 {/* KPI row */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
-                    { label: "Total Nights", value: mnAnalytics.total, color: "#c084fc" },
-                    { label: "Collecting Prefs", value: mnAnalytics.byStatus["COLLECTING_PREFERENCES"] ?? 0, color: "#6ee7e7" },
-                    { label: "Recommended", value: mnAnalytics.byStatus["RECOMMENDED"] ?? 0, color: "#d4af37" },
-                    { label: "Booked", value: mnAnalytics.byStatus["BOOKED"] ?? 0, color: "#4ade80" },
-                  ].map(({ label, value, color }) => (
-                    <div key={label} className={cardDark}>
-                      <p className="text-[10px] font-black tracking-widest uppercase mb-2" style={{ color: "rgba(255,255,255,0.3)" }}>{label}</p>
-                      <p className="text-2xl font-black" style={{ color }}>{value}</p>
+                    { label: "Total Nights",      value: mnAnalytics.total },
+                    { label: "Collecting Prefs",  value: mnAnalytics.byStatus["COLLECTING_PREFERENCES"] ?? 0 },
+                    { label: "Recommended",       value: mnAnalytics.byStatus["RECOMMENDED"] ?? 0 },
+                    { label: "Booked",            value: mnAnalytics.byStatus["BOOKED"] ?? 0 },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="p-4 rounded-xl" style={{ background: "#0d0d0d", border: "1px solid rgba(255,255,255,0.06)" }}>
+                      <p className="text-[10px] font-semibold tracking-widest uppercase mb-3" style={{ color: "rgba(255,255,255,0.3)" }}>{label}</p>
+                      <p className="text-2xl font-bold text-white">{value}</p>
                     </div>
                   ))}
                 </div>
 
                 {/* Status breakdown */}
                 <div className={cardDark}>
-                  <h3 className="font-bold text-sm text-white mb-4 flex items-center gap-2 border-b border-neutral-900 pb-3">
-                    <BarChart3 className="w-4 h-4" style={{ color: "#c084fc" }} /> Status Breakdown
+                  <h3 className="font-semibold text-sm text-white mb-4 flex items-center gap-2 border-b border-neutral-900 pb-3">
+                    <BarChart3 className="w-4 h-4" style={{ color: "rgba(212,175,55,0.6)" }} /> Status Breakdown
                   </h3>
                   <div className="space-y-3">
                     {Object.entries(mnAnalytics.byStatus).map(([status, count]) => {
@@ -1075,7 +1089,7 @@ export const AdminPanel: React.FC = () => {
                             <span className="text-neutral-500">{count} ({pct}%)</span>
                           </div>
                           <div className="w-full h-2 bg-neutral-900 rounded-full overflow-hidden">
-                            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "#c084fc" }} />
+                            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "rgba(212,175,55,0.7)" }} />
                           </div>
                         </div>
                       );
@@ -1085,8 +1099,8 @@ export const AdminPanel: React.FC = () => {
 
                 {/* Recent nights */}
                 <div className={cardDark}>
-                  <h3 className="font-bold text-sm text-white mb-4 flex items-center gap-2 border-b border-neutral-900 pb-3">
-                    <Moon className="w-4 h-4" style={{ color: "#c084fc" }} /> Recent Movie Nights
+                  <h3 className="font-semibold text-sm text-white mb-4 flex items-center gap-2 border-b border-neutral-900 pb-3">
+                    <Moon className="w-4 h-4" style={{ color: "rgba(212,175,55,0.6)" }} /> Recent Movie Nights
                   </h3>
                   <div className="space-y-2">
                     {mnAnalytics.recent.length === 0 ? (
@@ -1094,11 +1108,11 @@ export const AdminPanel: React.FC = () => {
                     ) : mnAnalytics.recent.map((n: any) => (
                       <div key={n.id} className="flex items-center justify-between gap-3 p-2.5 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
                         <div className="min-w-0">
-                          <p className="text-xs font-bold text-white truncate">{n.title}</p>
+                          <p className="text-xs font-medium text-white truncate">{n.title}</p>
                           <p className="text-[10px] text-neutral-500 font-inter">{n.memberCount} members · {new Date(n.createdAt).toLocaleDateString()}</p>
                         </div>
-                        <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-lg flex-shrink-0"
-                          style={{ background: "rgba(192,132,252,0.1)", border: "1px solid rgba(192,132,252,0.2)", color: "#c084fc" }}>
+                        <span className="text-[9px] font-semibold uppercase tracking-wide px-2 py-1 rounded flex-shrink-0"
+                          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.45)" }}>
                           {n.status.replace(/_/g, " ")}
                         </span>
                       </div>
@@ -1215,7 +1229,39 @@ export const AdminPanel: React.FC = () => {
                   </>
                 )}
 
-                <GoldBtn onClick={() => setWStep(2)}>
+                {/* Screen type filter */}
+                <div>
+                  <FieldLabel>Screen Types to Schedule</FieldLabel>
+                  <div className="flex gap-2">
+                    {(["2D", "3D", "IMAX"] as const).map(type => {
+                      const active = wScreenTypes.includes(type);
+                      return (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => setWScreenTypes(prev =>
+                            active ? prev.filter(t => t !== type) : [...prev, type]
+                          )}
+                          className="flex-1 py-2.5 rounded-xl text-xs font-semibold transition-all"
+                          style={active
+                            ? { background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000" }
+                            : { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.35)" }
+                          }
+                        >
+                          {type}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {wScreenTypes.length === 0 && (
+                    <p className="mt-1.5 text-[10px] text-red-400 font-inter">Select at least one screen type.</p>
+                  )}
+                  <p className="mt-1.5 text-[10px] text-neutral-600 font-inter">
+                    Only screens matching selected types will receive shows.
+                  </p>
+                </div>
+
+                <GoldBtn disabled={wScreenTypes.length === 0} onClick={() => setWStep(2)}>
                   Next: Select Movie <ChevronRight className="w-4 h-4" />
                 </GoldBtn>
               </div>
@@ -1243,7 +1289,9 @@ export const AdminPanel: React.FC = () => {
                         key={movie.id}
                         onClick={() => {
                           setWMovie(movie);
-                          setWShowLanguage(movie.language.split(",")[0]?.trim() || "");
+                          const firstLang = movie.language.split(",")[0]?.trim() || "Hindi";
+                          setWLanguageTimes([{ language: firstLang, times: ["10:00 AM", "02:00 PM"] }]);
+                          setWActiveLangTab(0);
                         }}
                         className="cursor-pointer rounded-xl overflow-hidden transition-all hover:scale-[1.02]"
                         style={{
@@ -1285,17 +1333,112 @@ export const AdminPanel: React.FC = () => {
             {/* ── STEP 3: SCHEDULE ──────────────────────────────────────── */}
             {wStep === 3 && (
               <div className="space-y-6">
+                {/* Languages & Show Times */}
                 <div>
-                  <FieldLabel>Show Language</FieldLabel>
-                  <select
-                    className={selectCls}
-                    value={wShowLanguage || movieLanguageOptions[0] || ""}
-                    onChange={e => setWShowLanguage(e.target.value)}
-                  >
-                    {movieLanguageOptions.map(language => (
-                      <option key={language} value={language}>{language}</option>
+                  <div className="flex items-center justify-between mb-3">
+                    <FieldLabel>Languages &amp; Show Times</FieldLabel>
+                    {movieLanguageOptions.length > 1 && (
+                      <button
+                        onClick={addAllWLanguages}
+                        disabled={movieLanguageOptions.every(l => wLanguageTimes.some(lt => lt.language === l))}
+                        className="text-[10px] font-black px-3 py-1.5 rounded-lg transition-all disabled:opacity-30"
+                        style={{ background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.2)", color: "#d4af37" }}
+                      >
+                        All Languages
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Language tabs */}
+                  <div className="flex items-center gap-2 flex-wrap mb-4">
+                    {wLanguageTimes.map((lt, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setWActiveLangTab(i)}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black transition-all"
+                        style={wActiveLangTab === i
+                          ? { background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000" }
+                          : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)" }
+                        }
+                      >
+                        {lt.language || "Language"}
+                        <span style={{ opacity: 0.65 }}>({lt.times.length})</span>
+                        {wLanguageTimes.length > 1 && (
+                          <X className="w-3 h-3 ml-0.5" onClick={e => { e.stopPropagation(); removeWLanguage(i); }} />
+                        )}
+                      </button>
                     ))}
-                  </select>
+                    {movieLanguageOptions.filter(l => !wLanguageTimes.some(lt => lt.language === l)).length > 0 && (
+                      <select
+                        className="px-3 py-2 rounded-xl text-xs font-black cursor-pointer appearance-none"
+                        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)" }}
+                        value=""
+                        onChange={e => { if (e.target.value) { addWLanguage(e.target.value); (e.target as HTMLSelectElement).value = ""; } }}
+                      >
+                        <option value="">+ Add Language</option>
+                        {movieLanguageOptions
+                          .filter(l => !wLanguageTimes.some(lt => lt.language === l))
+                          .map(l => <option key={l} value={l}>{l}</option>)
+                        }
+                      </select>
+                    )}
+                  </div>
+
+                  {/* Active language's time picker */}
+                  {wLanguageTimes.map((lt, i) => i !== wActiveLangTab ? null : (
+                    <div key={i} className="space-y-2.5">
+                      <p className="text-[10px] font-inter text-neutral-600 mb-2">
+                        Show times for <span className="text-white font-bold">{lt.language}</span>
+                        <span className="ml-2" style={{ color: "#d4af37" }}>{lt.times.length} selected</span>
+                      </p>
+                      {([
+                        { label: "Late Night", hours: [0,1,2,3,4,5] },
+                        { label: "Morning",    hours: [6,7,8,9,10,11] },
+                        { label: "Afternoon",  hours: [12,13,14,15,16,17] },
+                        { label: "Evening",    hours: [18,19,20,21,22,23] },
+                      ] as { label: string; hours: number[] }[]).map(({ label, hours }) => {
+                        const to24 = (t: string) => { const [tp, per] = t.split(" "); let h = parseInt(tp); if (per === "AM" && h === 12) h = 0; else if (per === "PM" && h !== 12) h += 12; return h; };
+                        const periodTimes = ALL_24H_TIMES.filter(t => hours.includes(to24(t)));
+                        const selCount = periodTimes.filter(t => lt.times.includes(t)).length;
+                        return (
+                          <div key={label} className="rounded-lg p-3" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                            <div className="flex items-center gap-2 mb-2.5">
+                              <span className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500">{label}</span>
+                              {selCount > 0 && (
+                                <span className="ml-auto text-[9px] font-black px-1.5 py-0.5 rounded-md" style={{ background: "rgba(212,175,55,0.12)", color: "#d4af37" }}>
+                                  {selCount} selected
+                                </span>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-6 gap-1.5">
+                              {periodTimes.map(t => {
+                                const selected = lt.times.includes(t);
+                                return (
+                                  <button
+                                    key={t}
+                                    type="button"
+                                    onClick={() => toggleLangTime(i, t)}
+                                    className="py-2 rounded-lg text-[11px] font-bold transition-all"
+                                    style={selected
+                                      ? { background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000" }
+                                      : { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.3)" }
+                                    }
+                                    title={selected && lt.times.length <= 2 ? "Minimum 2 required" : ""}
+                                  >
+                                    {t}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+
+                  {wLanguageTimes.some(lt => lt.times.length < 2) && (
+                    <p className="mt-2 text-[10px] text-red-400 font-inter">Each language needs at least 2 show times.</p>
+                  )}
                 </div>
 
                 {/* Mode toggle */}
@@ -1325,70 +1468,6 @@ export const AdminPanel: React.FC = () => {
                   </div>
                 )}
 
-                {/* Show times – grouped by period */}
-                <div>
-                  <FieldLabel>
-                    Show Times
-                    <span className="text-neutral-600 normal-case font-normal ml-1">
-                      (min 2 · {wTimes.length} selected)
-                    </span>
-                  </FieldLabel>
-                  <div className="space-y-2.5">
-                    {([
-                      { label: "Late Night", emoji: "🌙", hours: [0,1,2,3,4,5] },
-                      { label: "Morning",    emoji: "🌅", hours: [6,7,8,9,10,11] },
-                      { label: "Afternoon",  emoji: "☀️",  hours: [12,13,14,15,16,17] },
-                      { label: "Evening",    emoji: "🌆", hours: [18,19,20,21,22,23] },
-                    ] as { label: string; emoji: string; hours: number[] }[]).map(({ label, emoji, hours }) => {
-                      const to24 = (t: string) => { const [tp, per] = t.split(" "); let h = parseInt(tp); if (per === "AM" && h === 12) h = 0; else if (per === "PM" && h !== 12) h += 12; return h; };
-                      const periodTimes = ALL_24H_TIMES.filter(t => hours.includes(to24(t)));
-                      const selCount = periodTimes.filter(t => wTimes.includes(t)).length;
-                      return (
-                        <div key={label} className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
-                          <div className="flex items-center gap-2 mb-2.5">
-                            <span className="text-sm leading-none">{emoji}</span>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-neutral-500">{label}</span>
-                            {selCount > 0 && (
-                              <span className="ml-auto text-[9px] font-black px-1.5 py-0.5 rounded-md" style={{ background: "rgba(212,175,55,0.12)", color: "#d4af37" }}>
-                                {selCount} selected
-                              </span>
-                            )}
-                          </div>
-                          <div className="grid grid-cols-6 gap-1.5">
-                            {periodTimes.map(t => {
-                              const selected = wTimes.includes(t);
-                              return (
-                                <button
-                                  key={t}
-                                  type="button"
-                                  onClick={() =>
-                                    setWTimes(prev =>
-                                      selected
-                                        ? prev.length > 2 ? prev.filter(v => v !== t) : prev
-                                        : [...prev, t]
-                                    )
-                                  }
-                                  className="py-2 rounded-lg text-[11px] font-bold transition-all"
-                                  style={selected
-                                    ? { background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000" }
-                                    : { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.3)" }
-                                  }
-                                  title={selected && wTimes.length <= 2 ? "Minimum 2 required" : ""}
-                                >
-                                  {t}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {wTimes.length < 2 && (
-                    <p className="mt-2 text-[10px] text-red-400 font-inter">Select at least 2 time slots.</p>
-                  )}
-                </div>
-
                 {/* Pricing per screen type */}
                 <div>
                   <FieldLabel>Ticket Pricing by Screen Type (₹)</FieldLabel>
@@ -1397,7 +1476,7 @@ export const AdminPanel: React.FC = () => {
                       <div key={type} className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
                         <div className="px-4 py-2 flex items-center gap-2" style={{ background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
                           <span className="text-[10px] font-black uppercase tracking-widest"
-                            style={{ color: type === "IMAX" ? "#60a5fa" : type === "3D" ? "#a78bfa" : "#d4af37" }}>
+                            style={{ color: type === "IMAX" ? "rgba(255,255,255,0.9)" : type === "3D" ? "rgba(255,255,255,0.65)" : "#d4af37" }}>
                             {type}
                           </span>
                         </div>
@@ -1423,7 +1502,10 @@ export const AdminPanel: React.FC = () => {
 
                 <div className="flex gap-3">
                   <GhostBtn onClick={() => setWStep(2)}>← Back</GhostBtn>
-                  <GoldBtn disabled={wTimes.length < 2} onClick={() => setWStep(4)}>
+                  <GoldBtn
+                    disabled={wLanguageTimes.length === 0 || wLanguageTimes.some(lt => lt.times.length < 2)}
+                    onClick={() => setWStep(4)}
+                  >
                     Preview Schedule <ChevronRight className="w-4 h-4" />
                   </GoldBtn>
                 </div>
@@ -1463,16 +1545,23 @@ export const AdminPanel: React.FC = () => {
                       </div>
                       <div>
                         <p className="text-[10px] text-neutral-600 font-black uppercase tracking-widest mb-1">Schedule</p>
-                        <p className="text-white font-bold">{wMode === "auto7" ? "Next 7 days from today" : wCustomDate}</p>
-                        <p className="text-neutral-500">{wTimes.join(" · ")}</p>
-                        <p className="text-neutral-600">{wShowLanguage || movieLanguageOptions[0]} · {wTimes.length} shows/day/screen</p>
+                        <p className="text-white font-bold mb-1.5">{wMode === "auto7" ? "Next 7 days from today" : wCustomDate}</p>
+                        {wLanguageTimes.map((lt, i) => (
+                          <p key={i} className="text-[11px] font-inter leading-relaxed">
+                            <span className="font-bold text-neutral-300">{lt.language}:</span>
+                            <span className="text-neutral-500 ml-1">{lt.times.join(" · ")}</span>
+                          </p>
+                        ))}
+                        <p className="text-neutral-600 text-[10px] mt-1">
+                          {wLanguageTimes.reduce((s, lt) => s + lt.times.length, 0)} total slots/day/screen
+                        </p>
                       </div>
                       <div className="col-span-2">
                         <p className="text-[10px] text-neutral-600 font-black uppercase tracking-widest mb-2">Pricing by Screen</p>
                         <div className="space-y-1">
                           {(["2D", "3D", "IMAX"] as const).map(t => (
                             <p key={t} className="text-xs font-inter">
-                              <span className="font-black mr-2" style={{ color: t === "IMAX" ? "#60a5fa" : t === "3D" ? "#a78bfa" : "#d4af37" }}>{t}</span>
+                              <span className="font-black mr-2" style={{ color: t === "IMAX" ? "rgba(212,175,55,0.9)" : t === "3D" ? "rgba(255,255,255,0.6)" : "rgba(212,175,55,0.55)" }}>{t}</span>
                               <span className="text-white">₹{wPrices[t].reg}</span>
                               <span className="text-neutral-500"> / ₹{wPrices[t].prem}</span>
                               <span className="text-neutral-600"> / ₹{wPrices[t].rec}</span>
@@ -1511,18 +1600,18 @@ export const AdminPanel: React.FC = () => {
             {/* Stats bar */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {([
-                { label: "Total Movies",   value: movies.length,                                   Icon: Film,        color: "#d4af37", bg: "rgba(212,175,55,0.07)",  border: "rgba(212,175,55,0.18)"  },
-                { label: "Total Shows",    value: shows.length,                                    Icon: Calendar,    color: "#6ee7e7", bg: "rgba(110,231,231,0.07)", border: "rgba(110,231,231,0.18)" },
-                { label: "Active Shows",   value: shows.filter(s => s.status === "active").length, Icon: CheckCircle, color: "#4ade80", bg: "rgba(74,222,128,0.07)",  border: "rgba(74,222,128,0.18)"  },
-                { label: "Total Theatres", value: theatreList.length,                              Icon: Building2,   color: "#fb923c", bg: "rgba(251,146,60,0.07)",  border: "rgba(251,146,60,0.18)"  },
-              ] as { label: string; value: number; Icon: React.FC<any>; color: string; bg: string; border: string }[]).map(({ label, value, Icon, color, bg, border }) => (
-                <div key={label} className="rounded-2xl p-5 flex items-start justify-between gap-3" style={{ background: bg, border: `1px solid ${border}` }}>
+                { label: "Total Movies",   value: movies.length,                                   Icon: Film        },
+                { label: "Total Shows",    value: shows.length,                                    Icon: Calendar    },
+                { label: "Active Shows",   value: shows.filter(s => s.status === "active").length, Icon: CheckCircle },
+                { label: "Total Theatres", value: theatreList.length,                              Icon: Building2   },
+              ] as { label: string; value: number; Icon: React.FC<any> }[]).map(({ label, value, Icon }) => (
+                <div key={label} className="rounded-xl p-5 flex items-start justify-between gap-3" style={{ background: "#0d0d0d", border: "1px solid rgba(255,255,255,0.06)" }}>
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest mb-2.5" style={{ color: "rgba(255,255,255,0.3)" }}>{label}</p>
-                    <p className="text-3xl font-black text-white">{value}</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(255,255,255,0.3)" }}>{label}</p>
+                    <p className="text-3xl font-bold text-white">{value}</p>
                   </div>
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}18`, border: `1px solid ${color}28` }}>
-                    <Icon className="w-5 h-5" style={{ color }} />
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.14)" }}>
+                    <Icon className="w-4 h-4" style={{ color: "rgba(212,175,55,0.7)" }} />
                   </div>
                 </div>
               ))}
@@ -1590,7 +1679,7 @@ export const AdminPanel: React.FC = () => {
                               </div>
                               <p className="text-[10px] text-neutral-600 font-inter ml-5">
                                 {movieShows.length > 0
-                                  ? <span className="text-accent font-bold">{movieShows.length} show{movieShows.length !== 1 ? "s" : ""} scheduled</span>
+                                  ? <span className="font-bold" style={{ color: "rgba(212,175,55,0.8)" }}>{movieShows.length} show{movieShows.length !== 1 ? "s" : ""} scheduled</span>
                                   : <span className="text-neutral-700">No shows scheduled</span>
                                 }
                               </p>
@@ -1643,11 +1732,7 @@ export const AdminPanel: React.FC = () => {
                                             <span className="text-xs font-bold text-white">{show.theatreName}</span>
                                             <span className="text-neutral-700 text-[10px]">·</span>
                                             <span className="text-[10px] font-bold text-neutral-400">Scr {show.screenNumber}</span>
-                                            <span className="px-1.5 py-0.5 rounded text-[9px] font-black" style={
-                                              show.screenType === "IMAX" ? { background: "rgba(244,208,63,0.12)", color: "#f4d03f" } :
-                                              show.screenType === "3D"   ? { background: "rgba(110,231,231,0.12)", color: "#6ee7e7" } :
-                                              { background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.3)" }
-                                            }>{show.screenType}</span>
+                                            <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.45)" }}>{show.screenType}</span>
                                             <StatusPill status={show.status} />
                                           </div>
                                           <p className="text-[10px] text-neutral-600 font-inter truncate">
@@ -1714,8 +1799,8 @@ export const AdminPanel: React.FC = () => {
               {/* Add Theatre */}
               <div className="mb-4 p-4 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
                 <div className="flex items-center gap-2 mb-3">
-                  <Building2 className="w-3.5 h-3.5" style={{ color: "#6ee7e7" }} />
-                  <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "rgba(110,231,231,0.8)" }}>Add Theatre</p>
+                  <Building2 className="w-3.5 h-3.5" style={{ color: "rgba(212,175,55,0.6)" }} />
+                  <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "rgba(212,175,55,0.6)" }}>Add Theatre</p>
                 </div>
                 <form onSubmit={handleAddTheatre} className="grid grid-cols-1 md:grid-cols-3 gap-3 font-inter text-xs">
                   <div>
@@ -1742,8 +1827,8 @@ export const AdminPanel: React.FC = () => {
               {/* Add Screens */}
               <div className="p-4 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
                 <div className="flex items-center gap-2 mb-3">
-                  <Monitor className="w-3.5 h-3.5" style={{ color: "#a78bfa" }} />
-                  <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "rgba(167,139,250,0.8)" }}>Add Screens</p>
+                  <Monitor className="w-3.5 h-3.5" style={{ color: "rgba(212,175,55,0.6)" }} />
+                  <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "rgba(212,175,55,0.6)" }}>Add Screens</p>
                   <span className="text-[9px] text-neutral-700 font-inter ml-1">2D→200 · 3D→156 · IMAX→234 seats</span>
                 </div>
                 <form onSubmit={handleBulkScreens} className="grid grid-cols-1 md:grid-cols-4 gap-3 font-inter text-xs">
@@ -1779,9 +1864,9 @@ export const AdminPanel: React.FC = () => {
             <div className={cardDark}>
               <div className="flex items-center justify-between mb-5">
                 <h2 className="text-lg font-bold flex items-center gap-2">
-                  <Building2 className="w-5 h-5 text-accent" /> Theatres &amp; Screens
+                  <Building2 className="w-5 h-5" style={{ color: "rgba(212,175,55,0.7)" }} /> Theatres &amp; Screens
                 </h2>
-                <span className="text-[10px] font-black px-2.5 py-1 rounded-lg" style={{ background: "rgba(110,231,231,0.08)", border: "1px solid rgba(110,231,231,0.15)", color: "#6ee7e7" }}>
+                <span className="text-[10px] font-black px-2.5 py-1 rounded-lg" style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.12)", color: "rgba(212,175,55,0.7)" }}>
                   {theatreList.length} theatre{theatreList.length !== 1 ? "s" : ""}
                 </span>
               </div>
@@ -1835,26 +1920,26 @@ export const AdminPanel: React.FC = () => {
                                 .sort((a: any, b: any) => a.number - b.number);
                               const theatreOpen = expandedTheatres.has(t.id);
                               return (
-                                <div key={t.id} className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(110,231,231,0.1)" }}>
+                                <div key={t.id} className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
                                   {/* Theatre accordion header */}
                                   <button
                                     className="w-full flex items-center gap-3 px-3.5 py-3 text-left select-none transition-colors"
-                                    style={{ background: theatreOpen ? "rgba(110,231,231,0.06)" : "rgba(255,255,255,0.02)" }}
+                                    style={{ background: theatreOpen ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.01)" }}
                                     onClick={() => setExpandedTheatres(prev => {
                                       const next = new Set(prev);
                                       theatreOpen ? next.delete(t.id) : next.add(t.id);
                                       return next;
                                     })}
                                   >
-                                    <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(110,231,231,0.07)", border: "1px solid rgba(110,231,231,0.12)" }}>
-                                      <Building2 className="w-3.5 h-3.5" style={{ color: "#6ee7e7" }} />
+                                    <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                                      <Building2 className="w-3.5 h-3.5" style={{ color: "rgba(212,175,55,0.6)" }} />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <p className="font-black text-sm text-white truncate">{t.name}</p>
                                       <p className="text-[10px] text-neutral-600 font-inter truncate">{t.address}</p>
                                     </div>
                                     <div className="flex items-center gap-2 flex-shrink-0">
-                                      <span className="text-[10px] font-black px-2 py-0.5 rounded-md" style={{ background: "rgba(110,231,231,0.08)", color: "#6ee7e7" }}>
+                                      <span className="text-[10px] font-black px-2 py-0.5 rounded-md" style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)" }}>
                                         {tScreens.length} scr
                                       </span>
                                       <button
@@ -1872,20 +1957,20 @@ export const AdminPanel: React.FC = () => {
 
                                   {/* Screens list */}
                                   {theatreOpen && (
-                                    <div className="border-t px-3.5 py-3" style={{ borderColor: "rgba(110,231,231,0.08)", background: "rgba(0,0,0,0.25)" }}>
+                                    <div className="border-t px-3.5 py-3" style={{ borderColor: "rgba(255,255,255,0.05)", background: "rgba(0,0,0,0.25)" }}>
                                       {tScreens.length === 0 ? (
                                         <p className="text-[10px] text-neutral-700 font-inter py-1">No screens added to this theatre.</p>
                                       ) : (
                                         <div className="flex flex-wrap gap-2">
                                           {tScreens.map((s: any) => (
                                             <div key={s.id} className="flex items-center gap-1.5 pl-2.5 pr-1 py-1.5 rounded-lg" style={{
-                                              background: s.type === "IMAX" ? "rgba(244,208,63,0.07)" : s.type === "3D" ? "rgba(110,231,231,0.07)" : "rgba(255,255,255,0.04)",
-                                              border: `1px solid ${s.type === "IMAX" ? "rgba(244,208,63,0.18)" : s.type === "3D" ? "rgba(110,231,231,0.18)" : "rgba(255,255,255,0.08)"}`,
+                                              background: "rgba(255,255,255,0.03)",
+                                              border: "1px solid rgba(255,255,255,0.07)",
                                             }}>
-                                              <span className="text-[10px] font-black" style={{ color: s.type === "IMAX" ? "#f4d03f" : s.type === "3D" ? "#6ee7e7" : "rgba(255,255,255,0.4)" }}>
+                                              <span className="text-[10px] font-black" style={{ color: s.type === "IMAX" ? "rgba(212,175,55,0.9)" : "rgba(255,255,255,0.5)" }}>
                                                 Scr {s.number}
                                               </span>
-                                              <span className="text-[9px] font-bold" style={{ color: s.type === "IMAX" ? "rgba(244,208,63,0.55)" : s.type === "3D" ? "rgba(110,231,231,0.55)" : "rgba(255,255,255,0.2)" }}>
+                                              <span className="text-[9px] font-bold" style={{ color: s.type === "IMAX" ? "rgba(212,175,55,0.5)" : "rgba(255,255,255,0.2)" }}>
                                                 {s.type}
                                               </span>
                                               <button
@@ -1932,7 +2017,7 @@ export const AdminPanel: React.FC = () => {
           >
             <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-900">
               <h2 className="text-base font-bold flex items-center gap-2">
-                <Pencil className="w-4 h-4 text-primary" /> Edit Show
+                <Pencil className="w-4 h-4" style={{ color: "#d4af37" }} /> Edit Show
                 <span className="text-neutral-600 font-normal text-sm">— {editingShow.movieTitle}</span>
               </h2>
               <button onClick={() => setEditingShow(null)} className="p-2 rounded-xl hover:bg-neutral-900 transition-colors text-neutral-500">
@@ -1987,7 +2072,7 @@ export const AdminPanel: React.FC = () => {
         >
           <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-900">
             <h2 className="text-lg font-bold flex items-center gap-2">
-              <Pencil className="w-5 h-5 text-primary" /> Edit Movie
+              <Pencil className="w-5 h-5" style={{ color: "#d4af37" }} /> Edit Movie
               <span className="text-neutral-600 font-normal text-sm">— {editingMovie.title}</span>
             </h2>
             <button onClick={() => setEditingMovie(null)} className="p-2 rounded-xl hover:bg-neutral-900 transition-colors text-neutral-500">

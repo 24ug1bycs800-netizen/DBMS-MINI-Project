@@ -108,12 +108,11 @@ export const Navbar: React.FC = () => {
           gap: 2rem;
         }
         .cc-nav-link {
-          color: rgba(255,255,255,0.55);
+          color: rgba(255,255,255,0.5);
           text-decoration: none;
           font-size: 0.875rem;
           font-weight: 400;
-          letter-spacing: 0.05em;
-          text-transform: uppercase;
+          letter-spacing: 0.02em;
           transition: color 0.2s;
           position: relative;
         }
@@ -124,32 +123,30 @@ export const Navbar: React.FC = () => {
           left: 0;
           width: 0;
           height: 1px;
-          background: linear-gradient(90deg, #D4A853, #F0C070);
-          transition: width 0.3s ease;
+          background: #C9A84C;
+          transition: width 0.25s ease;
         }
-        .cc-nav-link:hover { color: #D4A853; }
+        .cc-nav-link:hover { color: rgba(255,255,255,0.9); }
         .cc-nav-link:hover::after { width: 100%; }
 
         .cc-group-link {
           display: flex;
           align-items: center;
           gap: 6px;
-          padding: 6px 16px;
-          background: rgba(212, 168, 83, 0.1);
-          border: 1px solid rgba(212, 168, 83, 0.3);
+          padding: 5px 14px;
+          background: transparent;
+          border: 1px solid rgba(255,255,255,0.1);
           border-radius: 6px;
-          color: #D4A853;
+          color: rgba(255,255,255,0.55);
           text-decoration: none;
-          font-size: 0.8rem;
-          font-weight: 500;
-          letter-spacing: 0.04em;
-          text-transform: uppercase;
+          font-size: 0.825rem;
+          font-weight: 400;
           transition: all 0.2s;
         }
         .cc-group-link:hover {
-          background: rgba(212, 168, 83, 0.2);
-          border-color: #D4A853;
-          color: #F0C070;
+          background: rgba(255,255,255,0.05);
+          border-color: rgba(255,255,255,0.18);
+          color: rgba(255,255,255,0.9);
         }
 
         .cc-user-btn {
@@ -241,23 +238,23 @@ export const Navbar: React.FC = () => {
         .cc-dropdown-divider { border-top: 1px solid rgba(255,255,255,0.06); }
 
         .cc-signin {
-          padding: 8px 22px;
-          background: linear-gradient(135deg, #D4A853, #B8860B);
+          padding: 7px 20px;
+          background: #C9A84C;
           border: none;
-          border-radius: 100px;
-          color: #0a0a0f;
-          font-size: 0.875rem;
+          border-radius: 7px;
+          color: #000;
+          font-size: 0.825rem;
           font-weight: 600;
           cursor: pointer;
           text-decoration: none;
-          transition: all 0.25s;
+          transition: opacity 0.2s, transform 0.2s;
           font-family: 'Outfit', sans-serif;
-          letter-spacing: 0.02em;
+          letter-spacing: 0.01em;
           display: inline-block;
         }
         .cc-signin:hover {
+          opacity: 0.85;
           transform: translateY(-1px);
-          box-shadow: 0 8px 24px rgba(212, 168, 83, 0.35);
         }
 
         .cc-right { display: flex; align-items: center; gap: 1.5rem; position: relative; }
@@ -284,7 +281,7 @@ export const Navbar: React.FC = () => {
           {/* CENTER: Nav links */}
           <div className="cc-nav-links" style={{ display: "flex" }}>
             <Link to="/" className="cc-nav-link">Movies</Link>
-            <Link to="/movie-nights" className="cc-group-link" style={{ color: "#d4af37" }}>
+            <Link to="/movie-nights" className="cc-group-link">
               <Moon size={13} />
               Movie Nights
             </Link>
