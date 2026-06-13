@@ -245,9 +245,13 @@ export const AdminPanel: React.FC = () => {
   const [wMode, setWMode] = useState<"auto7" | "custom">("auto7");
   const [wCustomDate, setWCustomDate] = useState(getToday());
   const [wTimes, setWTimes] = useState(["10:00 AM", "02:00 PM"]);
-  const [wPriceReg, setWPriceReg] = useState("150");
-  const [wPricePrem, setWPricePrem] = useState("250");
-  const [wPriceRec, setWPriceRec] = useState("450");
+  const [wPrices, setWPrices] = useState({
+    "2D":   { reg: "150", prem: "250", rec: "450" },
+    "3D":   { reg: "200", prem: "320", rec: "550" },
+    "IMAX": { reg: "280", prem: "420", rec: "700" },
+  });
+  const setWPrice = (type: "2D"|"3D"|"IMAX", field: "reg"|"prem"|"rec", val: string) =>
+    setWPrices(p => ({ ...p, [type]: { ...p[type], [field]: val } }));
   const [wLoading, setWLoading] = useState(false);
 
   // ── Manage tab ────────────────────────────────────────────────────────────────
@@ -356,7 +360,7 @@ export const AdminPanel: React.FC = () => {
     setWMovie(null); setWMovieSearch(""); setWShowLanguage("");
     setWMode("auto7"); setWCustomDate(getToday());
     setWTimes(["10:00 AM", "02:00 PM"]);
-    setWPriceReg("150"); setWPricePrem("250"); setWPriceRec("450");
+    setWPrices({ "2D": { reg: "150", prem: "250", rec: "450" }, "3D": { reg: "200", prem: "320", rec: "550" }, "IMAX": { reg: "280", prem: "420", rec: "700" } });
   };
 
   const handleGenerateShows = async () => {
@@ -370,9 +374,11 @@ export const AdminPanel: React.FC = () => {
         screenIds: wCity && wScreen ? [wScreen.id] : [],
         startTimes: wTimes,
         language: wShowLanguage || wMovie.language.split(",")[0]?.trim(),
-        priceRegular: parseInt(wPriceReg) || 150,
-        pricePremium: parseInt(wPricePrem) || 250,
-        priceRecliner: parseInt(wPriceRec) || 450,
+        pricesByType: {
+          "2D":   { regular: parseInt(wPrices["2D"].reg)||150,   premium: parseInt(wPrices["2D"].prem)||250,   recliner: parseInt(wPrices["2D"].rec)||450   },
+          "3D":   { regular: parseInt(wPrices["3D"].reg)||200,   premium: parseInt(wPrices["3D"].prem)||320,   recliner: parseInt(wPrices["3D"].rec)||550   },
+          "IMAX": { regular: parseInt(wPrices["IMAX"].reg)||280, premium: parseInt(wPrices["IMAX"].prem)||420, recliner: parseInt(wPrices["IMAX"].rec)||700  },
+        },
       };
       if (wMode === "auto7") {
         payload.days = 7;
@@ -1383,15 +1389,33 @@ export const AdminPanel: React.FC = () => {
                   )}
                 </div>
 
-                {/* Pricing */}
+                {/* Pricing per screen type */}
                 <div>
-                  <FieldLabel>Ticket Pricing (Rs)</FieldLabel>
-                  <div className="grid grid-cols-3 gap-3">
-                    {[["Regular", wPriceReg, setWPriceReg], ["Premium", wPricePrem, setWPricePrem], ["Recliner", wPriceRec, setWPriceRec]].map(([label, val, setter]) => (
-                      <div key={label as string}>
-                        <label className="block text-[9px] font-bold text-neutral-600 uppercase mb-1.5">{label as string}</label>
-                        <input className={inputCls} type="number" value={val as string}
-                          onChange={e => (setter as (v: string) => void)(e.target.value)} />
+                  <FieldLabel>Ticket Pricing by Screen Type (₹)</FieldLabel>
+                  <div className="space-y-4">
+                    {(["2D", "3D", "IMAX"] as const).map(type => (
+                      <div key={type} className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
+                        <div className="px-4 py-2 flex items-center gap-2" style={{ background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                          <span className="text-[10px] font-black uppercase tracking-widest"
+                            style={{ color: type === "IMAX" ? "#60a5fa" : type === "3D" ? "#a78bfa" : "#d4af37" }}>
+                            {type}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3 p-4">
+                          {(["reg", "prem", "rec"] as const).map(field => (
+                            <div key={field}>
+                              <label className="block text-[9px] font-bold text-neutral-600 uppercase mb-1.5">
+                                {field === "reg" ? "Regular" : field === "prem" ? "Premium" : "Recliner"}
+                              </label>
+                              <input
+                                className={inputCls}
+                                type="number"
+                                value={wPrices[type][field]}
+                                onChange={e => setWPrice(type, field, e.target.value)}
+                              />
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1443,11 +1467,18 @@ export const AdminPanel: React.FC = () => {
                         <p className="text-neutral-500">{wTimes.join(" · ")}</p>
                         <p className="text-neutral-600">{wShowLanguage || movieLanguageOptions[0]} · {wTimes.length} shows/day/screen</p>
                       </div>
-                      <div>
-                        <p className="text-[10px] text-neutral-600 font-black uppercase tracking-widest mb-1">Pricing</p>
-                        <p className="text-white">Reg Rs {wPriceReg}</p>
-                        <p className="text-neutral-500">Prem Rs {wPricePrem}</p>
-                        <p className="text-neutral-600">Rec Rs {wPriceRec}</p>
+                      <div className="col-span-2">
+                        <p className="text-[10px] text-neutral-600 font-black uppercase tracking-widest mb-2">Pricing by Screen</p>
+                        <div className="space-y-1">
+                          {(["2D", "3D", "IMAX"] as const).map(t => (
+                            <p key={t} className="text-xs font-inter">
+                              <span className="font-black mr-2" style={{ color: t === "IMAX" ? "#60a5fa" : t === "3D" ? "#a78bfa" : "#d4af37" }}>{t}</span>
+                              <span className="text-white">₹{wPrices[t].reg}</span>
+                              <span className="text-neutral-500"> / ₹{wPrices[t].prem}</span>
+                              <span className="text-neutral-600"> / ₹{wPrices[t].rec}</span>
+                            </p>
+                          ))}
+                        </div>
                       </div>
                       <div>
                         <p className="text-[10px] text-neutral-600 font-black uppercase tracking-widest mb-1">Est. Created</p>

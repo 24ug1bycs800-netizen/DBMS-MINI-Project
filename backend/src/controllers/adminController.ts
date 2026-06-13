@@ -662,6 +662,7 @@ export const generateShows = async (req: Request, res: Response) => {
       priceRegular,
       pricePremium,
       priceRecliner,
+      pricesByType,     // per-screen-type pricing: { "2D": {regular,premium,recliner}, "3D": {...}, "IMAX": {...} }
       language,
       days = 7,         // default: 7-day weekly schedule
       startDate,        // optional: start from specific date (defaults to today)
@@ -703,6 +704,7 @@ export const generateShows = async (req: Request, res: Response) => {
       .select({
         screenId: screens.id,
         screenNumber: screens.number,
+        screenType: screens.type,
         theatreId: theatres.id,
         cityId: cities.id,
       })
@@ -755,15 +757,22 @@ export const generateShows = async (req: Request, res: Response) => {
             skipped += 1;
             continue;
           }
+          // Use per-type pricing if provided, fall back to flat pricing, then defaults
+          const typeKey = String(screen.screenType || "2D").toUpperCase().trim();
+          const typePrices = pricesByType?.[typeKey] ?? pricesByType?.["2D"];
+          const pReg = typePrices?.regular ?? (Number.isNaN(parseInteger(priceRegular)) ? DEFAULT_PRICES.regular : parseInteger(priceRegular));
+          const pPrem = typePrices?.premium ?? (Number.isNaN(parseInteger(pricePremium)) ? DEFAULT_PRICES.premium : parseInteger(pricePremium));
+          const pRec = typePrices?.recliner ?? (Number.isNaN(parseInteger(priceRecliner)) ? DEFAULT_PRICES.recliner : parseInteger(priceRecliner));
+
           valuesToInsert.push({
             movieId: parsedMovieId,
             screenId: screen.screenId,
             language: showLanguage,
             date,
             startTime,
-            priceRegular: Number.isNaN(parseInteger(priceRegular)) ? DEFAULT_PRICES.regular : parseInteger(priceRegular),
-            pricePremium: Number.isNaN(parseInteger(pricePremium)) ? DEFAULT_PRICES.premium : parseInteger(pricePremium),
-            priceRecliner: Number.isNaN(parseInteger(priceRecliner)) ? DEFAULT_PRICES.recliner : parseInteger(priceRecliner),
+            priceRegular: pReg,
+            pricePremium: pPrem,
+            priceRecliner: pRec,
             status: "active",
           });
           existingKeys.add(key);
