@@ -3,6 +3,9 @@ import https from "https";
 const TMDB_BASE = "api.themoviedb.org";
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p";
 
+// Force IPv4 — some environments fail to reach TMDB over IPv6
+const ipv4Agent = new https.Agent({ family: 4 });
+
 const GENRE_MAP: Record<number, string> = {
   28: "Action", 12: "Adventure", 16: "Animation", 35: "Comedy",
   80: "Crime", 99: "Documentary", 18: "Drama", 10751: "Family",
@@ -34,6 +37,7 @@ function tmdbGet<T>(path: string): Promise<T> {
       hostname: TMDB_BASE,
       path,
       method: "GET",
+      agent: ipv4Agent,
       headers: {
         Authorization: `Bearer ${process.env.TMDB_READ_TOKEN}`,
         Accept: "application/json",
@@ -57,7 +61,7 @@ function tmdbGet<T>(path: string): Promise<T> {
     });
 
     req.on("error", reject);
-    req.setTimeout(10000, () => { req.destroy(new Error(`TMDB timeout: ${path}`)); });
+    req.setTimeout(30000, () => { req.destroy(new Error(`TMDB timeout after 30s: ${path}`)); });
     req.end();
   });
 }
