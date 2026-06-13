@@ -215,7 +215,7 @@ const ReviewForm: React.FC<{
             onClick={() => setRating(star)}
             onMouseEnter={() => setHovered(star)}
             onMouseLeave={() => setHovered(0)}
-            className="transition-opacity hover:opacity-80"
+            className="transition-transform hover:scale-110 active:scale-95"
           >
             <Star
               className={`w-6 h-6 transition-colors ${
@@ -263,8 +263,11 @@ const ReviewForm: React.FC<{
       <button
         type="submit"
         disabled={submitting}
-        className="w-full py-2.5 font-semibold text-xs transition-opacity hover:opacity-85 disabled:opacity-40"
-        style={{ background: "#c9a84c", color: "#000", borderRadius: 7 }}
+        className="w-full py-2.5 rounded-xl font-black text-xs tracking-wider uppercase transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
+        style={{
+          background: "linear-gradient(135deg, #d4af37, #f4d03f)",
+          color: "#000",
+        }}
       >
         {submitting ? "Submitting..." : "Submit Review"}
       </button>
@@ -508,7 +511,7 @@ export const MovieDetails: React.FC = () => {
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => setTrailerOpen(true)}
-                className="px-6 py-3 rounded-xl font-bold text-sm flex items-center gap-2 transition-opacity hover:opacity-80"
+                className="px-6 py-3 rounded-xl font-bold text-sm flex items-center gap-2 transition-all hover:scale-105"
                 style={{
                   background: "rgba(255,255,255,0.05)",
                   border: "1px solid rgba(212,175,55,0.25)",
@@ -519,7 +522,7 @@ export const MovieDetails: React.FC = () => {
               </button>
               <button
                 onClick={handleToggleWishlist}
-                className="px-5 py-3 rounded-xl font-bold text-sm flex items-center gap-2 transition-opacity hover:opacity-80"
+                className="px-5 py-3 rounded-xl font-bold text-sm flex items-center gap-2 transition-all hover:scale-105"
                 style={
                   isWishlisted
                     ? {
@@ -541,7 +544,7 @@ export const MovieDetails: React.FC = () => {
               </button>
               <button
                 onClick={handleShare}
-                className="px-5 py-3 rounded-xl font-bold text-sm flex items-center gap-2 transition-opacity hover:opacity-80"
+                className="px-5 py-3 rounded-xl font-bold text-sm flex items-center gap-2 transition-all hover:scale-105"
                 style={{
                   background: "rgba(255,255,255,0.04)",
                   border: "1px solid rgba(255,255,255,0.08)",
@@ -562,34 +565,49 @@ export const MovieDetails: React.FC = () => {
         <div
           className="lg:col-span-3 p-6 rounded-2xl relative overflow-hidden"
           style={{
-            background: "#0d0d0d",
-            border: "1px solid rgba(201,168,76,0.12)",
+            background:
+              "linear-gradient(135deg, rgba(212,175,55,0.07) 0%, rgba(212,175,55,0.02) 100%)",
+            border: "1px solid rgba(212,175,55,0.2)",
           }}
         >
+          {/* TOP LINE */}
+          <div
+            className="absolute top-0 left-0 right-0 h-px"
+            style={{
+              background:
+                "linear-gradient(to right, transparent, rgba(212,175,55,0.5) 30%, rgba(212,175,55,0.5) 70%, transparent)",
+            }}
+          />
+
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5">
             <div>
               <span
-                className="text-[9px] font-semibold tracking-[0.18em] uppercase px-2.5 py-1 font-inter"
+                className="text-[10px] font-black tracking-[0.2em] uppercase px-2.5 py-1 rounded-full"
                 style={{
-                  background: "rgba(201,168,76,0.07)",
-                  border: "1px solid rgba(201,168,76,0.18)",
-                  color: "rgba(201,168,76,0.7)",
-                  borderRadius: 4,
+                  background: "rgba(212,175,55,0.1)",
+                  border: "1px solid rgba(212,175,55,0.25)",
+                  color: "#d4af37",
                 }}
               >
-                CineCircle Feature
+                CineCircle USP Feature
               </span>
-              <h3 className="text-base font-bold text-white mt-3 flex items-center gap-2">
-                <Users className="w-4 h-4" style={{ color: "#c9a84c" }} /> Plan with Friends
+              <h3 className="text-lg font-black text-white mt-3 flex items-center gap-2">
+                <Users className="w-5 h-5" style={{ color: "#d4af37" }} /> Plan
+                with Friends!
               </h3>
-              <p className="text-xs font-inter mt-1.5 leading-relaxed max-w-xl" style={{ color: "rgba(255,255,255,0.35)" }}>
-                Invite friends, vote on showtimes, and book together in one place.
+              <p className="text-xs text-neutral-600 font-inter mt-1.5 leading-relaxed max-w-xl">
+                Can't decide on theatres or timings? Start a Movie Night to
+                invite friends, let the AI pick the best show, and book together!
               </p>
             </div>
             <button
               onClick={() => navigate("/movie-nights")}
-              className="px-5 py-2.5 text-sm font-semibold flex items-center gap-2 transition-opacity hover:opacity-85 flex-shrink-0"
-              style={{ background: "#c9a84c", color: "#000", borderRadius: 6 }}
+              className="px-6 py-3 rounded-xl font-black text-sm flex items-center gap-2 transition-all hover:scale-105 flex-shrink-0"
+              style={{
+                background: "linear-gradient(135deg, #d4af37, #f4d03f)",
+                color: "#000",
+                boxShadow: "0 8px 24px rgba(212,175,55,0.25)",
+              }}
             >
               <Moon className="w-4 h-4" /> Plan a Movie Night
             </button>
@@ -600,7 +618,7 @@ export const MovieDetails: React.FC = () => {
         {cast.length > 0 && (
           <div className="lg:col-span-3 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-0.5 h-5 rounded-sm" style={{ background: "#d4af37" }} />
+              <div className="w-1 h-5 rounded-full" style={{ background: "#d4af37" }} />
               <h2 className="text-lg font-black text-white">Cast</h2>
             </div>
             <div className="flex gap-4 overflow-x-auto pb-2">
@@ -634,7 +652,7 @@ export const MovieDetails: React.FC = () => {
         <div className="lg:col-span-2 space-y-6">
           <div className="flex items-center gap-3">
             <div
-              className="w-0.5 h-5 rounded-sm"
+              className="w-1 h-5 rounded-full"
               style={{ background: "#d4af37" }}
             />
             <h2 className="text-lg font-black text-white">Showtimes</h2>
@@ -650,7 +668,7 @@ export const MovieDetails: React.FC = () => {
                     className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
                     style={
                       selectedLanguage === ""
-                        ? { background: "#c9a84c", color: "#000", borderRadius: 6 }
+                        ? { background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000" }
                         : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#666" }
                     }
                   >
@@ -663,7 +681,7 @@ export const MovieDetails: React.FC = () => {
                       className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
                       style={
                         selectedLanguage === lang
-                          ? { background: "#c9a84c", color: "#000", borderRadius: 6 }
+                          ? { background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000" }
                           : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#666" }
                       }
                     >
@@ -696,14 +714,15 @@ export const MovieDetails: React.FC = () => {
                       style={
                         isSelected
                           ? {
-                              background: "rgba(201,168,76,0.1)",
-                              border: "1px solid rgba(201,168,76,0.35)",
-                              color: "#c9a84c",
+                              background:
+                                "linear-gradient(135deg, rgba(212,175,55,0.15), rgba(212,175,55,0.08))",
+                              border: "1px solid rgba(212,175,55,0.4)",
+                              color: "#d4af37",
                             }
                           : {
                               background: "rgba(255,255,255,0.02)",
                               border: "1px solid rgba(255,255,255,0.05)",
-                              color: "rgba(255,255,255,0.3)",
+                              color: "#555",
                             }
                       }
                     >
@@ -758,7 +777,7 @@ export const MovieDetails: React.FC = () => {
                                 state: { show, movie, city: selectedCity },
                               })
                             }
-                            className="px-4 py-2.5 rounded-xl text-xs font-bold transition-opacity hover:opacity-80"
+                            className="px-4 py-2.5 rounded-xl text-xs font-bold transition-all hover:scale-105"
                             style={{
                               background: "rgba(212,175,55,0.06)",
                               border: "1px solid rgba(212,175,55,0.2)",
@@ -832,8 +851,8 @@ export const MovieDetails: React.FC = () => {
         <div className="space-y-5">
           <div className="flex items-center gap-3">
             <div
-              className="w-0.5 h-5 rounded-sm"
-              style={{ background: "rgba(201,168,76,0.6)" }}
+              className="w-1 h-5 rounded-full"
+              style={{ background: "#6ee7e7" }}
             />
             <h2 className="text-lg font-black text-white">User Reviews</h2>
           </div>
@@ -921,7 +940,7 @@ export const MovieDetails: React.FC = () => {
           >
             <button
               onClick={() => setTrailerOpen(false)}
-              className="absolute top-3 right-3 z-10 p-2 rounded transition-opacity hover:opacity-75"
+              className="absolute top-3 right-3 z-10 p-2 rounded-full transition-all hover:scale-110"
               style={{
                 background: "rgba(0,0,0,0.8)",
                 border: "1px solid rgba(255,255,255,0.1)",

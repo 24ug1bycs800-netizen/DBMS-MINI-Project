@@ -43,28 +43,28 @@ const ZONE_CONFIG: Record<string, {
   label: string; priceKey: "priceRecliner" | "pricePremium" | "priceRegular";
 }> = {
   Recliner: {
-    color: "#c9a84c", glow: "rgba(201,168,76,0.12)",
-    bg: "rgba(201,168,76,0.04)", border: "rgba(201,168,76,0.14)",
+    color: "#d4af37", glow: "rgba(212,175,55,0.18)",
+    bg: "rgba(212,175,55,0.04)", border: "rgba(212,175,55,0.14)",
     label: "RECLINER", priceKey: "priceRecliner",
   },
   Premium: {
-    color: "rgba(255,255,255,0.7)", glow: "rgba(255,255,255,0.06)",
-    bg: "rgba(255,255,255,0.03)", border: "rgba(255,255,255,0.12)",
+    color: "#6ee7e7", glow: "rgba(110,231,231,0.15)",
+    bg: "rgba(110,231,231,0.03)", border: "rgba(110,231,231,0.12)",
     label: "PREMIUM", priceKey: "pricePremium",
   },
   Regular: {
-    color: "rgba(255,255,255,0.35)", glow: "rgba(255,255,255,0.04)",
+    color: "rgba(255,255,255,0.4)", glow: "rgba(255,255,255,0.07)",
     bg: "transparent", border: "transparent",
     label: "REGULAR", priceKey: "priceRegular",
   },
 };
 
 const SEAT_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  booked:   { bg: "rgba(255,255,255,0.02)",  border: "rgba(255,255,255,0.05)", text: "rgba(255,255,255,0.08)" },
-  selected: { bg: "rgba(201,168,76,0.18)",   border: "rgba(201,168,76,0.85)",  text: "#c9a84c" },
-  Regular:  { bg: "rgba(255,255,255,0.04)",  border: "rgba(255,255,255,0.18)", text: "rgba(255,255,255,0.4)" },
-  Premium:  { bg: "rgba(255,255,255,0.05)",  border: "rgba(255,255,255,0.28)", text: "rgba(255,255,255,0.65)" },
-  Recliner: { bg: "rgba(201,168,76,0.07)",   border: "rgba(201,168,76,0.45)",  text: "#c9a84c" },
+  booked:   { bg: "rgba(255,255,255,0.025)", border: "rgba(255,255,255,0.07)", text: "rgba(255,255,255,0.1)" },
+  selected: { bg: "rgba(34,197,94,0.2)",     border: "rgba(34,197,94,0.9)",   text: "#4ade80" },
+  Regular:  { bg: "rgba(255,255,255,0.05)",  border: "rgba(255,255,255,0.22)", text: "rgba(255,255,255,0.5)" },
+  Premium:  { bg: "rgba(110,231,231,0.07)",  border: "rgba(110,231,231,0.45)", text: "#6ee7e7" },
+  Recliner: { bg: "rgba(212,175,55,0.09)",   border: "rgba(212,175,55,0.5)",  text: "#d4af37" },
 };
 
 // Splits a row into left-wing | (optional center) | right-wing
@@ -95,13 +95,13 @@ const SeatBtn: React.FC<{
     : isSelected
     ? SEAT_COLORS.selected
     : (SEAT_COLORS[seat.category] ?? SEAT_COLORS.Regular);
-  const glow = isSelected ? "0 0 10px rgba(201,168,76,0.3)" : "none";
+  const glow = isSelected ? "0 0 14px rgba(34,197,94,0.4)" : "none";
 
   return (
     <button
       disabled={isBooked}
       onClick={onClick}
-      className="flex flex-col items-center transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed focus:outline-none"
+      className="flex flex-col items-center transition-all hover:-translate-y-0.5 hover:scale-[1.14] disabled:cursor-not-allowed focus:outline-none"
       title={isBooked ? "Booked" : `${seat.row}${seat.number}`}
     >
       {/* Backrest */}
@@ -298,25 +298,33 @@ export const SeatBooking: React.FC = () => {
 
           {/* SCREEN GRAPHIC */}
           <div className={`w-full mb-12 flex flex-col items-center relative ${isImax ? "max-w-2xl" : "max-w-xl"}`}>
+            {/* Projector glow */}
+            <div className={`absolute -top-6 blur-3xl rounded-full pointer-events-none opacity-70 ${isImax ? "w-10/12 h-20" : "w-7/12 h-16"}`}
+              style={{ background: is3D ? "rgba(110,231,231,0.08)" : "rgba(212,175,55,0.08)" }} />
+
             {/* Screen type badge */}
-            <div className="mb-4 px-3.5 py-1 text-[9px] font-semibold tracking-[0.18em] uppercase font-inter" style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              color: isImax ? "#c9a84c" : "rgba(255,255,255,0.4)",
-              borderRadius: 4,
-            }}>
-              {isImax ? "IMAX" : is3D ? "3D" : "Standard"}
+            <div className="mb-4 px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase" style={
+              isImax
+                ? { background: "rgba(212,175,55,0.12)", border: "1px solid rgba(212,175,55,0.45)", color: "#f4d03f" }
+                : is3D
+                ? { background: "rgba(110,231,231,0.08)", border: "1px solid rgba(110,231,231,0.35)", color: "#6ee7e7" }
+                : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)" }
+            }>
+              {isImax ? "IMAX Experience" : is3D ? "3D Experience" : "Standard 2D"}
             </div>
 
             {/* Screen bar */}
-            <div className={`w-full ${isImax ? "h-0.5" : "h-px"}`} style={{
-              background: "linear-gradient(to right, transparent, rgba(255,255,255,0.15) 20%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.15) 80%, transparent)",
+            <div className={`w-full rounded-full ${isImax ? "h-1" : "h-0.5"}`} style={{
+              background: is3D
+                ? "linear-gradient(to right, transparent, rgba(110,231,231,0.4) 20%, #6ee7e7 50%, rgba(110,231,231,0.4) 80%, transparent)"
+                : "linear-gradient(to right, transparent, rgba(212,175,55,0.5) 20%, #d4af37 50%, rgba(212,175,55,0.5) 80%, transparent)",
+              boxShadow: is3D ? "0 0 20px rgba(110,231,231,0.2)" : "0 0 24px rgba(212,175,55,0.2)",
             }} />
 
             {/* Perspective lines */}
-            <svg className={`mt-0.5 opacity-[0.06] ${isImax ? "w-10/12" : "w-7/12"}`} viewBox="0 0 300 30" fill="none">
-              <line x1="150" y1="0" x2="0"   y2="30" stroke="#ffffff" strokeWidth="0.6" />
-              <line x1="150" y1="0" x2="300" y2="30" stroke="#ffffff" strokeWidth="0.6" />
+            <svg className={`mt-0.5 opacity-[0.08] ${isImax ? "w-10/12" : "w-7/12"}`} viewBox="0 0 300 30" fill="none">
+              <line x1="150" y1="0" x2="0"   y2="30" stroke={is3D ? "#6ee7e7" : "#d4af37"} strokeWidth="0.6" />
+              <line x1="150" y1="0" x2="300" y2="30" stroke={is3D ? "#6ee7e7" : "#d4af37"} strokeWidth="0.6" />
             </svg>
 
             <p className="text-[9px] tracking-[0.3em] uppercase mt-2 font-inter" style={{ color: "rgba(212,175,55,0.35)" }}>
@@ -519,11 +527,11 @@ export const SeatBooking: React.FC = () => {
             <button
               onClick={handleCheckoutSubmit}
               disabled={selectedSeats.length === 0}
-              className="w-full py-3 font-semibold text-sm flex items-center justify-center gap-2 transition-opacity disabled:opacity-25 disabled:pointer-events-none"
+              className="w-full py-3.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-30 disabled:pointer-events-none"
               style={{
-                background: selectedSeats.length > 0 ? "#c9a84c" : "rgba(255,255,255,0.04)",
-                color: selectedSeats.length > 0 ? "#000" : "rgba(255,255,255,0.2)",
-                borderRadius: 7,
+                background: selectedSeats.length > 0 ? "linear-gradient(135deg, #d4af37, #f4d03f)" : "rgba(255,255,255,0.04)",
+                color: selectedSeats.length > 0 ? "#000" : "#333",
+                boxShadow: selectedSeats.length > 0 ? "0 8px 24px rgba(212,175,55,0.25)" : "none",
               }}
             >
               {selectedSeats.length > 0 ? `Confirm & Pay ₹${calculateTotalPrice()}` : "Select Seats to Continue"}

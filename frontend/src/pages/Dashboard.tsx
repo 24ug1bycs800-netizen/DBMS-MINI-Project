@@ -168,77 +168,97 @@ export const Dashboard: React.FC = () => {
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
         }}
       />
+      {/* AMBIENT GLOW */}
+      <div
+        className="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] pointer-events-none z-0"
+        style={{
+          background: "radial-gradient(ellipse at center top, rgba(212,175,55,0.07) 0%, transparent 65%)",
+        }}
+      />
 
       <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-12 py-12 grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* ─── SIDEBAR ─── */}
         <div
-          className="lg:col-span-1 rounded-lg flex flex-col items-center text-center p-6"
-          style={{ background: "#0f0f0f", border: "1px solid rgba(255,255,255,0.06)" }}
+          className="lg:col-span-1 rounded-2xl flex flex-col items-center text-center p-6 relative overflow-hidden"
+          style={{
+            background: "linear-gradient(160deg, #131313 0%, #0d0d0d 100%)",
+            border: "1px solid rgba(212,175,55,0.12)",
+            boxShadow: "0 24px 60px rgba(0,0,0,0.5)",
+          }}
         >
+          {/* TOP GOLD LINE */}
+          <div
+            className="absolute top-0 left-0 right-0 h-px"
+            style={{
+              background: "linear-gradient(to right, transparent, #d4af37 40%, transparent)",
+            }}
+          />
+
           {/* AVATAR */}
-          <div className="mb-4">
+          <div className="relative mb-4">
             <div
-              className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold uppercase"
+              className="absolute inset-0 rounded-full blur-lg opacity-40"
+              style={{ background: "#d4af37" }}
+            />
+            <div
+              className="relative w-20 h-20 rounded-full flex items-center justify-center text-2xl font-black uppercase"
               style={{
-                background: "rgba(201,168,76,0.08)",
-                border: "1px solid rgba(201,168,76,0.25)",
-                color: "#c9a84c",
+                background: "linear-gradient(135deg, rgba(212,175,55,0.15), rgba(212,175,55,0.05))",
+                border: "2px solid rgba(212,175,55,0.4)",
+                color: "#d4af37",
               }}
             >
               {user.fullName.substring(0, 2)}
             </div>
           </div>
 
-          <h2 className="font-semibold text-white text-base leading-tight">{user.fullName}</h2>
+          <h2 className="font-black text-white text-lg leading-tight">{user.fullName}</h2>
           <span
-            className="mt-2 px-2.5 py-0.5 text-[9px] font-semibold tracking-[0.18em] uppercase font-inter"
+            className="mt-2 px-3 py-0.5 rounded-full text-[9px] font-black tracking-[0.2em] uppercase"
             style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              color: "rgba(255,255,255,0.35)",
-              borderRadius: 4,
+              background: "rgba(212,175,55,0.08)",
+              border: "1px solid rgba(212,175,55,0.2)",
+              color: "#d4af37",
             }}
           >
             {user.role}
           </span>
-          <p className="text-xs font-inter mt-3 truncate max-w-full" style={{ color: "rgba(255,255,255,0.28)" }}>{user.email}</p>
+          <p className="text-xs text-neutral-600 font-inter mt-3 truncate max-w-full">{user.email}</p>
 
           {/* STATS STRIP */}
           <div
-            className="w-full mt-6 grid grid-cols-3 rounded-lg overflow-hidden"
-            style={{ border: "1px solid rgba(255,255,255,0.06)" }}
+            className="w-full mt-6 grid grid-cols-3 divide-x rounded-xl overflow-hidden"
+            style={{ borderColor: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.08)" }}
           >
             {[
               { val: bookings.length, label: "Tickets" },
               { val: wishlist.length, label: "Saved" },
               { val: nights.length, label: "Nights" },
-            ].map(({ val, label }, i) => (
-              <div key={label} className="flex flex-col items-center py-3"
-                style={{ borderLeft: i > 0 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
-                <span className="text-base font-bold" style={{ color: "#c9a84c" }}>{val}</span>
-                <span className="text-[9px] font-inter uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>{label}</span>
+            ].map(({ val, label }) => (
+              <div key={label} className="flex flex-col items-center py-3" style={{ borderColor: "rgba(212,175,55,0.08)" }}>
+                <span className="text-lg font-black" style={{ color: "#d4af37" }}>{val}</span>
+                <span className="text-[9px] text-neutral-600 font-inter uppercase tracking-wider">{label}</span>
               </div>
             ))}
           </div>
 
           <button
             onClick={() => { logout(); navigate("/"); }}
-            className="mt-5 w-full py-2.5 text-xs font-medium flex items-center justify-center gap-2 transition-opacity hover:opacity-75"
+            className="mt-6 w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
             style={{
               background: "rgba(239,68,68,0.05)",
-              border: "1px solid rgba(239,68,68,0.15)",
-              color: "rgba(248,113,113,0.8)",
-              borderRadius: 7,
+              border: "1px solid rgba(239,68,68,0.2)",
+              color: "#f87171",
             }}
           >
-            <LogOut className="w-3.5 h-3.5" /> Sign Out
+            <LogOut className="w-3.5 h-3.5" /> Logout Account
           </button>
         </div>
 
         {/* ─── MAIN CONTENT ─── */}
         <div className="lg:col-span-3 space-y-6">
           {/* TAB STRIP */}
-          <div className="flex gap-1 p-1 rounded-lg" style={{ background: "#0d0d0d", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="flex gap-1 p-1 rounded-xl" style={{ background: "#0d0d0d", border: "1px solid rgba(212,175,55,0.08)" }}>
             {tabs.map(({ key, label, icon: Icon, count }) => {
               const active = activeTab === key;
               return (
@@ -248,19 +268,23 @@ export const Dashboard: React.FC = () => {
                   className="flex-1 py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
                   style={
                     active
-                      ? { background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.22)", color: "#c9a84c" }
-                      : { color: "rgba(255,255,255,0.28)", border: "1px solid transparent" }
+                      ? {
+                          background: "linear-gradient(135deg, rgba(212,175,55,0.15), rgba(212,175,55,0.08))",
+                          border: "1px solid rgba(212,175,55,0.3)",
+                          color: "#d4af37",
+                        }
+                      : { color: "#555", border: "1px solid transparent" }
                   }
                 >
                   <Icon className="w-3.5 h-3.5" />
                   {label}
                   <span
-                    className="px-1.5 py-0.5 text-[9px] font-semibold"
-                    style={{
-                      background: active ? "rgba(201,168,76,0.15)" : "rgba(255,255,255,0.04)",
-                      color: active ? "#c9a84c" : "rgba(255,255,255,0.25)",
-                      borderRadius: 3,
-                    }}
+                    className="px-1.5 py-0.5 rounded-full text-[9px] font-black"
+                    style={
+                      active
+                        ? { background: "rgba(212,175,55,0.2)", color: "#d4af37" }
+                        : { background: "rgba(255,255,255,0.04)", color: "#555" }
+                    }
                   >
                     {count}
                   </span>
@@ -278,7 +302,7 @@ export const Dashboard: React.FC = () => {
                     key={booking.id}
                     className="rounded-2xl overflow-hidden relative"
                     style={{
-                      background: "#0f0f0f",
+                      background: "linear-gradient(160deg, #111 0%, #0c0c0c 100%)",
                       border: "1px solid rgba(212,175,55,0.1)",
                       boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
                     }}
@@ -350,7 +374,7 @@ export const Dashboard: React.FC = () => {
                           <>
                             <button
                               onClick={() => handlePrintTicket(booking)}
-                              className="w-full px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-opacity hover:opacity-85"
+                              className="w-full px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all hover:scale-[1.02]"
                               style={{
                                 background: "rgba(212,175,55,0.07)",
                                 border: "1px solid rgba(212,175,55,0.25)",
@@ -361,7 +385,7 @@ export const Dashboard: React.FC = () => {
                             </button>
                             <button
                               onClick={() => setCancelTarget(booking)}
-                              className="w-full px-4 py-2 rounded-xl text-xs font-bold transition-opacity hover:opacity-85"
+                              className="w-full px-4 py-2 rounded-xl text-xs font-bold transition-all hover:scale-[1.02]"
                               style={{
                                 background: "rgba(239,68,68,0.08)",
                                 border: "1px solid rgba(239,68,68,0.2)",
@@ -409,7 +433,7 @@ export const Dashboard: React.FC = () => {
                       <img
                         src={movie.posterUrl}
                         alt={movie.title}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
@@ -437,9 +461,9 @@ export const Dashboard: React.FC = () => {
                   <div
                     key={night.id}
                     onClick={() => navigate(`/movie-nights/${night.id}`)}
-                    className="p-5 rounded-2xl cursor-pointer transition-opacity hover:opacity-85 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden group"
+                    className="p-5 rounded-2xl cursor-pointer transition-all hover:scale-[1.01] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden group"
                     style={{
-                      background: "#0f0f0f",
+                      background: "linear-gradient(160deg, #111 0%, #0c0c0c 100%)",
                       border: "1px solid rgba(212,175,55,0.08)",
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(212,175,55,0.3)")}
@@ -538,7 +562,7 @@ export const Dashboard: React.FC = () => {
                 <div className="flex gap-3">
                   <button
                     onClick={() => setCancelTarget(null)}
-                    className="flex-1 py-2.5 rounded-xl text-xs font-bold transition-opacity hover:opacity-85"
+                    className="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all hover:scale-[1.01]"
                     style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#888" }}
                   >
                     Keep Ticket
@@ -546,7 +570,7 @@ export const Dashboard: React.FC = () => {
                   <button
                     onClick={() => handleCancelBooking(cancelTarget.id)}
                     disabled={cancelling}
-                    className="flex-1 py-2.5 rounded-xl text-xs font-black transition-opacity hover:opacity-85 disabled:opacity-50"
+                    className="flex-1 py-2.5 rounded-xl text-xs font-black transition-all hover:scale-[1.01] disabled:opacity-50"
                     style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171" }}
                   >
                     {cancelling ? "Cancelling…" : "Confirm & Refund"}
@@ -566,7 +590,7 @@ export const Dashboard: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setCancelTarget(null)}
-                  className="w-full py-2.5 rounded-xl text-xs font-bold transition-opacity hover:opacity-85"
+                  className="w-full py-2.5 rounded-xl text-xs font-bold transition-all hover:scale-[1.01]"
                   style={{ background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.2)", color: "#d4af37" }}
                 >
                   OK, Got It

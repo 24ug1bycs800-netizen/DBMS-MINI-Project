@@ -135,7 +135,7 @@ export const GroupRoomsList: React.FC = () => {
       <div
         className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] h-[350px] pointer-events-none z-0"
         style={{
-          background: "transparent",
+          background: "radial-gradient(ellipse at center top, rgba(212,175,55,0.07) 0%, transparent 65%)",
         }}
       />
 
@@ -265,7 +265,7 @@ export const GroupRoomsList: React.FC = () => {
                 <div
                   key={room.id}
                   onClick={() => navigate(`/group/${room.inviteCode}`)}
-                  className="p-5 rounded-2xl cursor-pointer transition-all transition-opacity hover:opacity-85 flex justify-between items-center group relative overflow-hidden"
+                  className="p-5 rounded-2xl cursor-pointer transition-all hover:scale-[1.01] flex justify-between items-center group relative overflow-hidden"
                   style={{
                     background: "linear-gradient(160deg, #111 0%, #0c0c0c 100%)",
                     border: "1px solid rgba(212,175,55,0.08)",
@@ -410,9 +410,9 @@ const GoldButton: React.FC<{ loading: boolean; icon: React.ReactNode; label: str
   <button
     type="submit"
     disabled={loading}
-    className="px-5 py-3 rounded-xl font-black text-sm flex items-center gap-1.5 transition-all transition-opacity hover:opacity-80 active:scale-95 disabled:opacity-50 flex-shrink-0"
+    className="px-5 py-3 rounded-xl font-black text-sm flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 flex-shrink-0"
     style={{
-      background: "#c9a84c",
+      background: "linear-gradient(135deg, #d4af37, #f4d03f)",
       color: "#000",
       boxShadow: "0 4px 16px rgba(212,175,55,0.25)",
     }}

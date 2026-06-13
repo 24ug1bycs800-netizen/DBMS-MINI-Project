@@ -130,8 +130,8 @@ const VotingCard: React.FC<{
       <button
         onClick={onVote}
         disabled={selectValue === ""}
-        className="px-5 py-3 rounded-xl font-black text-xs transition-all transition-opacity hover:opacity-80 active:scale-95 disabled:opacity-30 flex-shrink-0"
-        style={{ background: "#c9a84c", color: "#000", borderRadius: 7 }}
+        className="px-5 py-3 rounded-xl font-black text-xs transition-all hover:scale-105 active:scale-95 disabled:opacity-30 flex-shrink-0"
+        style={{ background: "linear-gradient(135deg, #d4af37, #f4d03f)", color: "#000" }}
       >
         {voteBtnLabel}
       </button>
@@ -296,8 +296,8 @@ export const GroupBooking: React.FC = () => {
           <p className="text-sm text-neutral-600 font-inter">The room code is either invalid or expired.</p>
           <button
             onClick={() => navigate("/")}
-            className="mt-7 px-6 py-2.5 rounded-xl font-black text-sm transition-all transition-opacity hover:opacity-80"
-            style={{ background: "#c9a84c", color: "#000", borderRadius: 7 }}
+            className="mt-7 px-6 py-2.5 rounded-xl font-black text-sm transition-all hover:scale-105"
+            style={{ background: "linear-gradient(135deg, #d4af37, #f4d03f)", color: "#000" }}
           >
             Return Home
           </button>
@@ -368,7 +368,7 @@ export const GroupBooking: React.FC = () => {
             {/* ✅ Copies only the invite code */}
             <button
               onClick={handleCopyCode}
-              className="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all transition-opacity hover:opacity-80"
+              className="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all hover:scale-105"
               style={{ background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.2)", color: "#d4af37" }}
             >
               {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
@@ -429,7 +429,7 @@ export const GroupBooking: React.FC = () => {
                   rawVotes={rawVotes}
                   userId={user?.id}
                   voteType="theatre"
-                  barColor="rgba(255,255,255,0.45)"
+                  barColor="#6ee7e7"
                 />
 
                 <VotingCard
@@ -471,7 +471,7 @@ export const GroupBooking: React.FC = () => {
                 <button
                   onClick={() => navigate(`/shows/${finalShowId}/booking`)}
                   disabled={!finalShowId}
-                  className="px-8 py-3.5 rounded-xl font-black text-sm flex items-center gap-2 transition-all transition-opacity hover:opacity-80 disabled:opacity-40"
+                  className="px-8 py-3.5 rounded-xl font-black text-sm flex items-center gap-2 transition-all hover:scale-105 disabled:opacity-40"
                   style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)", color: "#fff", boxShadow: "0 8px 24px rgba(34,197,94,0.2)" }}
                 >
                   <CheckCircle className="w-4 h-4" /> Go to Seat Selection
@@ -541,8 +541,8 @@ export const GroupBooking: React.FC = () => {
                 {isCreator ? (
                   <button
                     onClick={handleFinalizeRoom}
-                    className="w-full py-3 rounded-xl font-black text-xs flex items-center justify-center gap-1.5 transition-all transition-opacity hover:opacity-85"
-                    style={{ background: "#c9a84c", color: "#000", borderRadius: 7 }}
+                    className="w-full py-3 rounded-xl font-black text-xs flex items-center justify-center gap-1.5 transition-all hover:scale-[1.02]"
+                    style={{ background: "linear-gradient(135deg, #d4af37, #f4d03f)", color: "#000" }}
                   >
                     <CheckCircle className="w-4 h-4" /> Conclude Voting & Finalize
                   </button>

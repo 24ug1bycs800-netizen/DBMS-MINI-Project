@@ -11,14 +11,14 @@ const getImageUrl = (url?: string) => {
 };
 
 const CATEGORY_COLOR: Record<string, string> = {
-  Regular:  "rgba(255,255,255,0.07)",
-  Premium:  "rgba(255,255,255,0.12)",
-  Recliner: "rgba(201,168,76,0.18)",
+  Regular:  "rgba(255,255,255,0.12)",
+  Premium:  "rgba(110,231,231,0.25)",
+  Recliner: "rgba(212,175,55,0.35)",
 };
 const CATEGORY_TEXT: Record<string, string> = {
-  Regular:  "rgba(255,255,255,0.45)",
-  Premium:  "rgba(255,255,255,0.65)",
-  Recliner: "#c9a84c",
+  Regular:  "#aaa",
+  Premium:  "#6ee7e7",
+  Recliner: "#d4af37",
 };
 
 export const BookingConfirmation: React.FC = () => {
@@ -66,7 +66,7 @@ export const BookingConfirmation: React.FC = () => {
     <div className="min-h-screen text-white pb-20 font-poppins" style={{ background: "#080808" }}>
       {/* ambient glow */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] h-[260px] pointer-events-none z-0"
-        style={{ display: "none" }} />
+        style={{ background: "radial-gradient(ellipse at center top, rgba(34,197,94,0.06) 0%, transparent 65%)" }} />
 
       <div className="relative z-10 max-w-2xl mx-auto px-4 sm:px-6 py-14">
         {/* ── SUCCESS HEADER ── */}
@@ -82,7 +82,7 @@ export const BookingConfirmation: React.FC = () => {
         {/* ── TICKET CARD ── */}
         <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(212,175,55,0.2)", background: "#0d0d0d" }}>
           {/* gold top stripe */}
-          <div className="h-px w-full" style={{ background: "rgba(201,168,76,0.35)" }} />
+          <div className="h-1 w-full" style={{ background: "linear-gradient(to right, transparent, #d4af37 30%, #f4d03f 50%, #d4af37 70%, transparent)" }} />
 
           {/* movie info */}
           <div className="flex gap-4 p-5 border-b" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
@@ -174,7 +174,7 @@ export const BookingConfirmation: React.FC = () => {
           <button
             onClick={() => navigate("/dashboard")}
             className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all"
-            style={{ background: "#c9a84c", color: "#000", borderRadius: 7 }}
+            style={{ background: "linear-gradient(135deg, #d4af37, #f4d03f)", color: "#000" }}
           >
             <LayoutDashboard className="w-4 h-4" /> My Bookings
           </button>

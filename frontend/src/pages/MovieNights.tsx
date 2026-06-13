@@ -20,8 +20,8 @@ interface MovieNight {
 }
 
 const STATUS_META: Record<string, { label: string; color: string; bg: string; border: string; icon: React.ReactNode; glow: string }> = {
-  COLLECTING_PREFERENCES: { label: "Collecting Prefs", color: "rgba(255,255,255,0.55)", bg: "rgba(110,231,231,0.08)", border: "rgba(110,231,231,0.25)", icon: <Clock className="w-3 h-3" />, glow: "rgba(110,231,231,0.12)" },
-  RECOMMENDED:            { label: "Vote Pending",     color: "rgba(201,168,76,0.8)", bg: "rgba(201,168,76,0.10)", border: "rgba(201,168,76,0.10)", icon: <Sparkles className="w-3 h-3" />, glow: "rgba(201,168,76,0.10)" },
+  COLLECTING_PREFERENCES: { label: "Collecting Prefs", color: "#6ee7e7", bg: "rgba(110,231,231,0.08)", border: "rgba(110,231,231,0.25)", icon: <Clock className="w-3 h-3" />, glow: "rgba(110,231,231,0.12)" },
+  RECOMMENDED:            { label: "Vote Pending",     color: "#c084fc", bg: "rgba(192,132,252,0.08)", border: "rgba(192,132,252,0.25)", icon: <Sparkles className="w-3 h-3" />, glow: "rgba(192,132,252,0.12)" },
   APPROVED:               { label: "Approved",         color: "#4ade80", bg: "rgba(74,222,128,0.08)",  border: "rgba(74,222,128,0.25)",  icon: <CheckCircle className="w-3 h-3" />, glow: "rgba(74,222,128,0.12)" },
   PAYMENT_PENDING:        { label: "Payment Pending",  color: "#fb923c", bg: "rgba(251,146,60,0.08)",  border: "rgba(251,146,60,0.25)",  icon: <Clock className="w-3 h-3" />, glow: "rgba(251,146,60,0.12)" },
   READY_TO_BOOK:          { label: "Ready to Book",    color: "#d4af37", bg: "rgba(212,175,55,0.08)",  border: "rgba(212,175,55,0.25)",  icon: <Ticket className="w-3 h-3" />, glow: "rgba(212,175,55,0.15)" },
@@ -109,8 +109,8 @@ export const MovieNights: React.FC = () => {
         }} />
 
         {/* Ambient glow orbs */}
-        <div className="absolute -top-20 -left-20 w-96 h-96 rounded-full pointer-events-none" style={{ background: "transparent" }} />
-        <div className="absolute -top-10 right-0 w-80 h-80 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(201,168,76,0.10) 0%, transparent 70%)" }} />
+        <div className="absolute -top-20 -left-20 w-96 h-96 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(212,175,55,0.08) 0%, transparent 70%)" }} />
+        <div className="absolute -top-10 right-0 w-80 h-80 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(192,132,252,0.06) 0%, transparent 70%)" }} />
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-32 pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(212,175,55,0.05) 0%, transparent 70%)" }} />
 
         {/* Floating stars */}
@@ -144,7 +144,7 @@ export const MovieNights: React.FC = () => {
             <div>
               <h1 className="text-4xl sm:text-5xl font-black tracking-tight leading-none mb-3">
                 <span className="text-white">Movie</span>{" "}
-                <span style={{  }}>
+                <span style={{ background: "linear-gradient(135deg,#d4af37,#f4d03f,#d4af37)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
                   Nights
                 </span>
               </h1>
@@ -155,9 +155,9 @@ export const MovieNights: React.FC = () => {
 
             <button
               onClick={() => navigate("/movie-nights/create")}
-              className="flex items-center gap-2.5 px-6 py-3.5 rounded-2xl font-black text-sm transition-all transition-opacity hover:opacity-80 hover:shadow-2xl shrink-0"
+              className="flex items-center gap-2.5 px-6 py-3.5 rounded-2xl font-black text-sm transition-all hover:scale-105 hover:shadow-2xl shrink-0"
               style={{
-                background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.2)",
+                background: "linear-gradient(135deg,#d4af37,#f4d03f)",
                 color: "#000",
                 boxShadow: "0 4px 24px rgba(212,175,55,0.35)",
               }}
@@ -170,10 +170,10 @@ export const MovieNights: React.FC = () => {
           {nights.length > 0 && (
             <div className="flex items-center gap-6 mt-8 pt-6" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
               {[
-                { label: "Active", value: activeCount, color: "rgba(255,255,255,0.55)", icon: <Moon className="w-3.5 h-3.5" /> },
+                { label: "Active", value: activeCount, color: "#6ee7e7", icon: <Moon className="w-3.5 h-3.5" /> },
                 { label: "Booked", value: bookedCount, color: "#4ade80", icon: <CheckCircle className="w-3.5 h-3.5" /> },
                 { label: "Hosting", value: hostedCount, color: "#d4af37", icon: <Crown className="w-3.5 h-3.5" /> },
-                { label: "Total", value: nights.length, color: "rgba(201,168,76,0.8)", icon: <Film className="w-3.5 h-3.5" /> },
+                { label: "Total", value: nights.length, color: "#c084fc", icon: <Film className="w-3.5 h-3.5" /> },
               ].map(({ label, value, color, icon }) => (
                 <div key={label} className="flex items-center gap-2">
                   <div className="p-1.5 rounded-lg" style={{ background: `${color}14`, color }}>{icon}</div>
@@ -223,8 +223,8 @@ export const MovieNights: React.FC = () => {
               <button
                 type="submit"
                 disabled={joinLoading || !joinCode.trim()}
-                className="px-6 py-3 rounded-xl font-black text-xs flex items-center gap-2 transition-all transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-                style={{ background: "#c9a84c", color: "#000", borderRadius: 7, boxShadow: "0 4px 16px rgba(212,175,55,0.2)" }}
+                className="px-6 py-3 rounded-xl font-black text-xs flex items-center gap-2 transition-all hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                style={{ background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000", boxShadow: "0 4px 16px rgba(212,175,55,0.2)" }}
               >
                 {joinLoading
                   ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
@@ -259,8 +259,8 @@ export const MovieNights: React.FC = () => {
             </p>
             <button
               onClick={() => navigate("/movie-nights/create")}
-              className="px-8 py-3.5 rounded-2xl font-black text-sm inline-flex items-center gap-2.5 transition-opacity hover:opacity-80 transition-all"
-              style={{ background: "#c9a84c", color: "#000", borderRadius: 7 }}
+              className="px-8 py-3.5 rounded-2xl font-black text-sm inline-flex items-center gap-2.5 hover:scale-105 transition-all"
+              style={{ background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000", boxShadow: "0 8px 32px rgba(212,175,55,0.25)" }}
             >
               <Plus className="w-4 h-4" /> Create Your First Night
             </button>
@@ -368,8 +368,8 @@ export const MovieNights: React.FC = () => {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 relative">
             {[
               { n: "01", title: "Create", desc: "Start a night & invite your squad", color: "#d4af37" },
-              { n: "02", title: "Preferences", desc: "Everyone shares their picks & budget", color: "rgba(201,168,76,0.8)" },
-              { n: "03", title: "AI Match", desc: "Smart engine finds the perfect show", color: "rgba(255,255,255,0.55)" },
+              { n: "02", title: "Preferences", desc: "Everyone shares their picks & budget", color: "#c084fc" },
+              { n: "03", title: "AI Match", desc: "Smart engine finds the perfect show", color: "#6ee7e7" },
               { n: "04", title: "Book", desc: "Vote, split costs, and grab seats", color: "#4ade80" },
             ].map(({ n, title, desc, color }, i) => (
               <div key={n} className="relative">
