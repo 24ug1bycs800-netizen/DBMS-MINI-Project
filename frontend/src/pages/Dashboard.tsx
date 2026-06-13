@@ -7,7 +7,7 @@ import QRCode from "qrcode";
 import {
   Ticket,
   Heart,
-  MessageSquare,
+  Moon,
   Download,
   ExternalLink,
   LogOut,
@@ -23,8 +23,8 @@ export const Dashboard: React.FC = () => {
 
   const [bookings, setBookings] = useState<any[]>([]);
   const [wishlist, setWishlist] = useState<any[]>([]);
-  const [rooms, setRooms] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<"bookings" | "wishlist" | "rooms">("bookings");
+  const [nights, setNights] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<"bookings" | "wishlist" | "nights">("bookings");
   const [cancelTarget, setCancelTarget] = useState<any | null>(null);
   const [cancelling, setCancelling] = useState(false);
 
@@ -40,8 +40,8 @@ export const Dashboard: React.FC = () => {
         setBookings(bookingsRes.data.bookings);
         const wishRes = await api.get("/bookings/wishlist");
         setWishlist(wishRes.data.wishlist);
-        const roomsRes = await api.get("/groups/my-rooms");
-        setRooms(roomsRes.data.rooms);
+        const nightsRes = await api.get("/movie-nights");
+        setNights(nightsRes.data.movieNights);
       } catch (err) {
         console.error("Failed to load dashboard statistics:", err);
       }
@@ -153,7 +153,7 @@ export const Dashboard: React.FC = () => {
   const tabs = [
     { key: "bookings", label: "My Bookings", icon: Ticket, count: bookings.length },
     { key: "wishlist", label: "Wishlist", icon: Heart, count: wishlist.length },
-    { key: "rooms", label: "Group Rooms", icon: MessageSquare, count: rooms.length },
+    { key: "nights", label: "Movie Nights", icon: Moon, count: nights.length },
   ] as const;
 
   return (
@@ -453,14 +453,14 @@ export const Dashboard: React.FC = () => {
             </div>
           )}
 
-          {/* ── GROUP ROOMS TAB ── */}
-          {activeTab === "rooms" && (
+          {/* ── MOVIE NIGHTS TAB ── */}
+          {activeTab === "nights" && (
             <div className="space-y-3">
-              {rooms.length > 0 ? (
-                rooms.map((room) => (
+              {nights.length > 0 ? (
+                nights.map((night) => (
                   <div
-                    key={room.id}
-                    onClick={() => navigate(`/group/${room.inviteCode}`)}
+                    key={night.id}
+                    onClick={() => navigate(`/movie-nights/${night.id}`)}
                     className="p-5 rounded-2xl cursor-pointer transition-all hover:scale-[1.01] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden group"
                     style={{
                       background: "linear-gradient(160deg, #111 0%, #0c0c0c 100%)",
@@ -477,39 +477,48 @@ export const Dashboard: React.FC = () => {
                           border: "1px solid rgba(212,175,55,0.2)",
                         }}
                       >
-                        <MessageSquare className="w-5 h-5" style={{ color: "#d4af37" }} />
+                        <Moon className="w-5 h-5" style={{ color: "#d4af37" }} />
                       </div>
                       <div>
                         <h4 className="font-black text-white text-sm group-hover:text-[#d4af37] transition-colors">
-                          {room.name}
+                          {night.title}
                         </h4>
                         <span className="text-[10px] text-neutral-600 font-inter mt-1 inline-block">
                           Code:{" "}
-                          <strong className="font-mono" style={{ color: "#d4af37" }}>{room.inviteCode}</strong>
-                          {" "}· Creator: {room.creator.fullName}
+                          <strong className="font-mono" style={{ color: "#d4af37" }}>{night.inviteCode}</strong>
+                          {" "}· {night.myRole === "ORGANIZER" ? "Organizer" : "Member"}
                         </span>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3 font-inter text-xs text-neutral-600">
-                      <span>Members: <strong className="text-white">{room.membersCount}</strong></span>
+                      <span>Members: <strong className="text-white">{night.memberCount}</strong></span>
                       <span
                         className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider"
                         style={
-                          room.status === "voting"
-                            ? { background: "rgba(212,175,55,0.1)", border: "1px solid rgba(212,175,55,0.3)", color: "#d4af37" }
-                            : { background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", color: "#4ade80" }
+                          night.status === "BOOKED"
+                            ? { background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", color: "#4ade80" }
+                            : night.status === "CANCELLED" || night.status === "REJECTED"
+                              ? { background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171" }
+                              : { background: "rgba(212,175,55,0.1)", border: "1px solid rgba(212,175,55,0.3)", color: "#d4af37" }
                         }
                       >
-                        {room.status}
+                        {night.status.replace(/_/g, " ")}
                       </span>
                       <ExternalLink className="w-3.5 h-3.5 text-neutral-700 group-hover:text-[#d4af37] transition-colors" />
                     </div>
                   </div>
                 ))
               ) : (
-                <EmptyState icon={<MessageSquare className="w-8 h-8" />} message="No planning rooms yet. Create one and invite your squad." />
+                <EmptyState icon={<Moon className="w-8 h-8" />} message="No movie nights yet. Plan one with your squad!" />
               )}
+              <button
+                onClick={() => navigate("/movie-nights")}
+                className="w-full py-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all hover:scale-[1.01] mt-2"
+                style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.15)", color: "#d4af37" }}
+              >
+                <Moon className="w-3.5 h-3.5" /> Go to Movie Nights
+              </button>
             </div>
           )}
         </div>

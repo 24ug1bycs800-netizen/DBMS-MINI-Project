@@ -189,7 +189,7 @@ export const Footer: React.FC = () => {
               <ul>
                 <li><a href="/">Now Showing</a></li>
                 <li><a href="/">Coming Soon</a></li>
-                <li><a href="/groups">Group Rooms</a></li>
+                <li><a href="/movie-nights">Movie Nights</a></li>
                 <li><a href="/">Cinemas Near You</a></li>
               </ul>
             </div>

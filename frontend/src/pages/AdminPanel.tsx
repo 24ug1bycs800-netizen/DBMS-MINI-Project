@@ -683,7 +683,7 @@ export const AdminPanel: React.FC = () => {
                 { icon: <Wallet className="w-5 h-5 text-primary" />, label: "Total Revenue", value: `Rs ${kpi.totalRevenue}`, bg: "bg-primary/10" },
                 { icon: <Film className="w-5 h-5 text-accent" />, label: "Total Bookings", value: `${kpi.totalBookings} tickets`, bg: "bg-accent/10" },
                 { icon: <Users className="w-5 h-5 text-indigo-400" />, label: "Registered Users", value: `${kpi.totalUsers} users`, bg: "bg-indigo-600/10" },
-                { icon: <BarChart3 className="w-5 h-5 text-success" />, label: "Planning Rooms", value: `${kpi.activeGroupRooms} active`, bg: "bg-success/10" },
+                { icon: <BarChart3 className="w-5 h-5 text-success" />, label: "Movie Nights", value: `${kpi.activeGroupRooms} active`, bg: "bg-success/10" },
               ].map(({ icon, label, value, bg }) => (
                 <div key={label} className={cardDark}>
                   <div className={`p-2.5 rounded-xl w-fit mb-4 ${bg}`}>{icon}</div>

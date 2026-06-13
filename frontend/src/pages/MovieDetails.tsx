@@ -9,7 +9,7 @@ import {
   Share2,
   Play,
   Users,
-  MessageSquare,
+  Moon,
   AlertCircle,
   X,
   CheckCircle,
@@ -544,7 +544,7 @@ export const MovieDetails: React.FC = () => {
 
       {/* ── 2. BODY ───────────────────────────────────────────────────── */}
       <div className="relative z-10 max-w-6xl mx-auto px-6 sm:px-16 mt-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* GROUP BOOKING WIDGET */}
+        {/* MOVIE NIGHTS WIDGET */}
         <div
           className="lg:col-span-3 p-6 rounded-2xl relative overflow-hidden"
           style={{
@@ -579,12 +579,12 @@ export const MovieDetails: React.FC = () => {
                 with Friends!
               </h3>
               <p className="text-xs text-neutral-600 font-inter mt-1.5 leading-relaxed max-w-xl">
-                Can't decide on theatres or timings? Create a Group Room to
-                invite friends, vote on options, and book together!
+                Can't decide on theatres or timings? Start a Movie Night to
+                invite friends, let the AI pick the best show, and book together!
               </p>
             </div>
             <button
-              onClick={() => navigate("/groups")}
+              onClick={() => navigate("/movie-nights")}
               className="px-6 py-3 rounded-xl font-black text-sm flex items-center gap-2 transition-all hover:scale-105 flex-shrink-0"
               style={{
                 background: "linear-gradient(135deg, #d4af37, #f4d03f)",
@@ -592,7 +592,7 @@ export const MovieDetails: React.FC = () => {
                 boxShadow: "0 8px 24px rgba(212,175,55,0.25)",
               }}
             >
-              <MessageSquare className="w-4 h-4" /> Open Group Rooms
+              <Moon className="w-4 h-4" /> Plan a Movie Night
             </button>
           </div>
         </div>
