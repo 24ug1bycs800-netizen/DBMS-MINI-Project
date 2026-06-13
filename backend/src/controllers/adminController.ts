@@ -926,14 +926,24 @@ export const getTmdbToken = (_req: Request, res: Response) => {
 };
 
 // ─── TMDB SYNC ────────────────────────────────────────────────────────────────
-// Fetches live data from TMDB server-side via allorigins.win relay, then upserts.
+// Browser fetches from TMDB directly (CORS: *) and posts raw data here to upsert.
 
-export const syncMovies = async (_req: Request, res: Response) => {
+export const syncMovies = async (req: Request, res: Response) => {
   try {
-    const nowPlaying = await fetchNowPlaying();
+    const { nowPlaying, details: detailsMap } = req.body as {
+      nowPlaying: Array<{
+        id: number; title: string; overview: string; genre_ids: number[];
+        release_date: string; vote_average: number;
+        poster_path: string | null; backdrop_path: string | null;
+      }>;
+      details: Record<string, {
+        runtime?: number;
+        release_dates?: { results: Array<{ iso_3166_1: string; release_dates: Array<{ certification: string; type: number }> }> };
+      }>;
+    };
 
-    if (!nowPlaying.length) {
-      return res.status(502).json({ error: "TMDB returned no movies" });
+    if (!Array.isArray(nowPlaying) || !nowPlaying.length) {
+      return res.status(400).json({ error: "nowPlaying array is required" });
     }
 
     let upserted = 0;
@@ -941,11 +951,10 @@ export const syncMovies = async (_req: Request, res: Response) => {
     const syncedTmdbIds: number[] = [];
 
     for (const raw of nowPlaying) {
-      let detail: Awaited<ReturnType<typeof fetchMovieDetails>> | null;
-      try { detail = await fetchMovieDetails(raw.id); } catch { detail = null; }
+      const detail = detailsMap?.[String(raw.id)] ?? null;
 
       const runtime = detail?.runtime ?? 120;
-      const cert = detail ? ratingCertificate(detail) : "UA";
+      const cert = detail ? ratingCertificate(detail as any) : "UA";
       const genre = genreName(raw.genre_ids);
       const poster = posterUrl(raw.poster_path);
       const backdrop = backdropUrl(raw.backdrop_path ?? null);

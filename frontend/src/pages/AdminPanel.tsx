@@ -169,7 +169,31 @@ export const AdminPanel: React.FC = () => {
   const handleSyncMovies = async () => {
     setSyncLoading(true); setSyncResult(null); setMsg(""); setErr("");
     try {
-      const res = await api.post("/admin/sync-movies");
+      const tokenRes = await api.get("/admin/tmdb-token");
+      const apiKey: string = tokenRes.data.apiKey;
+      if (!apiKey) throw new Error("TMDB API key not configured on server");
+
+      // TMDB API supports CORS (Access-Control-Allow-Origin: *) — call directly
+      const npRes = await fetch(
+        `https://api.themoviedb.org/3/movie/now_playing?region=IN&language=en-US&page=1&api_key=${apiKey}`
+      );
+      if (!npRes.ok) throw new Error(`TMDB ${npRes.status}`);
+      const npData = await npRes.json();
+      const nowPlaying: any[] = npData.results ?? [];
+      if (!nowPlaying.length) throw new Error("TMDB returned no movies");
+
+      const detailResults = await Promise.allSettled(
+        nowPlaying.map((m: any) =>
+          fetch(`https://api.themoviedb.org/3/movie/${m.id}?append_to_response=release_dates&api_key=${apiKey}`)
+            .then(r => r.json())
+        )
+      );
+      const details: Record<string, any> = {};
+      detailResults.forEach((r, i) => {
+        if (r.status === "fulfilled") details[String(nowPlaying[i].id)] = r.value;
+      });
+
+      const res = await api.post("/admin/sync-movies", { nowPlaying, details });
       setSyncResult(res.data);
       setMsg(`Sync complete — ${res.data.upserted} movies updated from TMDB.`);
       fetchAll();
