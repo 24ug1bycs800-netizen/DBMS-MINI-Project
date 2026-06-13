@@ -169,37 +169,7 @@ export const AdminPanel: React.FC = () => {
   const handleSyncMovies = async () => {
     setSyncLoading(true); setSyncResult(null); setMsg(""); setErr("");
     try {
-      // 1. Get API key (extracted from Bearer JWT on backend)
-      const tokenRes = await api.get("/admin/tmdb-token");
-      const apiKey: string = tokenRes.data.apiKey;
-      if (!apiKey) throw new Error("TMDB API key not available");
-
-      // 2. Route through allorigins.win — relays from their server, bypasses local network block
-      //    Response is wrapped: { contents: "<json string>" }
-      const tmdbFetch = async (path: string) => {
-        const sep = path.includes("?") ? "&" : "?";
-        const target = `https://api.themoviedb.org/3${path}${sep}api_key=${apiKey}`;
-        const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(target)}`);
-        if (!r.ok) throw new Error(`Proxy ${r.status}`);
-        const wrapper = await r.json();
-        return JSON.parse(wrapper.contents);
-      };
-
-      const nowPlayingData: any = await tmdbFetch("/movie/now_playing?region=IN&language=en-US&page=1");
-      const nowPlaying: any[] = nowPlayingData.results ?? [];
-      if (!nowPlaying.length) throw new Error("TMDB returned no movies");
-
-      // 3. Fetch runtime + cert for each movie
-      const detailResults = await Promise.allSettled(
-        nowPlaying.map((m: any) => tmdbFetch(`/movie/${m.id}?append_to_response=release_dates`))
-      );
-      const details: Record<string, any> = {};
-      detailResults.forEach((r, i) => {
-        if (r.status === "fulfilled") details[String(nowPlaying[i].id)] = r.value;
-      });
-
-      // 4. Backend upserts the raw TMDB data
-      const res = await api.post("/admin/sync-movies", { nowPlaying, details });
+      const res = await api.post("/admin/sync-movies");
       setSyncResult(res.data);
       setMsg(`Sync complete — ${res.data.upserted} movies updated from TMDB.`);
       fetchAll();
