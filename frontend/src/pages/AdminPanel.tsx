@@ -151,6 +151,21 @@ export const AdminPanel: React.FC = () => {
     } catch (e) { console.error(e); }
   };
 
+  const [seedLoading, setSeedLoading] = useState(false);
+
+  const handleSeedMovies = async () => {
+    setSeedLoading(true); setMsg(""); setErr("");
+    try {
+      const res = await api.post("/admin/seed-movies");
+      setMsg(`Seeded ${res.data.inserted} movies (${res.data.skipped} already existed).`);
+      fetchAll();
+    } catch (error: any) {
+      setErr(error.response?.data?.error ?? "Seed failed");
+    } finally {
+      setSeedLoading(false);
+    }
+  };
+
   const handleSyncMovies = async () => {
     setSyncLoading(true); setSyncResult(null); setMsg(""); setErr("");
     try {
@@ -851,21 +866,32 @@ export const AdminPanel: React.FC = () => {
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div>
                   <h2 className="text-lg font-bold text-white flex items-center gap-2 mb-1">
-                    <Sparkles className="w-5 h-5" style={{ color: "#6ee7e7" }} /> TMDB Sync
+                    <Sparkles className="w-5 h-5" style={{ color: "#6ee7e7" }} /> Movie Catalog
                   </h2>
                   <p className="text-xs text-neutral-500 font-inter max-w-sm">
-                    Pull latest now-playing movies from TMDB (India region) and upsert them into the catalog automatically.
+                    Seed popular Indian films instantly, or sync live data from TMDB if your network allows it.
                   </p>
                 </div>
-                <button
-                  onClick={handleSyncMovies}
-                  disabled={syncLoading}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-xs transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ background: "linear-gradient(135deg, #6ee7e7, #22d3ee)", color: "#000" }}
-                >
-                  <RefreshCw className={`w-4 h-4 ${syncLoading ? "animate-spin" : ""}`} />
-                  {syncLoading ? "Syncing…" : "Sync from TMDB"}
-                </button>
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    onClick={handleSeedMovies}
+                    disabled={seedLoading}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-xs transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ background: "linear-gradient(135deg, #d4af37, #f4d03f)", color: "#000" }}
+                  >
+                    <Film className={`w-4 h-4 ${seedLoading ? "animate-pulse" : ""}`} />
+                    {seedLoading ? "Seeding…" : "Seed Movies"}
+                  </button>
+                  <button
+                    onClick={handleSyncMovies}
+                    disabled={syncLoading}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-xs transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ background: "linear-gradient(135deg, #6ee7e7, #22d3ee)", color: "#000" }}
+                  >
+                    <RefreshCw className={`w-4 h-4 ${syncLoading ? "animate-spin" : ""}`} />
+                    {syncLoading ? "Syncing…" : "Sync from TMDB"}
+                  </button>
+                </div>
               </div>
               {syncResult && (
                 <div className="mt-4 flex gap-4 font-inter text-xs flex-wrap">

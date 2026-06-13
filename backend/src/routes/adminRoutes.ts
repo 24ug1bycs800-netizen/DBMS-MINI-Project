@@ -22,6 +22,7 @@ import {
   getAllScreens,
   getAllShows,
   syncMovies,
+  seedMovies,
   getMovieNightAnalytics,
   getTmdbToken,
 } from "../controllers/adminController";
@@ -33,8 +34,9 @@ const router = Router();
 router.get('/stats', authenticateJWT, requireAdmin, getDashboardStats);
 
 // ── TMDB ──────────────────────────────────────────────────────────────────────
-router.get('/tmdb-token',   authenticateJWT, requireAdmin, getTmdbToken);
-router.post('/sync-movies', authenticateJWT, requireAdmin, syncMovies);
+router.get('/tmdb-token',    authenticateJWT, requireAdmin, getTmdbToken);
+router.post('/sync-movies',  authenticateJWT, requireAdmin, syncMovies);
+router.post('/seed-movies',  authenticateJWT, requireAdmin, seedMovies);
 
 // ── Movie Night Analytics ─────────────────────────────────────────────────────
 router.get('/movie-nights', authenticateJWT, requireAdmin, getMovieNightAnalytics);

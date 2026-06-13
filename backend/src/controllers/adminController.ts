@@ -1038,6 +1038,53 @@ export const getMovieNightAnalytics = async (_req: Request, res: Response) => {
   }
 };
 
+// ─── SEED MOVIES ─────────────────────────────────────────────────────────────
+
+const SEED_MOVIES = [
+  { title: "Kalki 2898-AD", description: "A sci-fi epic blending mythology and futurism as humanity's last hope emerges.", genre: "Action/Sci-Fi", language: "Telugu, Hindi, Tamil", durationMins: 181, rating: "UA", ratingValue: "8.3", releaseDate: "2024-06-27", posterUrl: "https://image.tmdb.org/t/p/w500/qbqa4zxSqnmwjaqKP2OHWJ9NZpL.jpg", isNowShowing: true, trending: true, topRated: false },
+  { title: "Stree 2", description: "The town of Chanderi is once again threatened by a supernatural force, and Stree must return.", genre: "Horror/Comedy", language: "Hindi", durationMins: 135, rating: "UA", ratingValue: "8.9", releaseDate: "2024-08-15", posterUrl: "https://image.tmdb.org/t/p/w500/38QyJQjwFu7eH8DHXfFiixBB9eT.jpg", isNowShowing: true, trending: true, topRated: true },
+  { title: "Pushpa 2: The Rule", description: "Pushpa Raj expands his red sandalwood empire and faces a deadly reckoning.", genre: "Action/Thriller", language: "Telugu, Hindi", durationMins: 190, rating: "UA", ratingValue: "7.8", releaseDate: "2024-12-05", posterUrl: "https://image.tmdb.org/t/p/w500/cZSBB5B0VqPC3GEB7fQBHwJEfCB.jpg", isNowShowing: true, trending: true, topRated: false },
+  { title: "Singham Again", description: "Inspector Singham embarks on a daring rescue mission to save his wife.", genre: "Action/Drama", language: "Hindi", durationMins: 150, rating: "UA", ratingValue: "5.8", releaseDate: "2024-11-01", posterUrl: "https://image.tmdb.org/t/p/w500/vO9BOuYcwB2sDeQHHbMn9x8PBZV.jpg", isNowShowing: true, trending: false, topRated: false },
+  { title: "Devara Part 1", description: "A fearless man rules coastal villages through fear; his son must reclaim that legacy.", genre: "Action/Drama", language: "Telugu, Hindi", durationMins: 166, rating: "UA", ratingValue: "6.5", releaseDate: "2024-09-27", posterUrl: "https://image.tmdb.org/t/p/w500/sChnooo5BPFshFHPmV3blhBP5Pb.jpg", isNowShowing: true, trending: false, topRated: false },
+  { title: "Lucky Baskhar", description: "An honest bank employee hatches a desperate plan to save his family from ruin.", genre: "Crime/Thriller", language: "Telugu, Hindi", durationMins: 148, rating: "UA", ratingValue: "8.1", releaseDate: "2024-10-31", posterUrl: "https://image.tmdb.org/t/p/w500/4eBH5wuK9hXXlMJKqaqeWHU8OVu.jpg", isNowShowing: true, trending: false, topRated: true },
+  { title: "The Sabarmati Report", description: "A journalist uncovers the truth behind the Godhra train burning incident.", genre: "Drama/Thriller", language: "Hindi", durationMins: 136, rating: "UA", ratingValue: "8.7", releaseDate: "2024-11-15", posterUrl: "https://image.tmdb.org/t/p/w500/edBGVlKOjlWETVgNVVRYOiLrU4p.jpg", isNowShowing: true, trending: false, topRated: false },
+  { title: "Vettaiyan", description: "A veteran cop with unorthodox methods confronts a corrupt system to deliver justice.", genre: "Action/Drama", language: "Tamil, Telugu, Hindi", durationMins: 175, rating: "UA", ratingValue: "6.9", releaseDate: "2024-10-10", posterUrl: "https://image.tmdb.org/t/p/w500/1OFlPsCoqDXVFf30FsIFkqbWt4C.jpg", isNowShowing: true, trending: false, topRated: false },
+  { title: "Amaran", description: "The true story of Major Mukund Varadarajan, a decorated army officer who gave his life for the nation.", genre: "War/Drama", language: "Tamil, Telugu, Hindi", durationMins: 168, rating: "UA", ratingValue: "8.6", releaseDate: "2024-11-01", posterUrl: "https://image.tmdb.org/t/p/w500/oQRpHJHnAQPh4iBwQ63ZOPD73RL.jpg", isNowShowing: true, trending: false, topRated: true },
+  { title: "Mufasa: The Lion King", description: "The origin story of Mufasa, exploring how an orphaned cub became a legendary king.", genre: "Animation/Adventure", language: "English, Hindi", durationMins: 118, rating: "U", ratingValue: "7.4", releaseDate: "2024-12-20", posterUrl: "https://image.tmdb.org/t/p/w500/aosm8NMQ3UyoBVpSxyimorCQykC.jpg", isNowShowing: true, trending: false, topRated: false },
+  { title: "Game Changer", description: "An IAS officer battles political corruption while uncovering a massive conspiracy.", genre: "Action/Political", language: "Telugu, Hindi, Tamil", durationMins: 156, rating: "UA", ratingValue: "5.4", releaseDate: "2025-01-10", posterUrl: "https://image.tmdb.org/t/p/w500/sSX6LKTA3iGQpG2sH2DXHP5VVMJ.jpg", isNowShowing: true, trending: false, topRated: false },
+  { title: "Sky Force", description: "India's first airstrike — the daring 1965 Sargodha mission brought to life.", genre: "Action/War", language: "Hindi", durationMins: 145, rating: "UA", ratingValue: "7.9", releaseDate: "2025-01-24", posterUrl: "https://image.tmdb.org/t/p/w500/7BSPeK53pMCr8GGnFb1xYEFPh8k.jpg", isNowShowing: true, trending: true, topRated: false },
+];
+
+export const seedMovies = async (_req: Request, res: Response) => {
+  try {
+    let inserted = 0;
+    let skipped = 0;
+
+    for (const m of SEED_MOVIES) {
+      const existing = await db
+        .select({ id: movies.id })
+        .from(movies)
+        .where(eq(movies.title, m.title))
+        .limit(1);
+
+      if (existing.length) { skipped++; continue; }
+
+      await db.insert(movies).values({
+        ...m,
+        overview: m.description,
+        isActive: true,
+        lastSyncedAt: new Date(),
+      });
+      inserted++;
+    }
+
+    return res.json({ inserted, skipped, total: SEED_MOVIES.length });
+  } catch (err: any) {
+    console.error("Seed movies error:", err);
+    return res.status(500).json({ error: err.message ?? "Seed failed" });
+  }
+};
+
 // Returns full show list with city/theatre/screen/movie info — used by admin manage tab.
 // Includes poster + language for show cards. Includes status for lifecycle display.
 export const getAllShows = async (_req: Request, res: Response) => {
