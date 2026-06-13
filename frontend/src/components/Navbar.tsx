@@ -5,7 +5,7 @@ import { useCityStore } from "../store/useCityStore.js";
 import { CitySelectorModal } from "./CitySelectorModal.js";
 import {
   Film, MapPin, User, LogOut, ChevronDown,
-  LayoutDashboard, Ticket, MessageSquare, Moon,
+  LayoutDashboard, Ticket, Moon,
 } from "lucide-react";
 
 export const Navbar: React.FC = () => {
@@ -284,10 +284,6 @@ export const Navbar: React.FC = () => {
           {/* CENTER: Nav links */}
           <div className="cc-nav-links" style={{ display: "flex" }}>
             <Link to="/" className="cc-nav-link">Movies</Link>
-            <Link to="/groups" className="cc-group-link">
-              <MessageSquare size={13} />
-              Group Rooms
-            </Link>
             <Link to="/movie-nights" className="cc-group-link" style={{ color: "#d4af37" }}>
               <Moon size={13} />
               Movie Nights
@@ -320,9 +316,6 @@ export const Navbar: React.FC = () => {
                     </div>
                     <Link to="/dashboard" onClick={() => setMenuOpen(false)} className="cc-dropdown-item">
                       <Ticket size={14} /> My Bookings
-                    </Link>
-                    <Link to="/groups" onClick={() => setMenuOpen(false)} className="cc-dropdown-item">
-                      <MessageSquare size={14} /> My Group Rooms
                     </Link>
                     <Link to="/movie-nights" onClick={() => setMenuOpen(false)} className="cc-dropdown-item">
                       <Moon size={14} /> Movie Nights

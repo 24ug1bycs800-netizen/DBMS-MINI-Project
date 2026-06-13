@@ -8,8 +8,6 @@ const Home = lazy(() => import('./pages/Home.js').then(m => ({ default: m.Home }
 const Auth = lazy(() => import('./pages/Auth.js').then(m => ({ default: m.Auth })));
 const MovieDetails = lazy(() => import('./pages/MovieDetails.js').then(m => ({ default: m.MovieDetails })));
 const SeatBooking = lazy(() => import('./pages/SeatBooking.js').then(m => ({ default: m.SeatBooking })));
-const GroupBooking = lazy(() => import('./pages/GroupBooking.js').then(m => ({ default: m.GroupBooking })));
-const GroupRoomsList = lazy(() => import('./pages/GroupRoomsList.js').then(m => ({ default: m.GroupRoomsList })));
 const Dashboard = lazy(() => import('./pages/Dashboard.js').then(m => ({ default: m.Dashboard })));
 const AdminPanel = lazy(() => import('./pages/AdminPanel.js').then(m => ({ default: m.AdminPanel })));
 const BookingConfirmation = lazy(() => import('./pages/BookingConfirmation.js').then(m => ({ default: m.BookingConfirmation })));
@@ -36,8 +34,6 @@ function App() {
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/movies/:id" element={<MovieDetails />} />
                 <Route path="/shows/:showId/booking" element={<SeatBooking />} />
-                <Route path="/group/:inviteCode" element={<GroupBooking />} />
-                <Route path="/groups" element={<GroupRoomsList />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/booking/confirm/:code" element={<BookingConfirmation />} />
                 <Route path="/admin" element={<AdminPanel />} />
