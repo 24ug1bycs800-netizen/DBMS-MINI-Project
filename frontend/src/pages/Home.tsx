@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCityStore } from "../store/useCityStore.js";
-import { Play, Calendar, Star, Film, ChevronLeft, ChevronRight, Compass, Moon, ArrowRight } from "lucide-react";
+import { CitySelectorModal } from "../components/CitySelectorModal.js";
+import { Play, Calendar, Star, Film, ChevronLeft, ChevronRight, Compass, ChevronDown, Moon, ArrowRight } from "lucide-react";
 import api from "../services/api.js";
 
 interface Movie {
@@ -87,13 +88,13 @@ export const Home: React.FC = () => {
   const [theatres, setTheatres] = useState<Theatre[]>([]);
   const [heroIdx, setHeroIdx] = useState(0);
   const [heroLoaded, setHeroLoaded] = useState(false);
+  const [cityModalOpen, setCityModalOpen] = useState(false);
 
   useEffect(() => {
-    api.get("/movies?isNowShowing=true").then(r => { setNowShowing(r.data.movies); setHeroLoaded(true); }).catch(() => {});
+    setHeroLoaded(false);
+    setHeroIdx(0);
+    api.get(`/movies?isNowShowing=true&citySlug=${selectedCity.slug}`).then(r => { setNowShowing(r.data.movies); setHeroLoaded(true); }).catch(() => {});
     api.get("/movies?isNowShowing=false").then(r => setComingSoon(r.data.movies)).catch(() => {});
-  }, []);
-
-  useEffect(() => {
     api.get(`/theatres?citySlug=${selectedCity.slug}`).then(r => setTheatres(r.data.theatres)).catch(() => {});
   }, [selectedCity]);
 
@@ -194,10 +195,12 @@ export const Home: React.FC = () => {
 
       {/* ── CITY BAR ── */}
       <div style={{ padding:"0.6rem 1.5rem", display:"flex", alignItems:"center", justifyContent:"space-between", background:"rgba(201,168,76,0.03)", borderTop:"1px solid rgba(201,168,76,0.08)", borderBottom:"1px solid rgba(201,168,76,0.08)" }} className="sm:px-16">
-        <div style={{ display:"flex", alignItems:"center", gap:8, color:"#C9A84C", fontSize:"0.78rem", fontWeight:500 }}>
+        <button onClick={() => setCityModalOpen(true)} style={{ display:"flex", alignItems:"center", gap:8, color:"#C9A84C", fontSize:"0.78rem", fontWeight:500, background:"none", border:"none", cursor:"pointer", padding:0 }}>
           <Compass size={13} style={{ animation:"spin 8s linear infinite" }} />
-          <span>Showing for <strong style={{ color:"#f0f0f0", borderBottom:"1px solid #C9A84C" }}>{selectedCity.name}</strong></span>
-        </div>
+          <span style={{ color:"#888" }}>Showing for</span>
+          <strong style={{ color:"#f0f0f0", borderBottom:"1px solid rgba(201,168,76,0.5)" }}>{selectedCity.name}</strong>
+          <ChevronDown size={12} style={{ color:"#555" }} />
+        </button>
         <button onClick={() => navigate("/movie-nights")} style={{ display:"flex", alignItems:"center", gap:6, padding:"4px 12px", background:"rgba(201,168,76,0.07)", border:"1px solid rgba(201,168,76,0.2)", borderRadius:5, color:"#C9A84C", fontSize:"0.72rem", fontWeight:700, cursor:"pointer", fontFamily:"'Poppins', sans-serif", letterSpacing:"0.05em", transition:"all 0.2s" }}
           onMouseEnter={e => { e.currentTarget.style.background="rgba(201,168,76,0.14)"; }}
           onMouseLeave={e => { e.currentTarget.style.background="rgba(201,168,76,0.07)"; }}>
@@ -278,6 +281,8 @@ export const Home: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <CitySelectorModal isOpen={cityModalOpen} onClose={() => setCityModalOpen(false)} />
     </div>
   );
 };

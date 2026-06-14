@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { and, asc, eq, ne, sql } from "drizzle-orm";
+import { and, asc, eq, exists, ne, sql } from "drizzle-orm";
 import { db } from "../db/db";
 import { cities, movies, reviews, screens, shows, theatres } from "../db/schema";
 
@@ -20,18 +20,51 @@ export const getCities = async (_req: Request, res: Response) => {
 };
 
 // GET MOVIES
+// When citySlug + isNowShowing=true: only return movies with active future shows in that city.
 export const getMovies = async (req: Request, res: Response) => {
   try {
-    const { isNowShowing } = req.query;
+    const { isNowShowing, citySlug } = req.query;
+    const today = getToday();
 
-    const moviesList =
-      isNowShowing !== undefined
-        ? await db
-            .select()
-            .from(movies)
-            .where(eq(movies.isNowShowing, isNowShowing === "true"))
-            .orderBy(asc(movies.title))
-        : await db.select().from(movies).orderBy(asc(movies.title));
+    // Build optional city-exists subquery for location filtering
+    let cityExistsClause: ReturnType<typeof exists> | undefined;
+    if (citySlug && isNowShowing === "true") {
+      const cityResult = await db
+        .select({ id: cities.id })
+        .from(cities)
+        .where(eq(cities.slug, String(citySlug)))
+        .limit(1);
+      if (!cityResult[0]) return res.status(200).json({ movies: [] });
+      const cId = cityResult[0].id;
+      cityExistsClause = exists(
+        db
+          .select({ one: sql`1` })
+          .from(shows)
+          .innerJoin(screens, eq(shows.screenId, screens.id))
+          .innerJoin(theatres, eq(screens.theatreId, theatres.id))
+          .where(
+            and(
+              eq(shows.movieId, movies.id),
+              eq(theatres.cityId, cId),
+              ne(shows.status, "expired"),
+              sql`${shows.date} >= ${today}`
+            )
+          )
+      );
+    }
+
+    const moviesList = await db
+      .select()
+      .from(movies)
+      .where(
+        and(
+          isNowShowing !== undefined
+            ? eq(movies.isNowShowing, isNowShowing === "true")
+            : undefined,
+          cityExistsClause
+        )
+      )
+      .orderBy(asc(movies.title));
 
     return res.status(200).json({ movies: moviesList });
   } catch (err) {

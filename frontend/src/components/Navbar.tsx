@@ -1,16 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.js";
-import { useCityStore } from "../store/useCityStore.js";
-import { CitySelectorModal } from "./CitySelectorModal.js";
-import { Film, MapPin, User, LogOut, ChevronDown, LayoutDashboard, Ticket, Moon, Menu, X } from "lucide-react";
+import { Film, User, LogOut, ChevronDown, LayoutDashboard, Ticket, Moon, Menu, X } from "lucide-react";
 
 const G = "#C9A84C"; // gold
 
 export const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
-  const { selectedCity } = useCityStore();
-  const [modalOpen, setModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -85,9 +81,6 @@ export const Navbar: React.FC = () => {
               <span className="cc-logo-icon"><Film size={17} color="#080808" /></span>
               <span className="cc-logo-text">CineCircle</span>
             </Link>
-            <button className="cc-city-btn" onClick={() => setModalOpen(true)}>
-              <MapPin size={12} /> {selectedCity.name} <ChevronDown size={11} style={{ opacity:0.6 }} />
-            </button>
           </div>
 
           <div className="cc-center">
@@ -145,7 +138,6 @@ export const Navbar: React.FC = () => {
         )}
       </nav>
 
-      <CitySelectorModal isOpen={modalOpen} onClose={() => setModalOpen(false)} />
     </>
   );
 };
