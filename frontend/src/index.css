@@ -242,7 +242,23 @@
 }
 
 /* Legacy alias */
-.btn-ghost-gold { @apply btn-ghost; }
+.btn-ghost-gold {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+  font-family: "Space Grotesk", sans-serif;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  padding: 0.7rem 1.75rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.btn-ghost-gold:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.9);
+}
 
 /* ═══════════════════════════════════════════════
    HERO OVERLAYS
