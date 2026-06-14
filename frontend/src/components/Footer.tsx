@@ -1,237 +1,165 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Film, Mail, MapPin, Phone } from "lucide-react";
+import { Film, Mail, MapPin, Phone, Popcorn } from "lucide-react";
 
 export const Footer: React.FC = () => {
   return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Outfit:wght@300;400;500;600&display=swap');
+    <footer style={{
+      background: "#080F1E",
+      borderTop: "1px solid rgba(255,255,255,0.05)",
+      fontFamily: "'Inter', sans-serif",
+      position: "relative",
+      overflow: "hidden",
+    }}>
+      {/* Top glow */}
+      <div style={{
+        position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)",
+        width: 600, height: 1,
+        background: "linear-gradient(90deg, transparent, rgba(229,9,20,0.4), transparent)",
+        pointerEvents: "none",
+      }} />
+      <div style={{
+        position: "absolute", top: -100, left: "50%", transform: "translateX(-50%)",
+        width: 500, height: 200,
+        background: "radial-gradient(ellipse, rgba(229,9,20,0.04) 0%, transparent 70%)",
+        pointerEvents: "none",
+      }} />
 
-        .cc-footer {
-          background: #050508;
-          border-top: 1px solid rgba(212, 168, 83, 0.15);
-          font-family: 'Outfit', sans-serif;
-          position: relative;
-          overflow: hidden;
-        }
-        .cc-footer::before {
-          content: '';
-          position: absolute;
-          top: 0; left: 50%;
-          transform: translateX(-50%);
-          width: 600px;
-          height: 1px;
-          background: linear-gradient(90deg, transparent, #D4A853, transparent);
-        }
-        .cc-footer-glow {
-          position: absolute;
-          top: -120px; left: 50%;
-          transform: translateX(-50%);
-          width: 500px; height: 200px;
-          background: radial-gradient(ellipse, rgba(212,168,83,0.06) 0%, transparent 70%);
-          pointer-events: none;
-        }
-        .cc-footer-inner {
-          max-width: 1400px;
-          margin: 0 auto;
-          padding: 4rem 2rem 2rem;
-        }
-        .cc-footer-grid {
-          display: grid;
-          grid-template-columns: 2fr 1fr 1fr 1.5fr;
-          gap: 3rem;
-          padding-bottom: 3rem;
-          border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
-        @media (max-width: 768px) {
-          .cc-footer-grid { grid-template-columns: 1fr 1fr; gap: 2rem; }
-          .cc-footer-brand { grid-column: 1 / -1; }
-        }
-        @media (max-width: 480px) {
-          .cc-footer-grid { grid-template-columns: 1fr; }
-        }
+      <div style={{ maxWidth: 1400, margin: "0 auto", padding: "3.5rem 2rem 2rem" }}>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "2fr 1fr 1fr 1.5fr",
+          gap: "3rem",
+          paddingBottom: "2.5rem",
+          borderBottom: "1px solid rgba(255,255,255,0.05)",
+        }} className="footer-grid">
 
-        .cc-footer-logo {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          font-family: 'Playfair Display', serif;
-          font-size: 1.5rem;
-          font-weight: 900;
-          background: linear-gradient(135deg, #D4A853 0%, #F0C070 50%, #B8860B 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-          margin-bottom: 1rem;
-          text-decoration: none;
-        }
-        .cc-footer-logo-icon {
-          width: 30px; height: 30px;
-          background: linear-gradient(135deg, #D4A853, #F0C070);
-          border-radius: 7px;
-          display: flex; align-items: center; justify-content: center;
-          flex-shrink: 0;
-        }
-        .cc-footer-logo-icon svg { color: #050508; width: 16px; height: 16px; }
-
-        .cc-footer-desc {
-          font-size: 0.85rem;
-          color: rgba(255,255,255,0.35);
-          line-height: 1.7;
-          max-width: 280px;
-          margin-bottom: 1.5rem;
-        }
-        .cc-footer-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 5px 12px;
-          background: rgba(212, 168, 83, 0.08);
-          border: 1px solid rgba(212, 168, 83, 0.2);
-          border-radius: 100px;
-          font-size: 0.7rem;
-          color: #D4A853;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-          font-weight: 500;
-        }
-
-        .cc-footer-col h4 {
-          font-size: 0.7rem;
-          font-weight: 600;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-          color: #D4A853;
-          margin-bottom: 1.25rem;
-        }
-        .cc-footer-col ul { list-style: none; padding: 0; margin: 0; }
-        .cc-footer-col ul li { margin-bottom: 0.65rem; }
-        .cc-footer-col ul li a {
-          font-size: 0.85rem;
-          color: rgba(255,255,255,0.4);
-          text-decoration: none;
-          transition: color 0.2s;
-          display: inline-block;
-        }
-        .cc-footer-col ul li a:hover { color: rgba(255,255,255,0.85); }
-
-        .cc-contact-item {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          margin-bottom: 0.85rem;
-          font-size: 0.85rem;
-          color: rgba(255,255,255,0.4);
-        }
-        .cc-contact-item svg { color: #D4A853; flex-shrink: 0; }
-        .cc-contact-item a {
-          color: rgba(255,255,255,0.4);
-          text-decoration: none;
-          transition: color 0.2s;
-        }
-        .cc-contact-item a:hover { color: #D4A853; }
-
-        .cc-footer-bottom {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding-top: 1.5rem;
-          gap: 1rem;
-          flex-wrap: wrap;
-        }
-        .cc-footer-bottom p {
-          font-size: 0.75rem;
-          color: rgba(255,255,255,0.2);
-          letter-spacing: 0.02em;
-        }
-        .cc-footer-bottom span {
-          font-size: 0.7rem;
-          color: rgba(212, 168, 83, 0.4);
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
-        }
-
-        .cc-divider-line {
-          width: 30px; height: 2px;
-          background: linear-gradient(90deg, #D4A853, transparent);
-          margin-bottom: 1.25rem;
-          border-radius: 2px;
-        }
-      `}</style>
-
-      <footer className="cc-footer">
-        <div className="cc-footer-glow" />
-        <div className="cc-footer-inner">
-          <div className="cc-footer-grid">
-
-            {/* Brand */}
-            <div className="cc-footer-brand">
-              <Link to="/" className="cc-footer-logo">
-                <span className="cc-footer-logo-icon"><Film /></span>
-                CineCircle
-              </Link>
-              <p className="cc-footer-desc">
-                Revolutionizing the way you plan and experience cinema. 
-                Decide, coordinate, and book tickets with your crew — 
-                seamlessly and in style.
-              </p>
-              <span className="cc-footer-badge">
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#D4A853", display: "inline-block" }} />
-                DBMS Mini Project 2026
-              </span>
-            </div>
-
-            {/* Explore */}
-            <div className="cc-footer-col">
-              <div className="cc-divider-line" />
-              <h4>Explore</h4>
-              <ul>
-                <li><a href="/">Now Showing</a></li>
-                <li><a href="/">Coming Soon</a></li>
-                <li><a href="/movie-nights">Movie Nights</a></li>
-                <li><a href="/">Cinemas Near You</a></li>
-              </ul>
-            </div>
-
-            {/* Company */}
-            <div className="cc-footer-col">
-              <div className="cc-divider-line" />
-              <h4>Company</h4>
-              <ul>
-                <li><a href="#">About Us</a></li>
-                <li><a href="#">Careers</a></li>
-                <li><a href="#">Terms of Service</a></li>
-                <li><a href="#">Privacy Policy</a></li>
-              </ul>
-            </div>
-
-            {/* Contact */}
-            <div className="cc-footer-col">
-              <div className="cc-divider-line" />
-              <h4>Contact</h4>
-              <div className="cc-contact-item">
-                <Mail size={13} />
-                <a href="mailto:support@cinecircle.com">support@cinecircle.com</a>
+          {/* Brand */}
+          <div>
+            <Link to="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none", marginBottom: "1rem" }}>
+              <div style={{
+                width: 30, height: 30, borderRadius: 7,
+                background: "#E50914",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0,
+              }}>
+                <Film size={16} color="#fff" />
               </div>
-              <div className="cc-contact-item">
-                <MapPin size={13} />
-                <span>Bengaluru, Karnataka</span>
-              </div>
-              <div className="cc-contact-item">
-                <Phone size={13} />
-                <span>+91 80 0000 0000</span>
-              </div>
+              <span style={{
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontWeight: 700, fontSize: "1.15rem",
+                color: "#F9FAFB",
+              }}>CineCircle</span>
+            </Link>
+            <p style={{ fontSize: "0.83rem", color: "rgba(255,255,255,0.3)", lineHeight: 1.7, maxWidth: 280, marginBottom: "1.25rem" }}>
+              Plan movie nights with friends. Vote on what to watch, pick seats together, and make memories.
+            </p>
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              padding: "4px 12px",
+              background: "rgba(229,9,20,0.07)",
+              border: "1px solid rgba(229,9,20,0.15)",
+              borderRadius: 6,
+              fontSize: "0.68rem", color: "rgba(229,9,20,0.7)",
+              letterSpacing: "0.08em", textTransform: "uppercase",
+              fontWeight: 500,
+            }}>
+              <Popcorn size={11} />
+              DBMS Mini Project 2026
             </div>
-
           </div>
 
-          <div className="cc-footer-bottom">
-            <p>© 2026 CineCircle. Crafted with cinematic passion. All rights reserved.</p>
-            <span>Designed for the Big Screen</span>
+          {/* Explore */}
+          <FooterCol title="Explore" links={[
+            { label: "Now Showing", href: "/" },
+            { label: "Coming Soon", href: "/" },
+            { label: "Movie Nights", href: "/movie-nights" },
+            { label: "My Bookings", href: "/dashboard" },
+          ]} />
+
+          {/* Company */}
+          <FooterCol title="Company" links={[
+            { label: "About Us", href: "#" },
+            { label: "Careers", href: "#" },
+            { label: "Terms of Service", href: "#" },
+            { label: "Privacy Policy", href: "#" },
+          ]} />
+
+          {/* Contact */}
+          <div>
+            <h4 style={{
+              fontSize: "0.68rem", fontWeight: 600,
+              letterSpacing: "0.12em", textTransform: "uppercase",
+              color: "rgba(255,255,255,0.25)",
+              marginBottom: "1.1rem",
+              fontFamily: "'Space Grotesk', sans-serif",
+            }}>Contact</h4>
+            {[
+              { icon: <Mail size={13} />, text: "support@cinecircle.com", href: "mailto:support@cinecircle.com" },
+              { icon: <MapPin size={13} />, text: "Bengaluru, Karnataka" },
+              { icon: <Phone size={13} />, text: "+91 80 0000 0000" },
+            ].map((item, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "0.75rem" }}>
+                <span style={{ color: "#E50914", display: "flex", flexShrink: 0 }}>{item.icon}</span>
+                {item.href
+                  ? <a href={item.href} style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.35)", textDecoration: "none", transition: "color 0.2s" }}
+                    onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.8)")}
+                    onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.35)")}
+                    >{item.text}</a>
+                  : <span style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.35)" }}>{item.text}</span>
+                }
+              </div>
+            ))}
           </div>
         </div>
-      </footer>
-    </>
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "1.5rem", flexWrap: "wrap", gap: "0.75rem" }}>
+          <p style={{ fontSize: "0.73rem", color: "rgba(255,255,255,0.18)" }}>
+            © 2026 CineCircle. All rights reserved.
+          </p>
+          <span style={{ fontSize: "0.68rem", color: "rgba(229,9,20,0.35)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+            Built for the Big Screen
+          </span>
+        </div>
+      </div>
+
+      <style>{`
+        @media (max-width: 768px) {
+          .footer-grid { grid-template-columns: 1fr 1fr !important; }
+          .footer-grid > div:first-child { grid-column: 1 / -1; }
+        }
+        @media (max-width: 480px) {
+          .footer-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+    </footer>
   );
 };
+
+const FooterCol: React.FC<{ title: string; links: { label: string; href: string }[] }> = ({ title, links }) => (
+  <div>
+    <h4 style={{
+      fontSize: "0.68rem", fontWeight: 600,
+      letterSpacing: "0.12em", textTransform: "uppercase",
+      color: "rgba(255,255,255,0.25)",
+      marginBottom: "1.1rem",
+      fontFamily: "'Space Grotesk', sans-serif",
+    }}>{title}</h4>
+    <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+      {links.map(l => (
+        <li key={l.label} style={{ marginBottom: "0.6rem" }}>
+          <a href={l.href} style={{
+            fontSize: "0.83rem",
+            color: "rgba(255,255,255,0.37)",
+            textDecoration: "none",
+            transition: "color 0.2s",
+            display: "inline-block",
+          }}
+            onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.82)")}
+            onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.37)")}
+          >{l.label}</a>
+        </li>
+      ))}
+    </ul>
+  </div>
+);

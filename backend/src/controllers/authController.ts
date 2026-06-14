@@ -5,9 +5,12 @@ import { db } from "../db/db";
 import { users } from "../db/schema";
 import { eq } from "drizzle-orm";
  
-const JWT_SECRET = process.env.JWT_SECRET || "cinecircle_secret_key_12345";
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "cinecircle_refresh_key_12345";
- 
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
+if (!JWT_SECRET || !JWT_REFRESH_SECRET) {
+  throw new Error("JWT_SECRET and JWT_REFRESH_SECRET must be set. Refusing to start with insecure defaults.");
+}
+
 const generateTokens = (user: { id: number; email: string; role: string; fullName: string }) => {
   const payload = { id: user.id, email: user.email, role: user.role, fullName: user.fullName };
   const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: "1d" });
@@ -31,13 +34,14 @@ export const register = async (req: Request, res: Response) => {
       return res.status(409).json({ error: "User with this email already exists" });
     }
  
-    const role = emailLower.endsWith("@cinecircle.com") && emailLower.includes("admin") ? "admin" : "user";
- 
+    // SECURITY: never derive privileges from user-supplied input. All self-registrations
+    // are plain users. Admins must be provisioned directly in the database (or via a
+    // trusted, server-side process), never by typing a special email address.
     const inserted = await db.insert(users).values({
       email: emailLower,
       passwordHash: hashedPassword,
       fullName,
-      role,
+      role: "user",
     }).returning();
     const newUser = inserted[0];
  

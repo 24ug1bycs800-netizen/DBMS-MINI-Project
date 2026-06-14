@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.js";
 import jsPDF from "jspdf";
@@ -158,21 +158,14 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div
-      className="min-h-screen text-white pb-20 font-poppins relative"
-      style={{ background: "#080808" }}
+      className="min-h-screen text-white pb-20 relative"
+      style={{ background: "#0B1120", fontFamily: "'Inter', sans-serif" }}
     >
-      {/* FILM GRAIN */}
-      <div
-        className="fixed inset-0 opacity-[0.025] pointer-events-none z-0"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
-        }}
-      />
       {/* AMBIENT GLOW */}
       <div
         className="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] pointer-events-none z-0"
         style={{
-          background: "radial-gradient(ellipse at center top, rgba(212,175,55,0.07) 0%, transparent 65%)",
+          background: "radial-gradient(ellipse at center top, rgba(229,9,20,0.05) 0%, transparent 65%)",
         }}
       />
 
@@ -181,63 +174,62 @@ export const Dashboard: React.FC = () => {
         <div
           className="lg:col-span-1 rounded-2xl flex flex-col items-center text-center p-6 relative overflow-hidden"
           style={{
-            background: "linear-gradient(160deg, #131313 0%, #0d0d0d 100%)",
-            border: "1px solid rgba(212,175,55,0.12)",
-            boxShadow: "0 24px 60px rgba(0,0,0,0.5)",
+            background: "rgba(17,24,39,0.7)",
+            border: "1px solid rgba(255,255,255,0.06)",
+            backdropFilter: "blur(12px)",
+            boxShadow: "0 24px 60px rgba(0,0,0,0.4)",
           }}
         >
-          {/* TOP GOLD LINE */}
+          {/* TOP RED LINE */}
           <div
-            className="absolute top-0 left-0 right-0 h-px"
+            className="absolute top-0 left-0 right-0 h-0.5"
             style={{
-              background: "linear-gradient(to right, transparent, #d4af37 40%, transparent)",
+              background: "#E50914",
             }}
           />
 
           {/* AVATAR */}
-          <div className="relative mb-4">
+          <div className="relative mb-4 mt-2">
             <div
-              className="absolute inset-0 rounded-full blur-lg opacity-40"
-              style={{ background: "#d4af37" }}
-            />
-            <div
-              className="relative w-20 h-20 rounded-full flex items-center justify-center text-2xl font-black uppercase"
+              className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold uppercase"
               style={{
-                background: "linear-gradient(135deg, rgba(212,175,55,0.15), rgba(212,175,55,0.05))",
-                border: "2px solid rgba(212,175,55,0.4)",
-                color: "#d4af37",
+                background: "rgba(229,9,20,0.1)",
+                border: "2px solid rgba(229,9,20,0.3)",
+                color: "#E50914",
+                fontFamily: "'Space Grotesk', sans-serif",
               }}
             >
               {user.fullName.substring(0, 2)}
             </div>
           </div>
 
-          <h2 className="font-black text-white text-lg leading-tight">{user.fullName}</h2>
+          <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: "1rem", color: "#F9FAFB" }}>{user.fullName}</h2>
           <span
-            className="mt-2 px-3 py-0.5 rounded-full text-[9px] font-black tracking-[0.2em] uppercase"
+            className="mt-2 px-3 py-0.5 rounded text-[9px] font-bold tracking-widest uppercase"
             style={{
-              background: "rgba(212,175,55,0.08)",
-              border: "1px solid rgba(212,175,55,0.2)",
-              color: "#d4af37",
+              background: "rgba(245,158,11,0.08)",
+              border: "1px solid rgba(245,158,11,0.2)",
+              color: "#F59E0B",
+              fontFamily: "'Space Grotesk', sans-serif",
             }}
           >
             {user.role}
           </span>
-          <p className="text-xs text-neutral-600 font-inter mt-3 truncate max-w-full">{user.email}</p>
+          <p className="text-xs mt-3 truncate max-w-full" style={{ color: "#4B5563" }}>{user.email}</p>
 
           {/* STATS STRIP */}
           <div
             className="w-full mt-6 grid grid-cols-3 divide-x rounded-xl overflow-hidden"
-            style={{ borderColor: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.08)" }}
+            style={{ border: "1px solid rgba(255,255,255,0.06)" }}
           >
             {[
               { val: bookings.length, label: "Tickets" },
               { val: wishlist.length, label: "Saved" },
               { val: nights.length, label: "Nights" },
             ].map(({ val, label }) => (
-              <div key={label} className="flex flex-col items-center py-3" style={{ borderColor: "rgba(212,175,55,0.08)" }}>
-                <span className="text-lg font-black" style={{ color: "#d4af37" }}>{val}</span>
-                <span className="text-[9px] text-neutral-600 font-inter uppercase tracking-wider">{label}</span>
+              <div key={label} className="flex flex-col items-center py-3" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+                <span className="text-lg font-bold" style={{ color: "#F59E0B", fontFamily: "'Space Grotesk', sans-serif" }}>{val}</span>
+                <span className="text-[9px] uppercase tracking-wider" style={{ color: "#4B5563" }}>{label}</span>
               </div>
             ))}
           </div>
@@ -258,7 +250,7 @@ export const Dashboard: React.FC = () => {
         {/* ─── MAIN CONTENT ─── */}
         <div className="lg:col-span-3 space-y-6">
           {/* TAB STRIP */}
-          <div className="flex gap-1 p-1 rounded-xl" style={{ background: "#0d0d0d", border: "1px solid rgba(212,175,55,0.08)" }}>
+          <div className="flex gap-1 p-1 rounded-xl" style={{ background: "rgba(17,24,39,0.8)", border: "1px solid rgba(255,255,255,0.06)" }}>
             {tabs.map(({ key, label, icon: Icon, count }) => {
               const active = activeTab === key;
               return (
@@ -269,21 +261,22 @@ export const Dashboard: React.FC = () => {
                   style={
                     active
                       ? {
-                          background: "linear-gradient(135deg, rgba(212,175,55,0.15), rgba(212,175,55,0.08))",
-                          border: "1px solid rgba(212,175,55,0.3)",
-                          color: "#d4af37",
+                          background: "rgba(229,9,20,0.12)",
+                          border: "1px solid rgba(229,9,20,0.3)",
+                          color: "#FF4444",
+                          fontFamily: "'Space Grotesk', sans-serif",
                         }
-                      : { color: "#555", border: "1px solid transparent" }
+                      : { color: "#4B5563", border: "1px solid transparent", fontFamily: "'Space Grotesk', sans-serif" }
                   }
                 >
                   <Icon className="w-3.5 h-3.5" />
                   {label}
                   <span
-                    className="px-1.5 py-0.5 rounded-full text-[9px] font-black"
+                    className="px-1.5 py-0.5 rounded text-[9px] font-bold"
                     style={
                       active
-                        ? { background: "rgba(212,175,55,0.2)", color: "#d4af37" }
-                        : { background: "rgba(255,255,255,0.04)", color: "#555" }
+                        ? { background: "rgba(229,9,20,0.15)", color: "#FF4444" }
+                        : { background: "rgba(255,255,255,0.04)", color: "#4B5563" }
                     }
                   >
                     {count}
@@ -302,9 +295,10 @@ export const Dashboard: React.FC = () => {
                     key={booking.id}
                     className="rounded-2xl overflow-hidden relative"
                     style={{
-                      background: "linear-gradient(160deg, #111 0%, #0c0c0c 100%)",
-                      border: "1px solid rgba(212,175,55,0.1)",
-                      boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+                      background: "rgba(17,24,39,0.6)",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                      backdropFilter: "blur(8px)",
+                      boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
                     }}
                   >
                     {/* GOLD GLOW BEHIND CANCELLED ITEMS */}
@@ -325,20 +319,20 @@ export const Dashboard: React.FC = () => {
                             src={booking.movie.posterUrl}
                             alt="pic"
                             className="w-16 sm:w-20 aspect-[2/3] object-cover rounded-xl"
-                            style={{ border: "1px solid rgba(212,175,55,0.15)" }}
+                            style={{ border: "1px solid rgba(245,158,11,0.15)" }}
                           />
                         </div>
                         <div>
                           <h4 className="font-black text-white text-base leading-snug">{booking.movie.title}</h4>
-                          <span className="text-[10px] font-black tracking-widest uppercase mt-1 inline-block" style={{ color: "#d4af37" }}>
+                          <span className="text-[10px] font-black tracking-widest uppercase mt-1 inline-block" style={{ color: "#F59E0B" }}>
                             {booking.movie.genre.split("/")[0]}
                           </span>
-                          <div className="mt-3.5 grid grid-cols-2 gap-x-6 gap-y-1.5 font-inter text-xs text-neutral-600">
+                          <div className="mt-3.5 grid grid-cols-2 gap-x-6 gap-y-1.5  text-xs text-neutral-600">
                             <div>Theatre: <strong className="text-white">{booking.theatre.name}</strong></div>
                             <div>Date: <strong className="text-white">{booking.show.date} @ {booking.show.startTime}</strong></div>
                             <div>
                               Seats:{" "}
-                              <strong style={{ color: "#d4af37" }}>
+                              <strong style={{ color: "#F59E0B" }}>
                                 {booking.seats.map((s: any) => `${s.row}${s.number}`).join(", ")}
                               </strong>
                             </div>
@@ -353,10 +347,10 @@ export const Dashboard: React.FC = () => {
                       {/* PRICE + ACTIONS */}
                       <div
                         className="md:col-span-1 border-t md:border-t-0 md:border-l pt-4 md:pt-0 md:pl-6 flex flex-col gap-3 items-center text-center"
-                        style={{ borderColor: "rgba(212,175,55,0.08)" }}
+                        style={{ borderColor: "rgba(245,158,11,0.08)" }}
                       >
-                        <div className="text-[10px] text-neutral-600 font-inter uppercase tracking-wider">Amount paid</div>
-                        <div className="text-2xl font-black" style={{ color: "#d4af37" }}>
+                        <div className="text-[10px] text-neutral-600  uppercase tracking-wider">Amount paid</div>
+                        <div className="text-2xl font-black" style={{ color: "#F59E0B" }}>
                           ₹{booking.totalAmount}
                         </div>
                         <span
@@ -376,9 +370,9 @@ export const Dashboard: React.FC = () => {
                               onClick={() => handlePrintTicket(booking)}
                               className="w-full px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all hover:scale-[1.02]"
                               style={{
-                                background: "rgba(212,175,55,0.07)",
-                                border: "1px solid rgba(212,175,55,0.25)",
-                                color: "#d4af37",
+                                background: "rgba(245,158,11,0.07)",
+                                border: "1px solid rgba(245,158,11,0.25)",
+                                color: "#F59E0B",
                               }}
                             >
                               <Download className="w-3.5 h-3.5" /> Download Pass
@@ -425,9 +419,9 @@ export const Dashboard: React.FC = () => {
                     key={movie.id}
                     onClick={() => navigate(`/movies/${movie.id}`)}
                     className="group cursor-pointer rounded-xl overflow-hidden transition-all duration-300 hover:-translate-y-1"
-                    style={{ border: "1px solid rgba(212,175,55,0.08)", background: "#111" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(212,175,55,0.35)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(212,175,55,0.08)")}
+                    style={{ border: "1px solid rgba(255,255,255,0.05)", background: "#111827" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(229,9,20,0.3)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)")}
                   >
                     <div className="relative aspect-[2/3] overflow-hidden">
                       <img
@@ -438,10 +432,10 @@ export const Dashboard: React.FC = () => {
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                     <div className="p-3">
-                      <h4 className="font-black text-xs truncate text-white group-hover:text-[#d4af37] transition-colors">
+                      <h4 className="font-black text-xs truncate text-white group-hover:text-[#F59E0B] transition-colors">
                         {movie.title}
                       </h4>
-                      <p className="text-[9px] text-neutral-600 font-inter mt-0.5">{movie.genre.split("/")[0]}</p>
+                      <p className="text-[9px] text-neutral-600  mt-0.5">{movie.genre.split("/")[0]}</p>
                     </div>
                   </div>
                 ))
@@ -461,37 +455,38 @@ export const Dashboard: React.FC = () => {
                   <div
                     key={night.id}
                     onClick={() => navigate(`/movie-nights/${night.id}`)}
-                    className="p-5 rounded-2xl cursor-pointer transition-all hover:scale-[1.01] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden group"
+                    className="p-5 rounded-2xl cursor-pointer transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden group"
                     style={{
-                      background: "linear-gradient(160deg, #111 0%, #0c0c0c 100%)",
-                      border: "1px solid rgba(212,175,55,0.08)",
+                      background: "rgba(17,24,39,0.6)",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                      backdropFilter: "blur(8px)",
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(212,175,55,0.3)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(212,175,55,0.08)")}
+                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(229,9,20,0.25)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)")}
                   >
                     <div className="flex gap-4 items-center">
                       <div
                         className="p-3 rounded-xl flex-shrink-0"
                         style={{
-                          background: "rgba(212,175,55,0.08)",
-                          border: "1px solid rgba(212,175,55,0.2)",
+                          background: "rgba(245,158,11,0.08)",
+                          border: "1px solid rgba(245,158,11,0.2)",
                         }}
                       >
-                        <Moon className="w-5 h-5" style={{ color: "#d4af37" }} />
+                        <Moon className="w-5 h-5" style={{ color: "#F59E0B" }} />
                       </div>
                       <div>
-                        <h4 className="font-black text-white text-sm group-hover:text-[#d4af37] transition-colors">
+                        <h4 className="font-black text-white text-sm group-hover:text-[#F59E0B] transition-colors">
                           {night.title}
                         </h4>
-                        <span className="text-[10px] text-neutral-600 font-inter mt-1 inline-block">
+                        <span className="text-[10px] text-neutral-600  mt-1 inline-block">
                           Code:{" "}
-                          <strong className="font-mono" style={{ color: "#d4af37" }}>{night.inviteCode}</strong>
+                          <strong className="font-mono" style={{ color: "#F59E0B" }}>{night.inviteCode}</strong>
                           {" "}· {night.myRole === "ORGANIZER" ? "Organizer" : "Member"}
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 font-inter text-xs text-neutral-600">
+                    <div className="flex items-center gap-3  text-xs text-neutral-600">
                       <span>Members: <strong className="text-white">{night.memberCount}</strong></span>
                       <span
                         className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider"
@@ -500,12 +495,12 @@ export const Dashboard: React.FC = () => {
                             ? { background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", color: "#4ade80" }
                             : night.status === "CANCELLED" || night.status === "REJECTED"
                               ? { background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171" }
-                              : { background: "rgba(212,175,55,0.1)", border: "1px solid rgba(212,175,55,0.3)", color: "#d4af37" }
+                              : { background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", color: "#F59E0B" }
                         }
                       >
                         {night.status.replace(/_/g, " ")}
                       </span>
-                      <ExternalLink className="w-3.5 h-3.5 text-neutral-700 group-hover:text-[#d4af37] transition-colors" />
+                      <ExternalLink className="w-3.5 h-3.5 text-neutral-700 group-hover:text-[#F59E0B] transition-colors" />
                     </div>
                   </div>
                 ))
@@ -526,7 +521,7 @@ export const Dashboard: React.FC = () => {
       >
         <div
           className="w-full max-w-sm rounded-2xl overflow-hidden"
-          style={{ background: "#111", border: "1px solid rgba(212,175,55,0.18)", boxShadow: "0 32px 80px rgba(0,0,0,0.8)" }}
+          style={{ background: "#111827", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 32px 80px rgba(0,0,0,0.8)", backdropFilter: "blur(16px)" }}
         >
           {/* header */}
           <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
@@ -539,11 +534,11 @@ export const Dashboard: React.FC = () => {
           <div className="px-5 py-5 space-y-4">
             {/* movie info strip */}
             <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
-              <img src={cancelTarget.movie?.posterUrl} alt="" className="w-10 h-14 object-cover rounded-lg flex-shrink-0" style={{ border: "1px solid rgba(212,175,55,0.15)" }} />
+              <img src={cancelTarget.movie?.posterUrl} alt="" className="w-10 h-14 object-cover rounded-lg flex-shrink-0" style={{ border: "1px solid rgba(245,158,11,0.15)" }} />
               <div className="min-w-0">
                 <p className="font-black text-xs text-white truncate">{cancelTarget.movie?.title}</p>
-                <p className="text-[10px] text-neutral-500 font-inter mt-0.5">{cancelTarget.show?.date} · {cancelTarget.show?.startTime}</p>
-                <p className="text-[10px] text-neutral-600 font-inter truncate">{cancelTarget.theatre?.name}</p>
+                <p className="text-[10px] text-neutral-500  mt-0.5">{cancelTarget.show?.date} · {cancelTarget.show?.startTime}</p>
+                <p className="text-[10px] text-neutral-600  truncate">{cancelTarget.theatre?.name}</p>
               </div>
             </div>
 
@@ -553,12 +548,12 @@ export const Dashboard: React.FC = () => {
                   <RefreshCw className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="text-xs font-black text-green-400">Refund Eligible</p>
-                    <p className="text-[11px] text-neutral-500 font-inter mt-1 leading-relaxed">
+                    <p className="text-[11px] text-neutral-500  mt-1 leading-relaxed">
                       Your refund of <strong className="text-white">₹{cancelTarget.totalAmount}</strong> will be credited to your original payment method within <strong className="text-white">5–7 working days</strong>.
                     </p>
                   </div>
                 </div>
-                <p className="text-[10px] text-neutral-600 font-inter text-center">This action cannot be undone.</p>
+                <p className="text-[10px] text-neutral-600  text-center">This action cannot be undone.</p>
                 <div className="flex gap-3">
                   <button
                     onClick={() => setCancelTarget(null)}
@@ -583,7 +578,7 @@ export const Dashboard: React.FC = () => {
                   <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="text-xs font-black text-red-400">Cancellation Not Allowed</p>
-                    <p className="text-[11px] text-neutral-500 font-inter mt-1 leading-relaxed">
+                    <p className="text-[11px] text-neutral-500  mt-1 leading-relaxed">
                       Tickets cannot be cancelled within <strong className="text-white">3 hours</strong> of showtime. Please contact support if you need further assistance.
                     </p>
                   </div>
@@ -591,7 +586,7 @@ export const Dashboard: React.FC = () => {
                 <button
                   onClick={() => setCancelTarget(null)}
                   className="w-full py-2.5 rounded-xl text-xs font-bold transition-all hover:scale-[1.01]"
-                  style={{ background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.2)", color: "#d4af37" }}
+                  style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", color: "#F59E0B" }}
                 >
                   OK, Got It
                 </button>
@@ -608,9 +603,10 @@ export const Dashboard: React.FC = () => {
 const EmptyState: React.FC<{ icon: React.ReactNode; message: string }> = ({ icon, message }) => (
   <div
     className="py-16 rounded-2xl flex flex-col items-center gap-3 text-center"
-    style={{ background: "rgba(255,255,255,0.01)", border: "1px dashed rgba(212,175,55,0.1)" }}
+    style={{ background: "rgba(255,255,255,0.01)", border: "1px dashed rgba(255,255,255,0.07)" }}
   >
-    <div style={{ color: "rgba(212,175,55,0.2)" }}>{icon}</div>
-    <p className="text-sm text-neutral-700 font-inter max-w-xs">{message}</p>
+    <div style={{ color: "rgba(255,255,255,0.1)" }}>{icon}</div>
+    <p style={{ fontSize: "0.85rem", color: "#4B5563", maxWidth: 260 }}>{message}</p>
   </div>
 );
+

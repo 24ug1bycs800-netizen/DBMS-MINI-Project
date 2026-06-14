@@ -260,20 +260,23 @@ export const cancelBooking = async (
 export const verifyPayment = async (req: Request, res: Response) => {
   try {
     const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
-    if (!razorpayOrderId || !razorpayPaymentId) {
-      return res.status(400).json({ error: "razorpayOrderId and razorpayPaymentId are required" });
+    if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+      return res.status(400).json({
+        error: "razorpayOrderId, razorpayPaymentId and razorpaySignature are required",
+      });
     }
 
-    // Verify Razorpay signature to prevent fake payment confirmations
-    if (razorpaySignature) {
-      const expectedSig = crypto
-        .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET!)
-        .update(`${razorpayOrderId}|${razorpayPaymentId}`)
-        .digest("hex");
+    // Verify Razorpay signature to prevent fake payment confirmations.
+    // SECURITY: this check is MANDATORY — a missing/invalid signature must never confirm a booking.
+    const expectedSig = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET!)
+      .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+      .digest("hex");
 
-      if (expectedSig !== razorpaySignature) {
-        return res.status(400).json({ error: "Invalid payment signature" });
-      }
+    const sigBuf = Buffer.from(razorpaySignature);
+    const expectedBuf = Buffer.from(expectedSig);
+    if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
+      return res.status(400).json({ error: "Invalid payment signature" });
     }
 
     const paymentItems = await db.select().from(payments).where(eq(payments.razorpayOrderId, razorpayOrderId)).limit(1);

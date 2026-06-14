@@ -1,24 +1,30 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'cinecircle_secret_key_12345';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is not set. Refusing to start with an insecure default.');
+}
 
 export const authenticateJWT = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
 
-  if (authHeader) {
-    const token = authHeader.split(' ')[1];
-
-    jwt.verify(token, JWT_SECRET, (err, decoded) => {
-      if (err) {
-        return res.status(403).json({ error: 'Access forbidden: Invalid or expired token' });
-      }
-      (req as any).user = decoded;
-      next();
-    });
-  } else {
-    res.status(401).json({ error: 'Unauthorized: Authorization header is missing' });
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized: Bearer token is missing' });
   }
+
+  const token = authHeader.slice('Bearer '.length).trim();
+  if (!token) {
+    return res.status(401).json({ error: 'Unauthorized: Bearer token is empty' });
+  }
+
+  jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }, (err, decoded) => {
+    if (err) {
+      return res.status(403).json({ error: 'Access forbidden: Invalid or expired token' });
+    }
+    (req as any).user = decoded;
+    next();
+  });
 };
 
 export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {

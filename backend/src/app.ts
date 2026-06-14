@@ -1,7 +1,8 @@
+// Load environment variables FIRST, before any module that reads process.env at import time.
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import path from "path";
-import * as dotenv from "dotenv";
 import seatLockRoutes from "./routes/seatLockRoutes";
 import authRoutes from "./routes/authRoutes";
 import movieRoutes from "./routes/movieRoutes";
@@ -12,8 +13,6 @@ import movieNightRoutes from "./routes/movieNightRoutes";
 import { startCleanupScheduler } from "./jobs/cleanupShows";
 import { db } from "./db/db";
 import { sql } from "drizzle-orm";
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;

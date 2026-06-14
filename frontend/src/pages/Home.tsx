@@ -1,14 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { useCityStore } from "../store/useCityStore.js";
 import {
-  Play,
-  Calendar,
-  Star,
-  Compass,
-  Film,
-  ChevronLeft,
-  ChevronRight,
+  Play, Calendar, Star, Film, ChevronLeft, ChevronRight,
+  Popcorn, Users, Ticket, MapPin,
 } from "lucide-react";
 import api from "../services/api.js";
 
@@ -43,21 +39,14 @@ const getImageUrl = (url?: string) => {
   return `${import.meta.env.VITE_API_URL}${url}`;
 };
 
-// ─── GOLD SECTION HEADING ─────────────────────────────────────────────────────
-const SectionHeading: React.FC<{ icon: React.ReactNode; label: string }> = ({ icon, label }) => (
-  <div className="flex items-center gap-3 mb-8">
-    <div
-      className="p-2 rounded-lg"
-      style={{ background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.18)" }}
-    >
-      {icon}
-    </div>
-    <div>
-      <h2 className="text-xl font-black text-white tracking-wide">{label}</h2>
-      <div className="mt-1 w-6 h-0.5 rounded-full" style={{ background: "#d4af37" }} />
-    </div>
-  </div>
-);
+const stagger = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.07 } },
+};
+const fadeUp = {
+  hidden: { opacity: 0, y: 18 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] } },
+};
 
 export const Home: React.FC = () => {
   const { selectedCity } = useCityStore();
@@ -69,338 +58,461 @@ export const Home: React.FC = () => {
   const [heroIdx, setHeroIdx] = useState(0);
 
   useEffect(() => {
-    const fetchMovies = async () => {
-      try {
-        const nowRes = await api.get("/movies?isNowShowing=true");
-        setNowShowing(nowRes.data.movies);
-        const soonRes = await api.get("/movies?isNowShowing=false");
-        setComingSoon(soonRes.data.movies);
-      } catch (err) {
-        console.error("Failed to load movies:", err);
-      }
-    };
-    fetchMovies();
+    api.get("/movies?isNowShowing=true").then(r => setNowShowing(r.data.movies)).catch(() => {});
+    api.get("/movies?isNowShowing=false").then(r => setComingSoon(r.data.movies)).catch(() => {});
   }, []);
 
   useEffect(() => {
-    const fetchTheatres = async () => {
-      try {
-        const res = await api.get(`/theatres?citySlug=${selectedCity.slug}`);
-        setTheatres(res.data.theatres);
-      } catch (err) {
-        console.error("Failed to load local theatres:", err);
-      }
-    };
-    fetchTheatres();
+    api.get(`/theatres?citySlug=${selectedCity.slug}`).then(r => setTheatres(r.data.theatres)).catch(() => {});
   }, [selectedCity]);
 
   useEffect(() => {
-    if (nowShowing.length === 0) return;
-    const interval = setInterval(() => {
-      setHeroIdx((prev) => (prev + 1) % Math.min(nowShowing.length, 3));
-    }, 6000);
-    return () => clearInterval(interval);
+    if (!nowShowing.length) return;
+    const t = setInterval(() => setHeroIdx(p => (p + 1) % Math.min(nowShowing.length, 4)), 6000);
+    return () => clearInterval(t);
   }, [nowShowing]);
 
-  const activeHero = nowShowing[heroIdx];
-  const handleNextHero = () => setHeroIdx((prev) => (prev + 1) % Math.min(nowShowing.length, 3));
-  const handlePrevHero = () => setHeroIdx((prev) => (prev - 1 + Math.min(nowShowing.length, 3)) % Math.min(nowShowing.length, 3));
+  const heroCount = Math.min(nowShowing.length, 4);
+  const hero = nowShowing[heroIdx];
 
   return (
-    <div className="bg-[#080808] text-white pb-24 font-poppins min-h-screen relative">
-      {/* FILM GRAIN OVERLAY */}
-      <div
-        className="fixed inset-0 opacity-[0.025] pointer-events-none z-0"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
-        }}
-      />
+    <div style={{ background: "#0B1120", color: "#F9FAFB", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
 
-      {/* ── 1. HERO BANNER ──────────────────────────────────────────────── */}
-      {activeHero && (
-        <div className="relative h-[85vh] w-full overflow-hidden flex items-end">
-          {/* BACKDROP */}
-          <div
-            className="absolute inset-0 bg-cover bg-center scale-105 transition-all duration-1000"
-            style={{
-              backgroundImage: `url(${getImageUrl(activeHero.backdropUrl || activeHero.posterUrl)})`,
-              filter: "brightness(0.35)",
-            }}
-          />
+      {/* ── HERO ─────────────────────────────────────────────────────────── */}
+      <AnimatePresence mode="wait">
+        {hero && (
+          <motion.div
+            key={heroIdx}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6 }}
+            style={{ position: "relative", height: "88vh", minHeight: 560, overflow: "hidden", display: "flex", alignItems: "flex-end" }}
+          >
+            {/* Backdrop */}
+            <div
+              style={{
+                position: "absolute", inset: 0,
+                backgroundImage: `url(${getImageUrl(hero.backdropUrl || hero.posterUrl)})`,
+                backgroundSize: "cover", backgroundPosition: "center",
+                filter: "brightness(0.3) saturate(1.1)",
+                transform: "scale(1.04)",
+                transition: "transform 8s ease",
+              }}
+            />
 
-          {/* GRADIENT OVERLAYS */}
-          <div className="absolute inset-0" style={{ background: "linear-gradient(to top, #080808 0%, rgba(8,8,8,0.8) 40%, rgba(8,8,8,0.1) 100%)" }} />
-          <div className="absolute inset-0 hidden md:block" style={{ background: "linear-gradient(to right, #080808 0%, rgba(8,8,8,0.6) 45%, transparent 100%)" }} />
+            {/* Gradient overlays */}
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, #0B1120 0%, rgba(11,17,32,0.85) 40%, rgba(11,17,32,0.15) 100%)" }} />
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to right, #0B1120 0%, rgba(11,17,32,0.6) 40%, transparent 100%)" }} />
 
-          {/* SUBTLE GOLD VIGNETTE */}
-          <div
-            className="absolute bottom-0 left-0 right-0 h-px"
-            style={{ background: "linear-gradient(to right, transparent, rgba(212,175,55,0.3) 30%, rgba(212,175,55,0.3) 70%, transparent)" }}
-          />
+            {/* Red glow from bottom */}
+            <div style={{
+              position: "absolute", bottom: 0, left: 0, right: 0, height: 200,
+              background: "linear-gradient(to top, rgba(229,9,20,0.04) 0%, transparent 100%)",
+              pointerEvents: "none",
+            }} />
 
-          {/* CONTENT */}
-          <div className="relative z-10 px-6 sm:px-16 pb-16 w-full max-w-5xl">
-            {/* NOW SHOWING PILL */}
-            <div className="mb-5 inline-flex items-center gap-2">
-              <div
-                className="px-3 py-1 rounded-full text-[10px] font-black tracking-[0.2em] uppercase flex items-center gap-1.5"
-                style={{
-                  background: "linear-gradient(135deg, #d4af37, #f4d03f)",
-                  color: "#000",
-                }}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-black/40 animate-pulse inline-block" />
-                Now Showing
-              </div>
-            </div>
-
-            <h1
-              className="text-5xl md:text-7xl font-black text-white leading-none mb-5 tracking-tight"
-              style={{ textShadow: "0 4px 32px rgba(0,0,0,0.8)" }}
+            {/* Content */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+              style={{ position: "relative", zIndex: 10, padding: "0 2rem 4rem", width: "100%", maxWidth: 900 }}
+              className="sm:px-16"
             >
-              {activeHero.title}
-            </h1>
-
-            <p className="text-sm text-neutral-400 font-inter max-w-xl mb-6 leading-relaxed hidden sm:block line-clamp-2">
-              {activeHero.description}
-            </p>
-
-            {/* META TAGS */}
-            <div className="flex flex-wrap items-center gap-2 mb-8">
-              {[activeHero.language, activeHero.genre.split("/")[0]].map((tag) => (
-                <span
-                  key={tag}
-                  className="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider"
-                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#aaa" }}
-                >
-                  {tag}
+              {/* NOW SHOWING badge */}
+              <div style={{ marginBottom: 18 }}>
+                <span style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "4px 12px",
+                  background: "#E50914",
+                  borderRadius: 6,
+                  fontSize: "0.65rem", fontWeight: 700,
+                  letterSpacing: "0.12em", textTransform: "uppercase",
+                  color: "#fff",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                }}>
+                  <span style={{ width: 5, height: 5, borderRadius: "50%", background: "rgba(255,255,255,0.7)", display: "inline-block", animation: "pulse 2s ease-out infinite" }} />
+                  Now Showing
                 </span>
-              ))}
-              <span className="flex items-center gap-1 text-xs font-bold" style={{ color: "#d4af37" }}>
-                <Star className="w-3.5 h-3.5 fill-[#d4af37]" /> {activeHero.ratingValue}
-              </span>
-              <span className="text-xs text-neutral-600">{activeHero.durationMins} min</span>
-            </div>
+              </div>
 
-            {/* CTA BUTTONS */}
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                onClick={() => navigate(`/movies/${activeHero.id}`)}
-                className="px-8 py-3.5 rounded-full font-black text-sm tracking-wide flex items-center gap-2 transition-all hover:scale-105 hover:shadow-2xl"
-                style={{
-                  background: "linear-gradient(135deg, #d4af37, #f4d03f)",
-                  color: "#000",
-                  boxShadow: "0 8px 28px rgba(212,175,55,0.3)",
-                }}
-              >
-                <Film className="w-4 h-4" /> Book Tickets
-              </button>
-              <button
-                onClick={() => navigate(`/movies/${activeHero.id}?playTrailer=true`)}
-                className="px-8 py-3.5 rounded-full font-bold text-sm flex items-center gap-2 transition-all hover:scale-105 backdrop-blur-sm"
-                style={{
-                  background: "rgba(255,255,255,0.06)",
-                  border: "1px solid rgba(212,175,55,0.35)",
-                  color: "#d4af37",
-                }}
-              >
-                <Play className="w-4 h-4 fill-[#d4af37]" /> Watch Trailer
-              </button>
-            </div>
-          </div>
+              <h1 style={{
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontWeight: 700,
+                fontSize: "clamp(2.2rem, 6vw, 4rem)",
+                lineHeight: 1.05,
+                color: "#F9FAFB",
+                marginBottom: 16,
+                letterSpacing: "-0.02em",
+                textShadow: "0 4px 32px rgba(0,0,0,0.6)",
+              }}>
+                {hero.title}
+              </h1>
 
-          {/* SLIDE DOTS + ARROWS */}
-          <div className="absolute right-6 bottom-14 z-20 flex flex-col items-end gap-3">
-            {/* Dots */}
-            <div className="flex gap-1.5">
-              {Array.from({ length: Math.min(nowShowing.length, 3) }).map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setHeroIdx(i)}
-                  className="rounded-full transition-all"
+              <p style={{ color: "#9CA3AF", fontSize: "0.9rem", maxWidth: 480, marginBottom: 20, lineHeight: 1.65 }}
+                className="hidden sm:block line-clamp-2">
+                {hero.description}
+              </p>
+
+              {/* Meta */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 28, alignItems: "center" }}>
+                {[hero.language, hero.genre.split("/")[0]].map(tag => (
+                  <span key={tag} style={{
+                    padding: "3px 10px",
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 5,
+                    fontSize: "0.72rem", fontWeight: 600,
+                    color: "#9CA3AF",
+                    textTransform: "uppercase", letterSpacing: "0.08em",
+                  }}>{tag}</span>
+                ))}
+                <span style={{ display: "flex", alignItems: "center", gap: 4, color: "#F59E0B", fontSize: "0.82rem", fontWeight: 700 }}>
+                  <Star size={13} style={{ fill: "#F59E0B" }} /> {hero.ratingValue}
+                </span>
+                <span style={{ color: "#4B5563", fontSize: "0.78rem" }}>{hero.durationMins} min</span>
+              </div>
+
+              {/* CTAs */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => navigate(`/movies/${hero.id}`)}
                   style={{
-                    width: i === heroIdx ? 20 : 6,
-                    height: 6,
-                    background: i === heroIdx ? "#d4af37" : "rgba(255,255,255,0.2)",
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "12px 26px",
+                    background: "#E50914",
+                    borderRadius: 9,
+                    border: "none",
+                    color: "#fff",
+                    fontSize: "0.88rem", fontWeight: 600,
+                    cursor: "pointer",
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    boxShadow: "0 8px 24px rgba(229,9,20,0.3)",
                   }}
-                />
-              ))}
-            </div>
-            {/* Arrows */}
-            <div className="flex gap-2">
-              {[{ onClick: handlePrevHero, icon: <ChevronLeft className="w-4 h-4" /> }, { onClick: handleNextHero, icon: <ChevronRight className="w-4 h-4" /> }].map(
-                ({ onClick, icon }, i) => (
+                >
+                  <Ticket size={15} /> Book Tickets
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => navigate(`/movies/${hero.id}?playTrailer=true`)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "12px 26px",
+                    background: "rgba(255,255,255,0.06)",
+                    borderRadius: 9,
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    color: "#F9FAFB",
+                    fontSize: "0.88rem", fontWeight: 500,
+                    cursor: "pointer",
+                    fontFamily: "'Inter', sans-serif",
+                    backdropFilter: "blur(8px)",
+                  }}
+                >
+                  <Play size={15} style={{ fill: "rgba(255,255,255,0.8)" }} /> Watch Trailer
+                </motion.button>
+              </div>
+            </motion.div>
+
+            {/* Slide controls */}
+            <div style={{ position: "absolute", right: 24, bottom: 56, zIndex: 20, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10 }}>
+              <div style={{ display: "flex", gap: 6 }}>
+                {Array.from({ length: heroCount }).map((_, i) => (
                   <button
                     key={i}
-                    onClick={onClick}
-                    className="p-2 rounded-full transition-all hover:scale-110"
+                    onClick={() => setHeroIdx(i)}
                     style={{
-                      background: "rgba(255,255,255,0.05)",
-                      border: "1px solid rgba(212,175,55,0.2)",
-                      color: "#fff",
+                      height: 4, borderRadius: 999,
+                      width: i === heroIdx ? 22 : 6,
+                      background: i === heroIdx ? "#E50914" : "rgba(255,255,255,0.2)",
+                      border: "none", cursor: "pointer",
+                      transition: "all 0.3s ease",
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(212,175,55,0.6)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(212,175,55,0.2)")}
-                  >
-                    {icon}
-                  </button>
-                )
-              )}
+                  />
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                {[{ fn: () => setHeroIdx(p => (p - 1 + heroCount) % heroCount), icon: <ChevronLeft size={15} /> },
+                  { fn: () => setHeroIdx(p => (p + 1) % heroCount), icon: <ChevronRight size={15} /> }].map(({ fn, icon }, i) => (
+                  <button key={i} onClick={fn}
+                    style={{
+                      width: 32, height: 32, borderRadius: "50%",
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      color: "#fff", cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseEnter={e => {
+                      (e.currentTarget as HTMLButtonElement).style.background = "rgba(229,9,20,0.2)";
+                      (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(229,9,20,0.4)";
+                    }}
+                    onMouseLeave={e => {
+                      (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.05)";
+                      (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.1)";
+                    }}
+                  >{icon}</button>
+                ))}
+              </div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── MOVIE NIGHTS FEATURE BAND ─────────────────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5 }}
+        style={{
+          margin: "0 1.5rem",
+          borderRadius: 16,
+          overflow: "hidden",
+          background: "linear-gradient(135deg, rgba(229,9,20,0.12) 0%, rgba(11,17,32,0) 60%)",
+          border: "1px solid rgba(229,9,20,0.2)",
+          padding: "2rem 2.5rem",
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 20,
+        }}
+        className="sm:mx-16 my-10"
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <div style={{
+            width: 52, height: 52, borderRadius: 12,
+            background: "rgba(229,9,20,0.15)",
+            border: "1px solid rgba(229,9,20,0.3)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0,
+          }}>
+            <Popcorn size={24} color="#E50914" />
+          </div>
+          <div>
+            <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: "1.2rem", color: "#F9FAFB", marginBottom: 4 }}>
+              Plan Movie Nights Together
+            </h2>
+            <p style={{ color: "#9CA3AF", fontSize: "0.85rem", lineHeight: 1.5, maxWidth: 480 }}>
+              Vote on movies, pick showtimes together, and book group seats — all in one shared room.
+            </p>
           </div>
         </div>
-      )}
+        <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => navigate("/movie-nights/create")}
+            style={{
+              padding: "10px 22px",
+              background: "#E50914",
+              borderRadius: 8, border: "none",
+              color: "#fff", fontSize: "0.85rem", fontWeight: 600,
+              cursor: "pointer", fontFamily: "'Space Grotesk', sans-serif",
+            }}
+          >
+            Create Movie Night
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => navigate("/movie-nights")}
+            style={{
+              padding: "10px 22px",
+              background: "transparent",
+              borderRadius: 8,
+              border: "1px solid rgba(229,9,20,0.3)",
+              color: "#E50914", fontSize: "0.85rem", fontWeight: 600,
+              cursor: "pointer", fontFamily: "'Space Grotesk', sans-serif",
+            }}
+          >
+            Browse Rooms
+          </motion.button>
+        </div>
+      </motion.div>
 
-      {/* ── 2. CITY BAR ─────────────────────────────────────────────────── */}
-      <div
-        className="px-6 sm:px-16 py-3 flex items-center justify-between text-xs font-semibold font-inter"
-        style={{
-          background: "rgba(212,175,55,0.04)",
-          borderTop: "1px solid rgba(212,175,55,0.1)",
-          borderBottom: "1px solid rgba(212,175,55,0.1)",
-        }}
+      {/* ── NOW SHOWING ──────────────────────────────────────────────────── */}
+      <Section label="Now Showing" icon={<Film size={14} color="#F59E0B" />} accentColor="amber" className="px-6 sm:px-16 pb-14 pt-6">
+        <motion.div
+          variants={stagger}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: "-60px" }}
+          style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(155px, 1fr))", gap: 16 }}
+        >
+          {nowShowing.map(m => (
+            <motion.div key={m.id} variants={fadeUp}>
+              <MovieCard
+                movie={m}
+                badge={
+                  <span style={{ display: "flex", alignItems: "center", gap: 3, padding: "3px 8px", background: "rgba(0,0,0,0.75)", border: "1px solid rgba(245,158,11,0.35)", borderRadius: 5, fontSize: "0.65rem", fontWeight: 700, color: "#F59E0B" }}>
+                    <Star size={9} style={{ fill: "#F59E0B" }} /> {m.ratingValue}
+                  </span>
+                }
+                subtitle={`${m.language} · ${m.genre.split("/")[0]}`}
+                meta={`${m.durationMins} min`}
+                onClick={() => navigate(`/movies/${m.id}`)}
+                accentColor="#E50914"
+              />
+            </motion.div>
+          ))}
+        </motion.div>
+      </Section>
+
+      {/* ── COMING SOON ──────────────────────────────────────────────────── */}
+      <Section label="Coming Soon" icon={<Calendar size={14} color="#9CA3AF" />} accentColor="muted" className="px-6 sm:px-16 pb-14">
+        <motion.div
+          variants={stagger}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: "-60px" }}
+          style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(155px, 1fr))", gap: 16 }}
+        >
+          {comingSoon.map(m => (
+            <motion.div key={m.id} variants={fadeUp}>
+              <MovieCard
+                movie={m}
+                badge={
+                  <span style={{ padding: "3px 8px", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 5, fontSize: "0.6rem", fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                    Soon
+                  </span>
+                }
+                subtitle={`${m.language} · ${m.genre.split("/")[0]}`}
+                meta={`Release: ${m.releaseDate}`}
+                onClick={() => navigate(`/movies/${m.id}`)}
+                accentColor="#9CA3AF"
+              />
+            </motion.div>
+          ))}
+        </motion.div>
+      </Section>
+
+      {/* ── WHY CINECIRCLE ───────────────────────────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5 }}
+        style={{ padding: "3rem 1.5rem", textAlign: "center" }}
+        className="sm:px-16"
       >
-        <div className="flex items-center gap-2" style={{ color: "#d4af37" }}>
-          <Compass className="w-4 h-4 animate-spin" style={{ animationDuration: "8s" }} />
-          <span>
-            Showing for{" "}
-            <strong className="text-white underline decoration-[#d4af37] underline-offset-2">
-              {selectedCity.name}
-            </strong>
-          </span>
-        </div>
-        <span className="text-neutral-700 hidden md:inline tracking-widest text-[10px] uppercase">
-          Location persisted
-        </span>
-      </div>
-
-      {/* ── HERO TAGLINE ────────────────────────────────────────────────── */}
-      <div className="text-center pt-16 pb-10 px-6">
-        <h2
-          className="text-4xl md:text-5xl font-black leading-tight tracking-tight"
-          style={{
-            background: "linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.6) 100%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-          }}
-        >
-          Plan Movie Nights<br />
-          <span style={{ color: "#d4af37", WebkitTextFillColor: "#d4af37" }}>Together</span>
-        </h2>
-        <p className="text-neutral-600 mt-4 max-w-md mx-auto font-inter text-sm leading-relaxed">
-          Decide, coordinate, and book cinema tickets with your crew — all in one place.
+        <p style={{ fontSize: "0.7rem", fontWeight: 700, color: "#E50914", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 10, fontFamily: "'Space Grotesk', sans-serif" }}>
+          Why CineCircle
         </p>
-      </div>
-
-      {/* ── 3. NOW SHOWING ──────────────────────────────────────────────── */}
-      <div className="px-6 sm:px-16 pb-16">
-        <SectionHeading icon={<Film className="w-4 h-4" style={{ color: "#d4af37" }} />} label="Now Showing" />
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5">
-          {nowShowing.map((movie) => (
-            <MovieCard
-              key={movie.id}
-              movie={movie}
-              badge={
-                <div
-                  className="flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] font-black"
-                  style={{ background: "rgba(0,0,0,0.75)", border: "1px solid rgba(212,175,55,0.3)", color: "#d4af37" }}
-                >
-                  <Star className="w-2.5 h-2.5 fill-[#d4af37]" /> {movie.ratingValue}
-                </div>
-              }
-              subtitle={`${movie.language} · ${movie.genre.split("/")[0]}`}
-              meta={`${movie.durationMins} min`}
-              onClick={() => navigate(`/movies/${movie.id}`)}
-              accentColor="#d4af37"
-            />
+        <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: "clamp(1.5rem, 3vw, 2rem)", color: "#F9FAFB", marginBottom: 40, letterSpacing: "-0.01em" }}>
+          Movie nights, done right
+        </h2>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, maxWidth: 900, margin: "0 auto" }}>
+          {[
+            { icon: <Popcorn size={22} color="#E50914" />, title: "Group Rooms", desc: "Create a room, invite friends, vote on what to watch and when." },
+            { icon: <Ticket size={22} color="#F59E0B" />, title: "Book Together", desc: "Pick seats side-by-side and pay individually — no coordination chaos." },
+            { icon: <Users size={22} color="#9CA3AF" />, title: "Stay in Sync", desc: "Real-time voting keeps everyone on the same page before you buy." },
+          ].map(f => (
+            <motion.div
+              key={f.title}
+              whileHover={{ y: -4 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              style={{
+                padding: "1.5rem",
+                background: "rgba(255,255,255,0.02)",
+                border: "1px solid rgba(255,255,255,0.05)",
+                borderRadius: 12,
+                textAlign: "left",
+              }}
+            >
+              <div style={{ marginBottom: 12 }}>{f.icon}</div>
+              <h3 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: "0.95rem", color: "#F9FAFB", marginBottom: 6 }}>{f.title}</h3>
+              <p style={{ fontSize: "0.82rem", color: "#6B7280", lineHeight: 1.6 }}>{f.desc}</p>
+            </motion.div>
           ))}
         </div>
-      </div>
+      </motion.div>
 
-      {/* ── 4. COMING SOON ──────────────────────────────────────────────── */}
-      <div className="px-6 sm:px-16 pb-16">
-        <SectionHeading
-          icon={<Calendar className="w-4 h-4" style={{ color: "#6ee7e7" }} />}
-          label="Coming Soon"
-        />
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5">
-          {comingSoon.map((movie) => (
-            <MovieCard
-              key={movie.id}
-              movie={movie}
-              badge={
-                <div
-                  className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider"
-                  style={{ background: "rgba(110,231,231,0.15)", border: "1px solid rgba(110,231,231,0.3)", color: "#6ee7e7" }}
-                >
-                  Soon
-                </div>
-              }
-              subtitle={`${movie.language} · ${movie.genre.split("/")[0]}`}
-              meta={`Release: ${movie.releaseDate}`}
-              onClick={() => navigate(`/movies/${movie.id}`)}
-              accentColor="#6ee7e7"
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* ── 5. POPULAR THEATRES ─────────────────────────────────────────── */}
-      <div className="px-6 sm:px-16">
-        <div
-          className="rounded-2xl p-8 relative overflow-hidden"
+      {/* ── THEATRES ─────────────────────────────────────────────────────── */}
+      <div style={{ padding: "0 1.5rem 4rem" }} className="sm:px-16">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
           style={{
-            background: "linear-gradient(160deg, #101010 0%, #0c0c0c 100%)",
-            border: "1px solid rgba(212,175,55,0.12)",
+            borderRadius: 16,
+            padding: "2rem",
+            background: "rgba(17,24,39,0.6)",
+            border: "1px solid rgba(255,255,255,0.06)",
+            backdropFilter: "blur(8px)",
           }}
         >
-          {/* TOP GOLD LINE */}
-          <div
-            className="absolute top-0 left-0 right-0 h-px"
-            style={{ background: "linear-gradient(to right, transparent, rgba(212,175,55,0.4) 30%, rgba(212,175,55,0.4) 70%, transparent)" }}
-          />
-
-          <SectionHeading icon={<Compass className="w-4 h-4" style={{ color: "#d4af37" }} />} label={`Theatres in ${selectedCity.name}`} />
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {theatres.length > 0 ? (
-              theatres.map((theatre) => (
-                <div
-                  key={theatre.id}
-                  className="p-5 rounded-xl flex items-start gap-3 transition-all hover:-translate-y-0.5 group"
-                  style={{
-                    background: "#0a0a0a",
-                    border: "1px solid rgba(255,255,255,0.04)",
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(212,175,55,0.2)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.04)")}
-                >
-                  <div
-                    className="p-2.5 rounded-lg flex-shrink-0 mt-0.5"
-                    style={{ background: "rgba(212,175,55,0.07)", border: "1px solid rgba(212,175,55,0.15)" }}
-                  >
-                    <Film className="w-4 h-4" style={{ color: "#d4af37" }} />
-                  </div>
-                  <div>
-                    <h4 className="font-black text-sm text-white group-hover:text-[#d4af37] transition-colors">{theatre.name}</h4>
-                    <p className="text-xs text-neutral-600 font-inter mt-1 leading-relaxed">{theatre.address}</p>
-                  </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
+            <MapPin size={14} color="#9CA3AF" />
+            <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: "1rem", color: "#F9FAFB" }}>
+              Theatres in {selectedCity.name}
+            </h2>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 }}>
+            {theatres.length > 0 ? theatres.map(t => (
+              <motion.div
+                key={t.id}
+                whileHover={{ borderColor: "rgba(255,255,255,0.12)" }}
+                style={{
+                  padding: "1rem 1.25rem",
+                  background: "rgba(255,255,255,0.02)",
+                  border: "1px solid rgba(255,255,255,0.05)",
+                  borderRadius: 10,
+                  display: "flex", gap: 12, alignItems: "flex-start",
+                  transition: "border-color 0.2s",
+                }}
+              >
+                <div style={{
+                  width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                  background: "rgba(245,158,11,0.08)",
+                  border: "1px solid rgba(245,158,11,0.15)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <Film size={15} color="#F59E0B" />
                 </div>
-              ))
-            ) : (
-              <p className="text-sm text-neutral-700 col-span-3 text-center py-8 font-inter">
-                No theatres found for this location.
-              </p>
+                <div>
+                  <p style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, fontSize: "0.85rem", color: "#F9FAFB", marginBottom: 3 }}>{t.name}</p>
+                  <p style={{ fontSize: "0.75rem", color: "#6B7280", lineHeight: 1.5 }}>{t.address}</p>
+                </div>
+              </motion.div>
+            )) : (
+              <p style={{ color: "#4B5563", fontSize: "0.85rem", padding: "1rem 0" }}>No theatres found for this location.</p>
             )}
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );
 };
 
-// ─── MOVIE CARD ───────────────────────────────────────────────────────────────
+// ─── Section wrapper ──────────────────────────────────────────────────────────
+const Section: React.FC<{
+  label: string;
+  icon: React.ReactNode;
+  accentColor: "amber" | "muted";
+  children: React.ReactNode;
+  className?: string;
+}> = ({ label, icon, accentColor, children, className }) => (
+  <div className={className}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
+      <div style={{
+        width: 3, height: 18, borderRadius: 2,
+        background: accentColor === "amber" ? "#F59E0B" : "#374151",
+        flexShrink: 0,
+      }} />
+      {icon}
+      <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: "1rem", color: "#F9FAFB" }}>{label}</h2>
+    </div>
+    {children}
+  </div>
+);
+
+// ─── Movie Card ───────────────────────────────────────────────────────────────
 const MovieCard: React.FC<{
   movie: Movie;
   badge: React.ReactNode;
@@ -409,57 +521,54 @@ const MovieCard: React.FC<{
   onClick: () => void;
   accentColor: string;
 }> = ({ movie, badge, subtitle, meta, onClick, accentColor }) => {
-  const [imgLoaded, setImgLoaded] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
-
-  useEffect(() => {
-    if (imgRef.current?.complete) setImgLoaded(true);
-  }, []);
+  useEffect(() => { if (imgRef.current?.complete) setLoaded(true); }, []);
 
   return (
-    <div
-      className="group cursor-pointer rounded-xl overflow-hidden transition-all duration-300 hover:-translate-y-1.5"
+    <motion.div
+      whileHover={{ y: -6 }}
+      transition={{ type: "spring", stiffness: 280, damping: 22 }}
+      onClick={onClick}
       style={{
-        background: "#101010",
+        cursor: "pointer", borderRadius: 12, overflow: "hidden",
+        background: "#111827",
         border: "1px solid rgba(255,255,255,0.04)",
         boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+        transition: "border-color 0.25s, box-shadow 0.25s",
       }}
-      onClick={onClick}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = `${accentColor}55`;
-        e.currentTarget.style.boxShadow = `0 12px 40px rgba(0,0,0,0.5)`;
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = "rgba(255,255,255,0.04)";
-        e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.3)";
+      onHoverStart={e => {
+        (e.target as HTMLDivElement).style?.setProperty?.("border-color", `${accentColor}40`);
       }}
     >
-      <div className="relative aspect-[2/3] overflow-hidden bg-neutral-900">
-        {!imgLoaded && <div className="absolute inset-0 shimmer" />}
+      <div style={{ position: "relative", aspectRatio: "2/3", overflow: "hidden", background: "#1F2937" }}>
+        {!loaded && <div className="absolute inset-0 shimmer" />}
         <img
           ref={imgRef}
           src={getImageUrl(movie.posterUrl)}
           alt={movie.title}
           loading="lazy"
           decoding="async"
-          onLoad={() => setImgLoaded(true)}
-          className={`w-full h-full object-cover object-center transition-all duration-500 group-hover:scale-110 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+          onLoad={() => setLoaded(true)}
+          style={{
+            width: "100%", height: "100%", objectFit: "cover", objectPosition: "center",
+            opacity: loaded ? 1 : 0, transition: "opacity 0.4s ease",
+          }}
         />
-        {/* HOVER GRADIENT */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-        {/* BADGE */}
-        <div className="absolute top-2 right-2">{badge}</div>
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 40%)", opacity: 0, transition: "opacity 0.3s" }}
+          className="group-hover:opacity-100" />
+        <div style={{ position: "absolute", top: 8, right: 8 }}>{badge}</div>
       </div>
-
-      <div className="p-3.5">
-        <span className="text-[9px] font-black tracking-widest uppercase" style={{ color: accentColor }}>
-          {subtitle}
-        </span>
-        <h3 className="font-black text-sm mt-1.5 text-white group-hover:text-[#d4af37] transition-colors leading-snug line-clamp-2">
-          {movie.title}
-        </h3>
-        <p className="text-[9px] text-neutral-700 font-inter mt-1.5">{meta}</p>
+      <div style={{ padding: "12px 12px 14px" }}>
+        <p style={{ fontSize: "0.65rem", fontWeight: 700, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>{subtitle}</p>
+        <h3 style={{
+          fontFamily: "'Space Grotesk', sans-serif",
+          fontWeight: 700, fontSize: "0.85rem", color: "#F9FAFB",
+          lineHeight: 1.3,
+          display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+        }}>{movie.title}</h3>
+        <p style={{ fontSize: "0.68rem", color: "#4B5563", marginTop: 5 }}>{meta}</p>
       </div>
-    </div>
+    </motion.div>
   );
 };

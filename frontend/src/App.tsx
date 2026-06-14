@@ -6,6 +6,7 @@ import { Footer } from './components/Footer.js';
 
 const Home = lazy(() => import('./pages/Home.js').then(m => ({ default: m.Home })));
 const Auth = lazy(() => import('./pages/Auth.js').then(m => ({ default: m.Auth })));
+const ResetPassword = lazy(() => import('./pages/ResetPassword.js').then(m => ({ default: m.ResetPassword })));
 const MovieDetails = lazy(() => import('./pages/MovieDetails.js').then(m => ({ default: m.MovieDetails })));
 const SeatBooking = lazy(() => import('./pages/SeatBooking.js').then(m => ({ default: m.SeatBooking })));
 const Dashboard = lazy(() => import('./pages/Dashboard.js').then(m => ({ default: m.Dashboard })));
@@ -16,8 +17,8 @@ const CreateMovieNight = lazy(() => import('./pages/CreateMovieNight.js').then(m
 const MovieNightDetail = lazy(() => import('./pages/MovieNightDetail.js').then(m => ({ default: m.MovieNightDetail })));
 
 const PageLoader = () => (
-  <div className="min-h-screen flex items-center justify-center" style={{ background: '#080808' }}>
-    <div className="w-10 h-10 rounded-full border-t-2 animate-spin" style={{ borderColor: '#d4af37' }} />
+  <div className="min-h-screen flex items-center justify-center" style={{ background: '#0B1120' }}>
+    <div className="w-10 h-10 rounded-full border-t-2 animate-spin" style={{ borderColor: '#E50914' }} />
   </div>
 );
 
@@ -25,13 +26,14 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <div className="min-h-screen bg-background flex flex-col justify-between select-none">
+        <div className="min-h-screen flex flex-col justify-between select-none" style={{ background: "#0B1120" }}>
           <div>
             <Navbar />
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/movies/:id" element={<MovieDetails />} />
                 <Route path="/shows/:showId/booking" element={<SeatBooking />} />
                 <Route path="/dashboard" element={<Dashboard />} />

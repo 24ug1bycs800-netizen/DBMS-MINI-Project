@@ -1,43 +1,55 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Poppins:wght@400;500;600;700;800;900&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* ═══════════════════════════════════════════════
-   CINECIRCLE — PREMIUM CINEMA THEME
-   Deep Black · Warm Gold · Film Grain
+   CINECIRCLE — DESIGN TOKENS
+   Navy · Cinema Red · Amber
    ═══════════════════════════════════════════════ */
 
-/* ── DESIGN TOKENS ─────────────────────────────── */
 :root {
-  /* Gold palette — warm amber, used sparingly */
-  --gold:        #c9a84c;
-  --gold-light:  #dbb95e;
-  --gold-dark:   #a8892e;
-  --gold-dim:    rgba(201, 168, 76, 0.07);
-  --gold-border: rgba(201, 168, 76, 0.15);
-  --gold-glow:   rgba(201, 168, 76, 0.15);
+  /* Primary — Cinema Red */
+  --red:          #E50914;
+  --red-dim:      rgba(229, 9, 20, 0.12);
+  --red-border:   rgba(229, 9, 20, 0.3);
+  --red-glow:     rgba(229, 9, 20, 0.2);
 
-  /* Surface blacks */
-  --bg:          #080808;
-  --surface-1:   #0d0d0d;
-  --surface-2:   #111111;
-  --surface-3:   #161616;
+  /* Secondary — Amber (tickets / ratings / gold accents) */
+  --amber:        #F59E0B;
+  --amber-dim:    rgba(245, 158, 11, 0.1);
+  --amber-border: rgba(245, 158, 11, 0.25);
+
+  /* Legacy alias so existing components using --gold still work */
+  --gold:        #F59E0B;
+  --gold-light:  #FCD34D;
+  --gold-dark:   #D97706;
+  --gold-dim:    rgba(245, 158, 11, 0.1);
+  --gold-border: rgba(245, 158, 11, 0.25);
+  --gold-glow:   rgba(245, 158, 11, 0.15);
+
+  /* Backgrounds — deep navy instead of pure black */
+  --bg:          #0B1120;
+  --surface-1:   #111827;
+  --surface-2:   #1A2236;
+  --surface-3:   #1F2D44;
+  --glass:       rgba(17, 24, 39, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.06);
 
   /* Text */
-  --text-primary:   #f0f0f0;
-  --text-secondary: #777777;
-  --text-muted:     #3a3a3a;
+  --text-primary:   #F9FAFB;
+  --text-secondary: #9CA3AF;
+  --text-muted:     #4B5563;
 
   /* Status */
-  --success:     #22c55e;
-  --error:       #ef4444;
+  --success:     #10B981;
+  --error:       #EF4444;
 
   /* Shadows */
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.45);
-  --shadow-gold: 0 6px 20px rgba(201, 168, 76, 0.14);
-  --shadow-deep: 0 20px 50px rgba(0, 0, 0, 0.65);
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --shadow-red:  0 6px 24px rgba(229, 9, 20, 0.25);
+  --shadow-deep: 0 20px 50px rgba(0, 0, 0, 0.6);
 }
 
 /* ── BASE RESET ─────────────────────────────────── */
@@ -60,25 +72,21 @@
     font-family: "Inter", sans-serif;
     min-height: 100vh;
     overflow-x: hidden;
-    /* Subtle film grain baked into body */
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.025'/%3E%3C/svg%3E");
-    background-attachment: fixed;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: "Poppins", sans-serif;
-    font-weight: 900;
-    letter-spacing: -0.01em;
+    font-family: "Space Grotesk", "Inter", sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
   }
 
   ::selection {
-    background: var(--gold);
-    color: #000000;
+    background: var(--red);
+    color: #ffffff;
   }
 
-  /* Focus ring */
   :focus-visible {
-    outline: 2px solid var(--gold-border);
+    outline: 2px solid var(--red-border);
     outline-offset: 2px;
     border-radius: 4px;
   }
@@ -87,108 +95,81 @@
 /* ═══════════════════════════════════════════════
    SCROLLBAR
    ═══════════════════════════════════════════════ */
-::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar        { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track  { background: var(--surface-1); }
 ::-webkit-scrollbar-thumb  {
-  background: #2a2a2a;
+  background: #2D3748;
   border-radius: 999px;
   transition: background 0.2s ease;
 }
-::-webkit-scrollbar-thumb:hover { background: var(--gold); }
+::-webkit-scrollbar-thumb:hover { background: var(--amber); }
 
 /* ═══════════════════════════════════════════════
-   GOLD LINE UTILITIES
-   — reusable hairline dividers
+   GLASSMORPHISM
    ═══════════════════════════════════════════════ */
-.gold-line-top {
-  position: relative;
-}
-.gold-line-top::before {
-  content: "";
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(
-    to right,
-    transparent,
-    var(--gold) 30%,
-    var(--gold-light) 50%,
-    var(--gold) 70%,
-    transparent
-  );
-  pointer-events: none;
+.glass {
+  background: var(--glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
 }
 
-.gold-line-bottom::after {
-  content: "";
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(
-    to right,
-    transparent,
-    rgba(212, 175, 55, 0.35) 30%,
-    rgba(212, 175, 55, 0.35) 70%,
-    transparent
-  );
-  pointer-events: none;
+.glass-card {
+  background: rgba(17, 24, 39, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+}
+
+.glass-card:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(17, 24, 39, 0.75);
 }
 
 /* ═══════════════════════════════════════════════
    CARDS
    ═══════════════════════════════════════════════ */
-
-/* Base card — deep black with very faint border */
 .premium-card {
-  background: var(--surface-2);
+  background: var(--surface-1);
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 14px;
-  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
   box-shadow: var(--shadow-card);
 }
 .premium-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--gold-border);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
 }
 
-/* Gold-accented card — a subtle warm variant for feature panels */
+.red-card {
+  background: linear-gradient(135deg, rgba(229, 9, 20, 0.08) 0%, rgba(229, 9, 20, 0.03) 100%);
+  border: 1px solid var(--red-border);
+  border-radius: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
 .gold-card {
-  background: linear-gradient(135deg, rgba(212, 175, 55, 0.07) 0%, rgba(212, 175, 55, 0.02) 100%);
-  border: 1px solid var(--gold-border);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.07) 0%, rgba(245, 158, 11, 0.02) 100%);
+  border: 1px solid var(--amber-border);
   border-radius: 16px;
   position: relative;
   overflow: hidden;
   box-shadow: var(--shadow-card);
 }
-.gold-card::before {
-  content: "";
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(
-    to right,
-    transparent,
-    var(--gold) 30%,
-    var(--gold-light) 50%,
-    var(--gold) 70%,
-    transparent
-  );
-}
 
 /* ═══════════════════════════════════════════════
    TICKET CARD
-   — notched sides, dashed gold borders
    ═══════════════════════════════════════════════ */
 .ticket-card {
   background:
-    radial-gradient(circle at 0% 50%, transparent 12px, var(--surface-2) 13px),
-    radial-gradient(circle at 100% 50%, transparent 12px, var(--surface-2) 13px);
-  border-top: 1px solid rgba(212, 175, 55, 0.12);
-  border-bottom: 1px solid rgba(212, 175, 55, 0.12);
-  border-left: 1px dashed rgba(212, 175, 55, 0.2);
-  border-right: 1px dashed rgba(212, 175, 55, 0.2);
-  border-radius: 0;
+    radial-gradient(circle at 0% 50%, transparent 12px, var(--surface-1) 13px),
+    radial-gradient(circle at 100% 50%, transparent 12px, var(--surface-1) 13px);
+  border-top: 1px solid rgba(245, 158, 11, 0.12);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.12);
+  border-left: 1px dashed rgba(245, 158, 11, 0.2);
+  border-right: 1px dashed rgba(245, 158, 11, 0.2);
   position: relative;
   overflow: hidden;
 }
@@ -196,7 +177,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at top right, rgba(212, 175, 55, 0.04), transparent 60%);
+  background: radial-gradient(ellipse at top right, rgba(245, 158, 11, 0.04), transparent 60%);
   pointer-events: none;
 }
 
@@ -204,74 +185,84 @@
    BUTTONS
    ═══════════════════════════════════════════════ */
 
-/* Primary gold button */
-.btn-gold {
-  background: var(--gold);
-  color: #000000;
-  font-weight: 700;
-  font-family: "Poppins", sans-serif;
+/* Primary red CTA */
+.btn-red {
+  background: var(--red);
+  color: #ffffff;
+  font-weight: 600;
+  font-family: "Space Grotesk", sans-serif;
   border-radius: 8px;
-  letter-spacing: 0.03em;
-  font-size: 0.8rem;
+  letter-spacing: 0.01em;
+  font-size: 0.875rem;
   padding: 0.7rem 1.75rem;
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  box-shadow: none;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+  box-shadow: var(--shadow-red);
   border: none;
   cursor: pointer;
 }
-.btn-gold:hover {
-  opacity: 0.88;
-  transform: translateY(-1px);
-}
-.btn-gold:active {
-  transform: scale(0.98);
-}
-.btn-gold:disabled {
-  opacity: 0.35;
-  pointer-events: none;
-}
+.btn-red:hover { opacity: 0.9; transform: translateY(-1px); }
+.btn-red:active { transform: scale(0.98); }
+.btn-red:disabled { opacity: 0.4; pointer-events: none; }
 
-/* Ghost button — minimal outlined variant */
-.btn-ghost-gold {
+/* Amber / gold button */
+.btn-gold {
+  background: var(--amber);
+  color: #000000;
+  font-weight: 600;
+  font-family: "Space Grotesk", sans-serif;
+  border-radius: 8px;
+  letter-spacing: 0.01em;
+  font-size: 0.875rem;
+  padding: 0.7rem 1.75rem;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+  border: none;
+  cursor: pointer;
+}
+.btn-gold:hover { opacity: 0.88; transform: translateY(-1px); }
+.btn-gold:active { transform: scale(0.98); }
+.btn-gold:disabled { opacity: 0.35; pointer-events: none; }
+
+/* Ghost button */
+.btn-ghost {
   background: transparent;
   color: rgba(255, 255, 255, 0.6);
   font-weight: 500;
-  font-family: "Poppins", sans-serif;
+  font-family: "Space Grotesk", sans-serif;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   padding: 0.7rem 1.75rem;
   transition: all 0.2s ease;
   cursor: pointer;
 }
-.btn-ghost-gold:hover {
+.btn-ghost:hover {
   background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.18);
-  color: rgba(255, 255, 255, 0.85);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.9);
 }
+
+/* Legacy alias */
+.btn-ghost-gold { @apply btn-ghost; }
 
 /* ═══════════════════════════════════════════════
    HERO OVERLAYS
    ═══════════════════════════════════════════════ */
-
-/* Bottom-up fade — used on hero banners */
 .gradient-overlay {
   background: linear-gradient(
     to top,
-    #080808 0%,
-    rgba(8, 8, 8, 0.88) 35%,
-    rgba(8, 8, 8, 0.3) 65%,
-    rgba(8, 8, 8, 0.05) 100%
+    #0B1120 0%,
+    rgba(11, 17, 32, 0.88) 35%,
+    rgba(11, 17, 32, 0.3) 65%,
+    rgba(11, 17, 32, 0.05) 100%
   );
 }
 
-/* Horizontal fade — left panel falloff */
 .gradient-overlay-horizontal {
   background: linear-gradient(
     to right,
-    #080808 0%,
-    rgba(8, 8, 8, 0.75) 40%,
-    rgba(8, 8, 8, 0.1) 100%
+    #0B1120 0%,
+    rgba(11, 17, 32, 0.75) 40%,
+    rgba(11, 17, 32, 0.1) 100%
   );
 }
 
@@ -285,31 +276,33 @@
   margin-bottom: 2rem;
 }
 .section-heading-bar {
-  width: 4px;
-  height: 20px;
-  background: var(--gold);
-  border-radius: 999px;
+  width: 3px;
+  height: 18px;
+  background: var(--red);
+  border-radius: 2px;
   flex-shrink: 0;
 }
 .section-heading-title {
-  font-family: "Poppins", sans-serif;
-  font-weight: 900;
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 700;
   font-size: 1.125rem;
   color: #ffffff;
   letter-spacing: -0.01em;
 }
 
+/* Red variant for Movie Nights */
+.section-heading-bar--red { background: var(--red); }
+.section-heading-bar--amber { background: var(--amber); }
+
 /* ═══════════════════════════════════════════════
    FORM INPUTS
-   — centralized to keep consistent across Auth,
-     GroupRoomsList, GroupBooking
    ═══════════════════════════════════════════════ */
 .cinema-input {
   width: 100%;
   padding: 0.75rem 1rem;
-  background: #0a0a0a;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
   color: #ffffff;
   font-family: "Inter", sans-serif;
   font-size: 0.875rem;
@@ -317,29 +310,43 @@
   outline: none;
 }
 .cinema-input:focus {
-  border-color: rgba(212, 175, 55, 0.5);
-  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.06);
+  border-color: rgba(229, 9, 20, 0.5);
+  box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.06);
 }
-.cinema-input::placeholder {
-  color: #333333;
-}
+.cinema-input::placeholder { color: #4B5563; }
 
 /* ═══════════════════════════════════════════════
    STATUS BADGES
    ═══════════════════════════════════════════════ */
+.badge-red {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.65rem;
+  background: rgba(229, 9, 20, 0.12);
+  border: 1px solid rgba(229, 9, 20, 0.3);
+  border-radius: 6px;
+  color: #FF4444;
+  font-size: 0.6rem;
+  font-weight: 700;
+  font-family: "Space Grotesk", sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
 .badge-gold {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
   padding: 0.2rem 0.65rem;
-  background: rgba(212, 175, 55, 0.1);
-  border: 1px solid rgba(212, 175, 55, 0.25);
-  border-radius: 999px;
-  color: var(--gold);
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 6px;
+  color: var(--amber);
   font-size: 0.6rem;
-  font-weight: 800;
-  font-family: "Poppins", sans-serif;
-  letter-spacing: 0.15em;
+  font-weight: 700;
+  font-family: "Space Grotesk", sans-serif;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
@@ -347,14 +354,14 @@
   display: inline-flex;
   align-items: center;
   padding: 0.2rem 0.65rem;
-  background: rgba(34, 197, 94, 0.08);
-  border: 1px solid rgba(34, 197, 94, 0.25);
-  border-radius: 999px;
-  color: #4ade80;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 6px;
+  color: #34D399;
   font-size: 0.6rem;
-  font-weight: 800;
-  font-family: "Poppins", sans-serif;
-  letter-spacing: 0.15em;
+  font-weight: 700;
+  font-family: "Space Grotesk", sans-serif;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
@@ -364,12 +371,12 @@
   padding: 0.2rem 0.65rem;
   background: rgba(239, 68, 68, 0.08);
   border: 1px solid rgba(239, 68, 68, 0.25);
-  border-radius: 999px;
-  color: #f87171;
+  border-radius: 6px;
+  color: #F87171;
   font-size: 0.6rem;
-  font-weight: 800;
-  font-family: "Poppins", sans-serif;
-  letter-spacing: 0.15em;
+  font-weight: 700;
+  font-family: "Space Grotesk", sans-serif;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
@@ -377,36 +384,42 @@
   display: inline-flex;
   align-items: center;
   padding: 0.2rem 0.65rem;
-  background: rgba(212, 175, 55, 0.08);
-  border: 1px solid rgba(212, 175, 55, 0.25);
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
   border-radius: 4px;
-  color: var(--gold);
+  color: var(--amber);
   font-size: 0.55rem;
-  font-weight: 800;
-  font-family: "Poppins", sans-serif;
-  letter-spacing: 0.2em;
+  font-weight: 700;
+  font-family: "Space Grotesk", sans-serif;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
 }
 
 /* ═══════════════════════════════════════════════
    LOGO TEXT
-   — cinematic gold gradient lettermark
    ═══════════════════════════════════════════════ */
 .logo-text {
-  font-family: "Playfair Display", "Poppins", serif;
-  font-weight: 900;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 50%, var(--gold) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #F9FAFB;
 }
 
 /* ═══════════════════════════════════════════════
    AMBIENT GLOW BLOBS
-   — decorative, pointer-events-none
    ═══════════════════════════════════════════════ */
+.glow-red-top {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 400px;
+  background: radial-gradient(ellipse at center top, rgba(229, 9, 20, 0.06) 0%, transparent 65%);
+  pointer-events: none;
+  z-index: 0;
+}
+
 .glow-gold-top {
   position: fixed;
   top: 0;
@@ -414,7 +427,7 @@
   transform: translateX(-50%);
   width: 700px;
   height: 350px;
-  background: radial-gradient(ellipse at center top, rgba(212, 175, 55, 0.07) 0%, transparent 65%);
+  background: radial-gradient(ellipse at center top, rgba(245, 158, 11, 0.05) 0%, transparent 65%);
   pointer-events: none;
   z-index: 0;
 }
@@ -422,17 +435,14 @@
 /* ═══════════════════════════════════════════════
    ANIMATIONS
    ═══════════════════════════════════════════════ */
-
-/* Fade up entrance — use on hero content */
 .fade-up {
-  animation: fadeUp 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: fadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(20px); }
+  from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Fade in */
 .fade-in {
   animation: fadeIn 0.4s ease both;
 }
@@ -441,18 +451,16 @@
   to   { opacity: 1; }
 }
 
-/* Scale-in pop — used on modals */
 .scale-in {
   animation: scaleIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.93); }
+  from { opacity: 0; transform: scale(0.94); }
   to   { opacity: 1; transform: scale(1); }
 }
 
-/* Gold shimmer — use on loading skeletons */
 .shimmer {
-  background: linear-gradient(90deg, #111 0%, #1a1a1a 40%, #111 80%);
+  background: linear-gradient(90deg, var(--surface-1) 0%, var(--surface-2) 40%, var(--surface-1) 80%);
   background-size: 400% 100%;
   animation: shimmer 1.6s ease infinite;
 }
@@ -461,43 +469,43 @@
   100% { background-position: -100% 0; }
 }
 
-/* Slow spin — used on compass icon */
-.spin-slow {
-  animation: spin 8s linear infinite;
-}
+.spin-slow { animation: spin 8s linear infinite; }
 @keyframes spin {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
 
-/* Pulse ring — used on live/active indicators */
-.pulse-ring {
-  animation: pulseRing 2s ease-out infinite;
-}
+.pulse-ring { animation: pulseRing 2s ease-out infinite; }
 @keyframes pulseRing {
-  0%   { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.4); }
-  70%  { box-shadow: 0 0 0 10px rgba(212, 175, 55, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0); }
+  0%   { box-shadow: 0 0 0 0 rgba(229, 9, 20, 0.4); }
+  70%  { box-shadow: 0 0 0 10px rgba(229, 9, 20, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(229, 9, 20, 0); }
 }
 
 /* ═══════════════════════════════════════════════
    LOADING SPINNER
    ═══════════════════════════════════════════════ */
+.spinner-red {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid rgba(229, 9, 20, 0.15);
+  border-top-color: var(--red);
+  animation: spin 0.8s linear infinite;
+}
+
 .spinner-gold {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  border: 2px solid rgba(212, 175, 55, 0.15);
-  border-top-color: var(--gold);
+  border: 2px solid rgba(245, 158, 11, 0.15);
+  border-top-color: var(--amber);
   animation: spin 0.8s linear infinite;
 }
 
 /* ═══════════════════════════════════════════════
-   UTILITY OVERRIDES
-   — small helpers not in Tailwind by default
+   UTILITIES
    ═══════════════════════════════════════════════ */
-
-/* Truncate after 2 lines */
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -511,6 +519,37 @@
   overflow: hidden;
 }
 
-/* Hide scrollbar but keep scroll */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Red top accent line */
+.red-line-top {
+  position: relative;
+}
+.red-line-top::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--red);
+  pointer-events: none;
+}
+
+/* Amber top accent line */
+.gold-line-top::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--amber) 30%, var(--gold-light) 50%, var(--amber) 70%, transparent);
+  pointer-events: none;
+}
+
+.gold-line-bottom::after {
+  content: "";
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(245, 158, 11, 0.3) 30%, rgba(245, 158, 11, 0.3) 70%, transparent);
+  pointer-events: none;
+}
