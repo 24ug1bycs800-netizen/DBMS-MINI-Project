@@ -1,37 +1,17 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
 import { useCityStore } from "../store/useCityStore.js";
-import {
-  Play, Calendar, Star, Film, ChevronLeft, ChevronRight,
-  Popcorn, Users, Ticket, MapPin,
-} from "lucide-react";
+import { Play, Calendar, Star, Film, ChevronLeft, ChevronRight, Compass, Moon } from "lucide-react";
 import api from "../services/api.js";
 
 interface Movie {
-  id: number;
-  title: string;
-  description: string;
-  genre: string;
-  language: string;
-  durationMins: number;
-  rating: string;
-  ratingValue: string;
-  releaseDate: string;
-  trailerUrl?: string;
-  posterUrl: string;
-  backdropUrl?: string;
-  isNowShowing: boolean;
-  trending: boolean;
-  topRated: boolean;
+  id: number; title: string; description: string;
+  genre: string; language: string; durationMins: number;
+  rating: string; ratingValue: string; releaseDate: string;
+  trailerUrl?: string; posterUrl: string; backdropUrl?: string;
+  isNowShowing: boolean; trending: boolean; topRated: boolean;
 }
-
-interface Theatre {
-  id: number;
-  name: string;
-  cityId: number;
-  address: string;
-}
+interface Theatre { id: number; name: string; cityId: number; address: string; }
 
 const getImageUrl = (url?: string) => {
   if (!url) return "";
@@ -39,26 +19,17 @@ const getImageUrl = (url?: string) => {
   return `${import.meta.env.VITE_API_URL}${url}`;
 };
 
-const stagger = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.07 } },
-};
-const fadeUp = {
-  hidden: { opacity: 0, y: 18 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" as const } },
-};
-
 export const Home: React.FC = () => {
   const { selectedCity } = useCityStore();
   const navigate = useNavigate();
-
   const [nowShowing, setNowShowing] = useState<Movie[]>([]);
   const [comingSoon, setComingSoon] = useState<Movie[]>([]);
   const [theatres, setTheatres] = useState<Theatre[]>([]);
   const [heroIdx, setHeroIdx] = useState(0);
+  const [heroLoaded, setHeroLoaded] = useState(false);
 
   useEffect(() => {
-    api.get("/movies?isNowShowing=true").then(r => setNowShowing(r.data.movies)).catch(() => {});
+    api.get("/movies?isNowShowing=true").then(r => { setNowShowing(r.data.movies); setHeroLoaded(true); }).catch(() => {});
     api.get("/movies?isNowShowing=false").then(r => setComingSoon(r.data.movies)).catch(() => {});
   }, []);
 
@@ -76,499 +47,356 @@ export const Home: React.FC = () => {
   const hero = nowShowing[heroIdx];
 
   return (
-    <div style={{ background: "#0B1120", color: "#F9FAFB", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ background: "#080808", color: "#f0f0f0", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
 
-      {/* ── HERO ─────────────────────────────────────────────────────────── */}
-      <AnimatePresence mode="wait">
-        {hero && (
-          <motion.div
+      {/* ── HERO ──────────────────────────────────────────────────────────── */}
+      {hero ? (
+        <div style={{ position: "relative", height: "88vh", minHeight: 560, overflow: "hidden", display: "flex", alignItems: "flex-end" }}>
+          {/* Backdrop */}
+          <div
             key={heroIdx}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.6 }}
-            style={{ position: "relative", height: "88vh", minHeight: 560, overflow: "hidden", display: "flex", alignItems: "flex-end" }}
+            style={{
+              position: "absolute", inset: 0,
+              backgroundImage: `url(${getImageUrl(hero.backdropUrl || hero.posterUrl)})`,
+              backgroundSize: "cover", backgroundPosition: "center top",
+              filter: "brightness(0.28) saturate(1.2)",
+              animation: "heroFadeIn 0.8s ease both",
+            }}
+          />
+          <style>{`
+            @keyframes heroFadeIn { from { opacity:0; transform:scale(1.04); } to { opacity:1; transform:scale(1); } }
+            @keyframes contentSlideUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+          `}</style>
+
+          {/* Overlays */}
+          <div style={{ position:"absolute", inset:0, background:"linear-gradient(to top, #080808 0%, rgba(8,8,8,0.9) 35%, rgba(8,8,8,0.2) 70%, transparent 100%)" }} />
+          <div style={{ position:"absolute", inset:0, background:"linear-gradient(to right, #080808 0%, rgba(8,8,8,0.65) 40%, transparent 100%)", display:"none" }} className="sm:block" />
+
+          {/* Gold bottom hairline */}
+          <div style={{ position:"absolute", bottom:0, left:0, right:0, height:1, background:"linear-gradient(to right, transparent, rgba(201,168,76,0.35) 30%, rgba(201,168,76,0.35) 70%, transparent)" }} />
+
+          {/* Content */}
+          <div
+            key={`content-${heroIdx}`}
+            style={{ position:"relative", zIndex:10, padding:"0 1.5rem 3.5rem", width:"100%", maxWidth:860, animation:"contentSlideUp 0.6s cubic-bezier(0.22,1,0.36,1) both" }}
+            className="sm:px-16"
           >
-            {/* Backdrop */}
-            <div
-              style={{
-                position: "absolute", inset: 0,
-                backgroundImage: `url(${getImageUrl(hero.backdropUrl || hero.posterUrl)})`,
-                backgroundSize: "cover", backgroundPosition: "center",
-                filter: "brightness(0.3) saturate(1.1)",
-                transform: "scale(1.04)",
-                transition: "transform 8s ease",
-              }}
-            />
-
-            {/* Gradient overlays */}
-            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, #0B1120 0%, rgba(11,17,32,0.85) 40%, rgba(11,17,32,0.15) 100%)" }} />
-            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to right, #0B1120 0%, rgba(11,17,32,0.6) 40%, transparent 100%)" }} />
-
-            {/* Red glow from bottom */}
-            <div style={{
-              position: "absolute", bottom: 0, left: 0, right: 0, height: 200,
-              background: "linear-gradient(to top, rgba(229,9,20,0.04) 0%, transparent 100%)",
-              pointerEvents: "none",
-            }} />
-
-            {/* Content */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-              style={{ position: "relative", zIndex: 10, padding: "0 2rem 4rem", width: "100%", maxWidth: 900 }}
-              className="sm:px-16"
-            >
-              {/* NOW SHOWING badge */}
-              <div style={{ marginBottom: 18 }}>
-                <span style={{
-                  display: "inline-flex", alignItems: "center", gap: 6,
-                  padding: "4px 12px",
-                  background: "#E50914",
-                  borderRadius: 6,
-                  fontSize: "0.65rem", fontWeight: 700,
-                  letterSpacing: "0.12em", textTransform: "uppercase",
-                  color: "#fff",
-                  fontFamily: "'Space Grotesk', sans-serif",
-                }}>
-                  <span style={{ width: 5, height: 5, borderRadius: "50%", background: "rgba(255,255,255,0.7)", display: "inline-block", animation: "pulse 2s ease-out infinite" }} />
-                  Now Showing
-                </span>
-              </div>
-
-              <h1 style={{
-                fontFamily: "'Space Grotesk', sans-serif",
-                fontWeight: 700,
-                fontSize: "clamp(2.2rem, 6vw, 4rem)",
-                lineHeight: 1.05,
-                color: "#F9FAFB",
-                marginBottom: 16,
-                letterSpacing: "-0.02em",
-                textShadow: "0 4px 32px rgba(0,0,0,0.6)",
+            <div style={{ marginBottom:16 }}>
+              <span style={{
+                display:"inline-flex", alignItems:"center", gap:6,
+                padding:"3px 12px",
+                background:"linear-gradient(135deg, #C9A84C, #E8C96A)",
+                borderRadius:4, fontSize:"0.6rem", fontWeight:800,
+                letterSpacing:"0.18em", textTransform:"uppercase", color:"#000",
+                fontFamily:"'Poppins', sans-serif",
               }}>
-                {hero.title}
-              </h1>
+                <span style={{ width:5, height:5, borderRadius:"50%", background:"rgba(0,0,0,0.4)", display:"inline-block" }} />
+                Now Showing
+              </span>
+            </div>
 
-              <p style={{ color: "#9CA3AF", fontSize: "0.9rem", maxWidth: 480, marginBottom: 20, lineHeight: 1.65 }}
-                className="hidden sm:block line-clamp-2">
-                {hero.description}
-              </p>
+            <h1 style={{
+              fontFamily:"'Playfair Display', serif",
+              fontWeight:900, fontSize:"clamp(2.2rem, 6vw, 4.2rem)",
+              lineHeight:1.05, color:"#fff", marginBottom:14,
+              textShadow:"0 4px 40px rgba(0,0,0,0.8)",
+            }}>
+              {hero.title}
+            </h1>
 
-              {/* Meta */}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 28, alignItems: "center" }}>
-                {[hero.language, hero.genre.split("/")[0]].map(tag => (
-                  <span key={tag} style={{
-                    padding: "3px 10px",
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: 5,
-                    fontSize: "0.72rem", fontWeight: 600,
-                    color: "#9CA3AF",
-                    textTransform: "uppercase", letterSpacing: "0.08em",
-                  }}>{tag}</span>
-                ))}
-                <span style={{ display: "flex", alignItems: "center", gap: 4, color: "#F59E0B", fontSize: "0.82rem", fontWeight: 700 }}>
-                  <Star size={13} style={{ fill: "#F59E0B" }} /> {hero.ratingValue}
-                </span>
-                <span style={{ color: "#4B5563", fontSize: "0.78rem" }}>{hero.durationMins} min</span>
-              </div>
+            <p style={{ color:"#888", fontSize:"0.875rem", maxWidth:480, marginBottom:18, lineHeight:1.7 }}
+              className="hidden sm:block line-clamp-2">
+              {hero.description}
+            </p>
 
-              {/* CTAs */}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => navigate(`/movies/${hero.id}`)}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    padding: "12px 26px",
-                    background: "#E50914",
-                    borderRadius: 9,
-                    border: "none",
-                    color: "#fff",
-                    fontSize: "0.88rem", fontWeight: 600,
-                    cursor: "pointer",
-                    fontFamily: "'Space Grotesk', sans-serif",
-                    boxShadow: "0 8px 24px rgba(229,9,20,0.3)",
-                  }}
-                >
-                  <Ticket size={15} /> Book Tickets
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+            <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginBottom:26, alignItems:"center" }}>
+              {[hero.language, hero.genre.split("/")[0]].map(t => (
+                <span key={t} style={{
+                  padding:"2px 9px", background:"rgba(255,255,255,0.06)",
+                  border:"1px solid rgba(255,255,255,0.1)", borderRadius:3,
+                  fontSize:"0.68rem", fontWeight:600, color:"#888",
+                  textTransform:"uppercase", letterSpacing:"0.1em",
+                }}>{t}</span>
+              ))}
+              <span style={{ display:"flex", alignItems:"center", gap:3, color:"#C9A84C", fontSize:"0.8rem", fontWeight:700, fontFamily:"'Poppins', sans-serif" }}>
+                <Star size={12} style={{ fill:"#C9A84C" }} /> {hero.ratingValue}
+              </span>
+              <span style={{ color:"#444", fontSize:"0.75rem" }}>{hero.durationMins} min</span>
+            </div>
+
+            <div style={{ display:"flex", flexWrap:"wrap", gap:10 }}>
+              <button
+                onClick={() => navigate(`/movies/${hero.id}`)}
+                style={{
+                  display:"flex", alignItems:"center", gap:8,
+                  padding:"11px 24px",
+                  background:"linear-gradient(135deg, #C9A84C, #E8C96A)",
+                  borderRadius:7, border:"none", color:"#000",
+                  fontSize:"0.85rem", fontWeight:700, cursor:"pointer",
+                  fontFamily:"'Poppins', sans-serif",
+                  boxShadow:"0 8px 28px rgba(201,168,76,0.25)",
+                  transition:"opacity 0.2s, transform 0.15s",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.opacity="0.88"; e.currentTarget.style.transform="translateY(-1px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.opacity="1"; e.currentTarget.style.transform="translateY(0)"; }}
+              >
+                <Film size={14} /> Book Tickets
+              </button>
+              {hero.trailerUrl && (
+                <button
                   onClick={() => navigate(`/movies/${hero.id}?playTrailer=true`)}
                   style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    padding: "12px 26px",
-                    background: "rgba(255,255,255,0.06)",
-                    borderRadius: 9,
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    color: "#F9FAFB",
-                    fontSize: "0.88rem", fontWeight: 500,
-                    cursor: "pointer",
-                    fontFamily: "'Inter', sans-serif",
-                    backdropFilter: "blur(8px)",
+                    display:"flex", alignItems:"center", gap:8,
+                    padding:"11px 24px",
+                    background:"rgba(255,255,255,0.05)",
+                    borderRadius:7, border:"1px solid rgba(201,168,76,0.3)", color:"#C9A84C",
+                    fontSize:"0.85rem", fontWeight:600, cursor:"pointer",
+                    fontFamily:"'Poppins', sans-serif",
+                    backdropFilter:"blur(8px)",
+                    transition:"all 0.2s",
                   }}
+                  onMouseEnter={e => { e.currentTarget.style.background="rgba(201,168,76,0.08)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background="rgba(255,255,255,0.05)"; }}
                 >
-                  <Play size={15} style={{ fill: "rgba(255,255,255,0.8)" }} /> Watch Trailer
-                </motion.button>
-              </div>
-            </motion.div>
-
-            {/* Slide controls */}
-            <div style={{ position: "absolute", right: 24, bottom: 56, zIndex: 20, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10 }}>
-              <div style={{ display: "flex", gap: 6 }}>
-                {Array.from({ length: heroCount }).map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setHeroIdx(i)}
-                    style={{
-                      height: 4, borderRadius: 999,
-                      width: i === heroIdx ? 22 : 6,
-                      background: i === heroIdx ? "#E50914" : "rgba(255,255,255,0.2)",
-                      border: "none", cursor: "pointer",
-                      transition: "all 0.3s ease",
-                    }}
-                  />
-                ))}
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                {[{ fn: () => setHeroIdx(p => (p - 1 + heroCount) % heroCount), icon: <ChevronLeft size={15} /> },
-                  { fn: () => setHeroIdx(p => (p + 1) % heroCount), icon: <ChevronRight size={15} /> }].map(({ fn, icon }, i) => (
-                  <button key={i} onClick={fn}
-                    style={{
-                      width: 32, height: 32, borderRadius: "50%",
-                      background: "rgba(255,255,255,0.05)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      color: "#fff", cursor: "pointer",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      transition: "all 0.2s",
-                    }}
-                    onMouseEnter={e => {
-                      (e.currentTarget as HTMLButtonElement).style.background = "rgba(229,9,20,0.2)";
-                      (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(229,9,20,0.4)";
-                    }}
-                    onMouseLeave={e => {
-                      (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.05)";
-                      (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.1)";
-                    }}
-                  >{icon}</button>
-                ))}
-              </div>
+                  <Play size={14} style={{ fill:"#C9A84C" }} /> Watch Trailer
+                </button>
+              )}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── MOVIE NIGHTS FEATURE BAND ─────────────────────────────────────── */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.5 }}
-        style={{
-          margin: "0 1.5rem",
-          borderRadius: 16,
-          overflow: "hidden",
-          background: "linear-gradient(135deg, rgba(229,9,20,0.12) 0%, rgba(11,17,32,0) 60%)",
-          border: "1px solid rgba(229,9,20,0.2)",
-          padding: "2rem 2.5rem",
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 20,
-        }}
-        className="sm:mx-16 my-10"
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <div style={{
-            width: 52, height: 52, borderRadius: 12,
-            background: "rgba(229,9,20,0.15)",
-            border: "1px solid rgba(229,9,20,0.3)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            flexShrink: 0,
-          }}>
-            <Popcorn size={24} color="#E50914" />
           </div>
-          <div>
-            <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: "1.2rem", color: "#F9FAFB", marginBottom: 4 }}>
-              Plan Movie Nights Together
-            </h2>
-            <p style={{ color: "#9CA3AF", fontSize: "0.85rem", lineHeight: 1.5, maxWidth: 480 }}>
-              Vote on movies, pick showtimes together, and book group seats — all in one shared room.
-            </p>
+
+          {/* Slide controls */}
+          <div style={{ position:"absolute", right:20, bottom:48, zIndex:20, display:"flex", flexDirection:"column", alignItems:"flex-end", gap:10 }}>
+            <div style={{ display:"flex", gap:5 }}>
+              {Array.from({ length: heroCount }).map((_, i) => (
+                <button key={i} onClick={() => setHeroIdx(i)} style={{
+                  height:3, borderRadius:999, border:"none", cursor:"pointer",
+                  width: i === heroIdx ? 20 : 5,
+                  background: i === heroIdx ? "#C9A84C" : "rgba(255,255,255,0.2)",
+                  transition:"all 0.3s",
+                }} />
+              ))}
+            </div>
+            <div style={{ display:"flex", gap:7 }}>
+              {[
+                { fn: () => setHeroIdx(p => (p - 1 + heroCount) % heroCount), icon: <ChevronLeft size={14} /> },
+                { fn: () => setHeroIdx(p => (p + 1) % heroCount), icon: <ChevronRight size={14} /> },
+              ].map(({ fn, icon }, i) => (
+                <button key={i} onClick={fn} style={{
+                  width:30, height:30, borderRadius:"50%",
+                  background:"rgba(255,255,255,0.04)",
+                  border:"1px solid rgba(201,168,76,0.2)",
+                  color:"#fff", cursor:"pointer",
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  transition:"all 0.2s",
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor="rgba(201,168,76,0.6)"; e.currentTarget.style.background="rgba(201,168,76,0.06)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor="rgba(201,168,76,0.2)"; e.currentTarget.style.background="rgba(255,255,255,0.04)"; }}
+                >{icon}</button>
+              ))}
+            </div>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => navigate("/movie-nights/create")}
-            style={{
-              padding: "10px 22px",
-              background: "#E50914",
-              borderRadius: 8, border: "none",
-              color: "#fff", fontSize: "0.85rem", fontWeight: 600,
-              cursor: "pointer", fontFamily: "'Space Grotesk', sans-serif",
-            }}
-          >
-            Create Movie Night
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => navigate("/movie-nights")}
-            style={{
-              padding: "10px 22px",
-              background: "transparent",
-              borderRadius: 8,
-              border: "1px solid rgba(229,9,20,0.3)",
-              color: "#E50914", fontSize: "0.85rem", fontWeight: 600,
-              cursor: "pointer", fontFamily: "'Space Grotesk', sans-serif",
-            }}
-          >
-            Browse Rooms
-          </motion.button>
-        </div>
-      </motion.div>
+      ) : (
+        /* Hero skeleton while loading */
+        <div style={{ height:"88vh", minHeight:560, background:"#0d0d0d" }} className="shimmer" />
+      )}
 
-      {/* ── NOW SHOWING ──────────────────────────────────────────────────── */}
-      <Section label="Now Showing" icon={<Film size={14} color="#F59E0B" />} accentColor="amber" className="px-6 sm:px-16 pb-14 pt-6">
-        <motion.div
-          variants={stagger}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: "-60px" }}
-          style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(155px, 1fr))", gap: 16 }}
+      {/* ── CITY BAR ──────────────────────────────────────────────────────── */}
+      <div style={{
+        padding:"0.6rem 1.5rem", display:"flex", alignItems:"center", justifyContent:"space-between",
+        background:"rgba(201,168,76,0.03)",
+        borderTop:"1px solid rgba(201,168,76,0.08)",
+        borderBottom:"1px solid rgba(201,168,76,0.08)",
+      }} className="sm:px-16">
+        <div style={{ display:"flex", alignItems:"center", gap:8, color:"#C9A84C", fontSize:"0.78rem", fontWeight:500 }}>
+          <Compass size={13} style={{ animation:"spin 8s linear infinite" }} />
+          <span>Showing for <strong style={{ color:"#f0f0f0", borderBottom:"1px solid #C9A84C" }}>{selectedCity.name}</strong></span>
+        </div>
+        <button
+          onClick={() => navigate("/movie-nights")}
+          style={{
+            display:"flex", alignItems:"center", gap:6,
+            padding:"4px 12px",
+            background:"rgba(201,168,76,0.07)",
+            border:"1px solid rgba(201,168,76,0.2)",
+            borderRadius:5,
+            color:"#C9A84C", fontSize:"0.72rem", fontWeight:700,
+            cursor:"pointer", fontFamily:"'Poppins', sans-serif",
+            letterSpacing:"0.05em",
+            transition:"all 0.2s",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background="rgba(201,168,76,0.13)"; }}
+          onMouseLeave={e => { e.currentTarget.style.background="rgba(201,168,76,0.07)"; }}
         >
-          {nowShowing.map(m => (
-            <motion.div key={m.id} variants={fadeUp}>
-              <MovieCard
-                movie={m}
+          <Moon size={11} /> Plan a Movie Night
+        </button>
+      </div>
+
+      {/* ── NOW SHOWING ───────────────────────────────────────────────────── */}
+      <div style={{ padding:"3rem 1.5rem 2.5rem" }} className="sm:px-16">
+        <SectionHeading icon={<Film size={14} color="#C9A84C" />} label="Now Showing" />
+        {nowShowing.length === 0 && !heroLoaded ? (
+          /* Skeleton grid */
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))", gap:14 }}>
+            {Array.from({ length: 10 }).map((_, i) => (
+              <div key={i} style={{ borderRadius:10, overflow:"hidden" }}>
+                <div className="shimmer" style={{ aspectRatio:"2/3", borderRadius:10 }} />
+                <div className="shimmer" style={{ height:12, borderRadius:4, marginTop:8, width:"80%" }} />
+                <div className="shimmer" style={{ height:10, borderRadius:4, marginTop:5, width:"55%" }} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))", gap:14 }}>
+            {nowShowing.map((m, i) => (
+              <MovieCard key={m.id} movie={m} delay={i * 45}
                 badge={
-                  <span style={{ display: "flex", alignItems: "center", gap: 3, padding: "3px 8px", background: "rgba(0,0,0,0.75)", border: "1px solid rgba(245,158,11,0.35)", borderRadius: 5, fontSize: "0.65rem", fontWeight: 700, color: "#F59E0B" }}>
-                    <Star size={9} style={{ fill: "#F59E0B" }} /> {m.ratingValue}
+                  <span style={{ display:"flex", alignItems:"center", gap:3, padding:"2px 7px", background:"rgba(0,0,0,0.8)", border:"1px solid rgba(201,168,76,0.35)", borderRadius:3, fontSize:"0.6rem", fontWeight:800, color:"#C9A84C", fontFamily:"'Poppins', sans-serif" }}>
+                    <Star size={8} style={{ fill:"#C9A84C" }} /> {m.ratingValue}
                   </span>
                 }
-                subtitle={`${m.language} · ${m.genre.split("/")[0]}`}
-                meta={`${m.durationMins} min`}
+                meta={`${m.language} · ${m.durationMins}m`}
                 onClick={() => navigate(`/movies/${m.id}`)}
-                accentColor="#E50914"
               />
-            </motion.div>
-          ))}
-        </motion.div>
-      </Section>
+            ))}
+          </div>
+        )}
+      </div>
 
-      {/* ── COMING SOON ──────────────────────────────────────────────────── */}
-      <Section label="Coming Soon" icon={<Calendar size={14} color="#9CA3AF" />} accentColor="muted" className="px-6 sm:px-16 pb-14">
-        <motion.div
-          variants={stagger}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: "-60px" }}
-          style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(155px, 1fr))", gap: 16 }}
-        >
-          {comingSoon.map(m => (
-            <motion.div key={m.id} variants={fadeUp}>
-              <MovieCard
-                movie={m}
+      {/* ── COMING SOON ───────────────────────────────────────────────────── */}
+      {comingSoon.length > 0 && (
+        <div style={{ padding:"0 1.5rem 3rem" }} className="sm:px-16">
+          <SectionHeading icon={<Calendar size={14} color="#888" />} label="Coming Soon" />
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))", gap:14 }}>
+            {comingSoon.map((m, i) => (
+              <MovieCard key={m.id} movie={m} delay={i * 45}
                 badge={
-                  <span style={{ padding: "3px 8px", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 5, fontSize: "0.6rem", fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  <span style={{ padding:"2px 7px", background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:3, fontSize:"0.6rem", fontWeight:800, color:"#888", textTransform:"uppercase", letterSpacing:"0.1em", fontFamily:"'Poppins', sans-serif" }}>
                     Soon
                   </span>
                 }
-                subtitle={`${m.language} · ${m.genre.split("/")[0]}`}
                 meta={`Release: ${m.releaseDate}`}
                 onClick={() => navigate(`/movies/${m.id}`)}
-                accentColor="#9CA3AF"
+                muted
               />
-            </motion.div>
-          ))}
-        </motion.div>
-      </Section>
-
-      {/* ── WHY CINECIRCLE ───────────────────────────────────────────────── */}
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.5 }}
-        style={{ padding: "3rem 1.5rem", textAlign: "center" }}
-        className="sm:px-16"
-      >
-        <p style={{ fontSize: "0.7rem", fontWeight: 700, color: "#E50914", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 10, fontFamily: "'Space Grotesk', sans-serif" }}>
-          Why CineCircle
-        </p>
-        <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: "clamp(1.5rem, 3vw, 2rem)", color: "#F9FAFB", marginBottom: 40, letterSpacing: "-0.01em" }}>
-          Movie nights, done right
-        </h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, maxWidth: 900, margin: "0 auto" }}>
-          {[
-            { icon: <Popcorn size={22} color="#E50914" />, title: "Group Rooms", desc: "Create a room, invite friends, vote on what to watch and when." },
-            { icon: <Ticket size={22} color="#F59E0B" />, title: "Book Together", desc: "Pick seats side-by-side and pay individually — no coordination chaos." },
-            { icon: <Users size={22} color="#9CA3AF" />, title: "Stay in Sync", desc: "Real-time voting keeps everyone on the same page before you buy." },
-          ].map(f => (
-            <motion.div
-              key={f.title}
-              whileHover={{ y: -4 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              style={{
-                padding: "1.5rem",
-                background: "rgba(255,255,255,0.02)",
-                border: "1px solid rgba(255,255,255,0.05)",
-                borderRadius: 12,
-                textAlign: "left",
-              }}
-            >
-              <div style={{ marginBottom: 12 }}>{f.icon}</div>
-              <h3 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: "0.95rem", color: "#F9FAFB", marginBottom: 6 }}>{f.title}</h3>
-              <p style={{ fontSize: "0.82rem", color: "#6B7280", lineHeight: 1.6 }}>{f.desc}</p>
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
-
-      {/* ── THEATRES ─────────────────────────────────────────────────────── */}
-      <div style={{ padding: "0 1.5rem 4rem" }} className="sm:px-16">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          style={{
-            borderRadius: 16,
-            padding: "2rem",
-            background: "rgba(17,24,39,0.6)",
-            border: "1px solid rgba(255,255,255,0.06)",
-            backdropFilter: "blur(8px)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
-            <MapPin size={14} color="#9CA3AF" />
-            <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: "1rem", color: "#F9FAFB" }}>
-              Theatres in {selectedCity.name}
-            </h2>
+            ))}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 }}>
+        </div>
+      )}
+
+      {/* ── THEATRES ──────────────────────────────────────────────────────── */}
+      <div style={{ padding:"0 1.5rem 4rem" }} className="sm:px-16">
+        <div style={{
+          borderRadius:16, padding:"2rem",
+          background:"linear-gradient(160deg, #0f0f0f 0%, #0a0a0a 100%)",
+          border:"1px solid rgba(201,168,76,0.1)",
+          position:"relative", overflow:"hidden",
+        }}>
+          <div style={{ position:"absolute", top:0, left:0, right:0, height:1, background:"linear-gradient(to right, transparent, rgba(201,168,76,0.35) 30%, rgba(201,168,76,0.35) 70%, transparent)" }} />
+          <SectionHeading icon={<Compass size={14} color="#C9A84C" />} label={`Theatres in ${selectedCity.name}`} />
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))", gap:12 }}>
             {theatres.length > 0 ? theatres.map(t => (
-              <motion.div
-                key={t.id}
-                whileHover={{ borderColor: "rgba(255,255,255,0.12)" }}
-                style={{
-                  padding: "1rem 1.25rem",
-                  background: "rgba(255,255,255,0.02)",
-                  border: "1px solid rgba(255,255,255,0.05)",
-                  borderRadius: 10,
-                  display: "flex", gap: 12, alignItems: "flex-start",
-                  transition: "border-color 0.2s",
-                }}
+              <div key={t.id} style={{
+                padding:"1rem 1.2rem", borderRadius:10,
+                background:"rgba(255,255,255,0.02)",
+                border:"1px solid rgba(255,255,255,0.04)",
+                display:"flex", gap:12, alignItems:"flex-start",
+                transition:"border-color 0.2s",
+              }}
+                onMouseEnter={e => e.currentTarget.style.borderColor="rgba(201,168,76,0.2)"}
+                onMouseLeave={e => e.currentTarget.style.borderColor="rgba(255,255,255,0.04)"}
               >
-                <div style={{
-                  width: 36, height: 36, borderRadius: 8, flexShrink: 0,
-                  background: "rgba(245,158,11,0.08)",
-                  border: "1px solid rgba(245,158,11,0.15)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
-                  <Film size={15} color="#F59E0B" />
+                <div style={{ width:34, height:34, borderRadius:8, flexShrink:0, background:"rgba(201,168,76,0.07)", border:"1px solid rgba(201,168,76,0.15)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <Film size={14} color="#C9A84C" />
                 </div>
                 <div>
-                  <p style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, fontSize: "0.85rem", color: "#F9FAFB", marginBottom: 3 }}>{t.name}</p>
-                  <p style={{ fontSize: "0.75rem", color: "#6B7280", lineHeight: 1.5 }}>{t.address}</p>
+                  <p style={{ fontFamily:"'Poppins', sans-serif", fontWeight:700, fontSize:"0.83rem", color:"#f0f0f0", marginBottom:3 }}>{t.name}</p>
+                  <p style={{ fontSize:"0.73rem", color:"#555", lineHeight:1.5 }}>{t.address}</p>
                 </div>
-              </motion.div>
+              </div>
             )) : (
-              <p style={{ color: "#4B5563", fontSize: "0.85rem", padding: "1rem 0" }}>No theatres found for this location.</p>
+              <p style={{ color:"#444", fontSize:"0.83rem", padding:"1rem 0" }}>No theatres found for {selectedCity.name}.</p>
             )}
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   );
 };
 
-// ─── Section wrapper ──────────────────────────────────────────────────────────
-const Section: React.FC<{
-  label: string;
-  icon: React.ReactNode;
-  accentColor: "amber" | "muted";
-  children: React.ReactNode;
-  className?: string;
-}> = ({ label, icon, accentColor, children, className }) => (
-  <div className={className}>
-    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
-      <div style={{
-        width: 3, height: 18, borderRadius: 2,
-        background: accentColor === "amber" ? "#F59E0B" : "#374151",
-        flexShrink: 0,
-      }} />
-      {icon}
-      <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: "1rem", color: "#F9FAFB" }}>{label}</h2>
-    </div>
-    {children}
+/* ── Section Heading ──────────────────────────────────────────────────────── */
+const SectionHeading: React.FC<{ icon: React.ReactNode; label: string }> = ({ icon, label }) => (
+  <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:20 }}>
+    <div style={{ width:3, height:18, background:"#C9A84C", borderRadius:2, flexShrink:0 }} />
+    {icon}
+    <h2 style={{
+      fontFamily:"'Poppins', sans-serif", fontWeight:800, fontSize:"0.9rem",
+      color:"#f0f0f0", textTransform:"uppercase", letterSpacing:"0.08em",
+    }}>{label}</h2>
   </div>
 );
 
-// ─── Movie Card ───────────────────────────────────────────────────────────────
+/* ── Movie Card ───────────────────────────────────────────────────────────── */
 const MovieCard: React.FC<{
-  movie: Movie;
-  badge: React.ReactNode;
-  subtitle: string;
-  meta: string;
-  onClick: () => void;
-  accentColor: string;
-}> = ({ movie, badge, subtitle, meta, onClick, accentColor }) => {
+  movie: Movie; badge: React.ReactNode; meta: string;
+  onClick: () => void; delay?: number; muted?: boolean;
+}> = ({ movie, badge, meta, onClick, delay = 0, muted }) => {
   const [loaded, setLoaded] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
   useEffect(() => { if (imgRef.current?.complete) setLoaded(true); }, []);
 
   return (
-    <motion.div
-      whileHover={{ y: -6 }}
-      transition={{ type: "spring", stiffness: 280, damping: 22 }}
+    <div
       onClick={onClick}
       style={{
-        cursor: "pointer", borderRadius: 12, overflow: "hidden",
-        background: "#111827",
-        border: "1px solid rgba(255,255,255,0.04)",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
-        transition: "border-color 0.25s, box-shadow 0.25s",
+        cursor:"pointer", borderRadius:10, overflow:"hidden",
+        background:"#0f0f0f",
+        border:"1px solid rgba(255,255,255,0.04)",
+        boxShadow:"0 4px 20px rgba(0,0,0,0.35)",
+        transition:"transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease",
+        /* CSS animation for stagger instead of framer-motion whileInView */
+        animation:`cardEnter 0.45s cubic-bezier(0.22,1,0.36,1) ${delay}ms both`,
+        opacity: 1, /* explicitly visible — no framer-motion initial:"hidden" */
       }}
-      onHoverStart={e => {
-        (e.target as HTMLDivElement).style?.setProperty?.("border-color", `${accentColor}40`);
+      onMouseEnter={e => {
+        e.currentTarget.style.transform = "translateY(-5px)";
+        e.currentTarget.style.borderColor = "rgba(201,168,76,0.3)";
+        e.currentTarget.style.boxShadow = "0 12px 36px rgba(0,0,0,0.55)";
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.borderColor = "rgba(255,255,255,0.04)";
+        e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.35)";
       }}
     >
-      <div style={{ position: "relative", aspectRatio: "2/3", overflow: "hidden", background: "#1F2937" }}>
-        {!loaded && <div className="absolute inset-0 shimmer" />}
+      <div style={{ position:"relative", aspectRatio:"2/3", overflow:"hidden", background:"#171717" }}>
+        {!loaded && <div className="shimmer" style={{ position:"absolute", inset:0 }} />}
         <img
           ref={imgRef}
           src={getImageUrl(movie.posterUrl)}
           alt={movie.title}
           loading="lazy"
-          decoding="async"
           onLoad={() => setLoaded(true)}
-          style={{
-            width: "100%", height: "100%", objectFit: "cover", objectPosition: "center",
-            opacity: loaded ? 1 : 0, transition: "opacity 0.4s ease",
-          }}
+          style={{ width:"100%", height:"100%", objectFit:"cover", display:"block", opacity: loaded ? 1 : 0, transition:"opacity 0.4s ease" }}
         />
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 40%)", opacity: 0, transition: "opacity 0.3s" }}
-          className="group-hover:opacity-100" />
-        <div style={{ position: "absolute", top: 8, right: 8 }}>{badge}</div>
+        <div style={{ position:"absolute", inset:0, background:"linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 40%)", opacity:0, transition:"opacity 0.3s" }}
+          onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
+          onMouseLeave={e => (e.currentTarget.style.opacity = "0")}
+        />
+        <div style={{ position:"absolute", top:7, right:7 }}>{badge}</div>
       </div>
-      <div style={{ padding: "12px 12px 14px" }}>
-        <p style={{ fontSize: "0.65rem", fontWeight: 700, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>{subtitle}</p>
+      <div style={{ padding:"10px 11px 13px" }}>
+        <p style={{ fontSize:"0.68rem", fontWeight:700, color: muted ? "#555" : "#C9A84C", fontFamily:"'Poppins', sans-serif", marginBottom:4, textTransform:"uppercase", letterSpacing:"0.06em" }}>
+          {movie.genre.split("/")[0]}
+        </p>
         <h3 style={{
-          fontFamily: "'Space Grotesk', sans-serif",
-          fontWeight: 700, fontSize: "0.85rem", color: "#F9FAFB",
-          lineHeight: 1.3,
-          display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+          fontFamily:"'Playfair Display', serif",
+          fontWeight:700, fontSize:"0.85rem", color:"#f0f0f0",
+          lineHeight:1.3,
+          display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden",
         }}>{movie.title}</h3>
-        <p style={{ fontSize: "0.68rem", color: "#4B5563", marginTop: 5 }}>{meta}</p>
+        <p style={{ fontSize:"0.65rem", color:"#444", marginTop:5, fontFamily:"'Inter', sans-serif" }}>{meta}</p>
       </div>
-    </motion.div>
+    </div>
   );
 };

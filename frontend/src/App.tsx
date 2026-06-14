@@ -17,8 +17,8 @@ const CreateMovieNight = lazy(() => import('./pages/CreateMovieNight.js').then(m
 const MovieNightDetail = lazy(() => import('./pages/MovieNightDetail.js').then(m => ({ default: m.MovieNightDetail })));
 
 const PageLoader = () => (
-  <div className="min-h-screen flex items-center justify-center" style={{ background: '#0B1120' }}>
-    <div className="w-10 h-10 rounded-full border-t-2 animate-spin" style={{ borderColor: '#E50914' }} />
+  <div className="min-h-screen flex items-center justify-center" style={{ background: '#080808' }}>
+    <div className="w-10 h-10 rounded-full border-t-2 animate-spin" style={{ borderColor: '#C9A84C' }} />
   </div>
 );
 
@@ -26,7 +26,7 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <div className="min-h-screen flex flex-col justify-between select-none" style={{ background: "#0B1120" }}>
+        <div className="min-h-screen flex flex-col justify-between select-none" style={{ background: "#080808" }}>
           <div>
             <Navbar />
             <Suspense fallback={<PageLoader />}>

@@ -43,13 +43,13 @@ const ZONE_CONFIG: Record<string, {
   label: string; priceKey: "priceRecliner" | "pricePremium" | "priceRegular";
 }> = {
   Recliner: {
-    color: "#d4af37", glow: "rgba(212,175,55,0.18)",
-    bg: "rgba(212,175,55,0.04)", border: "rgba(212,175,55,0.14)",
+    color: "#C9A84C", glow: "rgba(201,168,76,0.18)",
+    bg: "rgba(201,168,76,0.04)", border: "rgba(201,168,76,0.14)",
     label: "RECLINER", priceKey: "priceRecliner",
   },
   Premium: {
-    color: "#6ee7e7", glow: "rgba(110,231,231,0.15)",
-    bg: "rgba(110,231,231,0.03)", border: "rgba(110,231,231,0.12)",
+    color: "rgba(255,255,255,0.65)", glow: "rgba(255,255,255,0.08)",
+    bg: "rgba(255,255,255,0.03)", border: "rgba(255,255,255,0.12)",
     label: "PREMIUM", priceKey: "pricePremium",
   },
   Regular: {
@@ -63,8 +63,8 @@ const SEAT_COLORS: Record<string, { bg: string; border: string; text: string }> 
   booked:   { bg: "rgba(255,255,255,0.025)", border: "rgba(255,255,255,0.07)", text: "rgba(255,255,255,0.1)" },
   selected: { bg: "rgba(34,197,94,0.2)",     border: "rgba(34,197,94,0.9)",   text: "#4ade80" },
   Regular:  { bg: "rgba(255,255,255,0.05)",  border: "rgba(255,255,255,0.22)", text: "rgba(255,255,255,0.5)" },
-  Premium:  { bg: "rgba(110,231,231,0.07)",  border: "rgba(110,231,231,0.45)", text: "#6ee7e7" },
-  Recliner: { bg: "rgba(212,175,55,0.09)",   border: "rgba(212,175,55,0.5)",  text: "#d4af37" },
+  Premium:  { bg: "rgba(255,255,255,0.05)",  border: "rgba(255,255,255,0.3)",  text: "rgba(255,255,255,0.65)" },
+  Recliner: { bg: "rgba(201,168,76,0.09)",   border: "rgba(201,168,76,0.5)",  text: "#C9A84C" },
 };
 
 // Splits a row into left-wing | (optional center) | right-wing
@@ -101,7 +101,7 @@ const SeatBtn: React.FC<{
     <button
       disabled={isBooked}
       onClick={onClick}
-      className="flex flex-col items-center transition-all hover:-translate-y-0.5 hover:scale-[1.14] disabled:cursor-not-allowed focus:outline-none"
+      className="flex flex-col items-center transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed focus:outline-none"
       title={isBooked ? "Booked" : `${seat.row}${seat.number}`}
     >
       {/* Backrest */}
@@ -241,7 +241,7 @@ export const SeatBooking: React.FC = () => {
           } catch (err) { console.error(err); }
         },
         prefill: { name: user?.fullName, email: user?.email },
-        theme: { color: "#d4af37" },
+        theme: { color: "#C9A84C" },
       };
       const razorpay = new window.Razorpay(options);
       razorpay.open();
@@ -276,7 +276,7 @@ export const SeatBooking: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "#080808" }}>
-        <div className="w-10 h-10 rounded-full border-t-2 animate-spin" style={{ borderColor: "#d4af37" }} />
+        <div className="w-10 h-10 rounded-full border-t-2 animate-spin" style={{ borderColor: "#C9A84C" }} />
       </div>
     );
   }
@@ -289,7 +289,7 @@ export const SeatBooking: React.FC = () => {
         style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")` }} />
       {/* Ambient glow */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[700px] h-[300px] pointer-events-none z-0"
-        style={{ background: "radial-gradient(ellipse at center top, rgba(212,175,55,0.05) 0%, transparent 65%)" }} />
+        style={{ background: "radial-gradient(ellipse at center top, rgba(201,168,76,0.05) 0%, transparent 65%)" }} />
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-8 py-12 grid grid-cols-1 lg:grid-cols-3 gap-10">
 
@@ -300,14 +300,14 @@ export const SeatBooking: React.FC = () => {
           <div className={`w-full mb-12 flex flex-col items-center relative ${isImax ? "max-w-2xl" : "max-w-xl"}`}>
             {/* Projector glow */}
             <div className={`absolute -top-6 blur-3xl rounded-full pointer-events-none opacity-70 ${isImax ? "w-10/12 h-20" : "w-7/12 h-16"}`}
-              style={{ background: is3D ? "rgba(110,231,231,0.08)" : "rgba(212,175,55,0.08)" }} />
+              style={{ background: is3D ? "rgba(255,255,255,0.05)" : "rgba(201,168,76,0.08)" }} />
 
             {/* Screen type badge */}
             <div className="mb-4 px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase" style={
               isImax
-                ? { background: "rgba(212,175,55,0.12)", border: "1px solid rgba(212,175,55,0.45)", color: "#f4d03f" }
+                ? { background: "rgba(201,168,76,0.12)", border: "1px solid rgba(201,168,76,0.45)", color: "#E8C96A" }
                 : is3D
-                ? { background: "rgba(110,231,231,0.08)", border: "1px solid rgba(110,231,231,0.35)", color: "#6ee7e7" }
+                ? { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.65)" }
                 : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)" }
             }>
               {isImax ? "IMAX Experience" : is3D ? "3D Experience" : "Standard 2D"}
@@ -316,18 +316,18 @@ export const SeatBooking: React.FC = () => {
             {/* Screen bar */}
             <div className={`w-full rounded-full ${isImax ? "h-1" : "h-0.5"}`} style={{
               background: is3D
-                ? "linear-gradient(to right, transparent, rgba(110,231,231,0.4) 20%, #6ee7e7 50%, rgba(110,231,231,0.4) 80%, transparent)"
-                : "linear-gradient(to right, transparent, rgba(212,175,55,0.5) 20%, #d4af37 50%, rgba(212,175,55,0.5) 80%, transparent)",
-              boxShadow: is3D ? "0 0 20px rgba(110,231,231,0.2)" : "0 0 24px rgba(212,175,55,0.2)",
+                ? "linear-gradient(to right, transparent, rgba(255,255,255,0.25) 20%, rgba(255,255,255,0.55) 50%, rgba(255,255,255,0.25) 80%, transparent)"
+                : "linear-gradient(to right, transparent, rgba(201,168,76,0.5) 20%, #C9A84C 50%, rgba(201,168,76,0.5) 80%, transparent)",
+              boxShadow: is3D ? "0 0 20px rgba(255,255,255,0.1)" : "0 0 24px rgba(201,168,76,0.2)",
             }} />
 
             {/* Perspective lines */}
             <svg className={`mt-0.5 opacity-[0.08] ${isImax ? "w-10/12" : "w-7/12"}`} viewBox="0 0 300 30" fill="none">
-              <line x1="150" y1="0" x2="0"   y2="30" stroke={is3D ? "#6ee7e7" : "#d4af37"} strokeWidth="0.6" />
-              <line x1="150" y1="0" x2="300" y2="30" stroke={is3D ? "#6ee7e7" : "#d4af37"} strokeWidth="0.6" />
+              <line x1="150" y1="0" x2="0"   y2="30" stroke={is3D ? "rgba(255,255,255,0.4)" : "#C9A84C"} strokeWidth="0.6" />
+              <line x1="150" y1="0" x2="300" y2="30" stroke={is3D ? "rgba(255,255,255,0.4)" : "#C9A84C"} strokeWidth="0.6" />
             </svg>
 
-            <p className="text-[9px] tracking-[0.3em] uppercase mt-2 font-inter" style={{ color: "rgba(212,175,55,0.35)" }}>
+            <p className="text-[9px] tracking-[0.3em] uppercase mt-2 font-inter" style={{ color: "rgba(201,168,76,0.35)" }}>
               All Eyes This Way · {seats.length} seats · {seats.filter(s => s.status !== "booked").length} available
             </p>
           </div>
@@ -371,7 +371,7 @@ export const SeatBooking: React.FC = () => {
                           <div key={rowLetter} className="flex items-center gap-1.5">
                             {/* Left row label */}
                             <span className="w-5 text-center text-[10px] font-black font-mono flex-shrink-0"
-                              style={{ color: "rgba(212,175,55,0.3)" }}>
+                              style={{ color: "rgba(201,168,76,0.3)" }}>
                               {rowLetter}
                             </span>
 
@@ -422,7 +422,7 @@ export const SeatBooking: React.FC = () => {
 
                             {/* Right row label */}
                             <span className="w-5 text-center text-[10px] font-black font-mono flex-shrink-0"
-                              style={{ color: "rgba(212,175,55,0.3)" }}>
+                              style={{ color: "rgba(201,168,76,0.3)" }}>
                               {rowLetter}
                             </span>
                           </div>
@@ -459,20 +459,20 @@ export const SeatBooking: React.FC = () => {
         <div className="space-y-5">
           {/* Movie card */}
           <div className="p-5 rounded-2xl relative overflow-hidden"
-            style={{ background: "linear-gradient(160deg, #111 0%, #0c0c0c 100%)", border: "1px solid rgba(212,175,55,0.1)" }}>
+            style={{ background: "linear-gradient(160deg, #111 0%, #0c0c0c 100%)", border: "1px solid rgba(201,168,76,0.1)" }}>
             <div className="absolute top-0 left-0 right-0 h-px"
-              style={{ background: "linear-gradient(to right, transparent, rgba(212,175,55,0.3) 40%, transparent)" }} />
+              style={{ background: "linear-gradient(to right, transparent, rgba(201,168,76,0.3) 40%, transparent)" }} />
             <div className="flex gap-4">
               <img src={getImageUrl(show.movie.posterUrl)} alt={show.movie.title}
                 className="w-20 aspect-[2/3] object-cover rounded-xl flex-shrink-0"
-                style={{ border: "1px solid rgba(212,175,55,0.15)" }} />
+                style={{ border: "1px solid rgba(201,168,76,0.15)" }} />
               <div>
                 <h3 className="font-black text-white text-sm leading-tight">{show.movie.title}</h3>
-                <span className="text-[10px] font-black tracking-wider uppercase mt-1.5 inline-block" style={{ color: "#d4af37" }}>
+                <span className="text-[10px] font-black tracking-wider uppercase mt-1.5 inline-block" style={{ color: "#C9A84C" }}>
                   {show.movie.genre.split("/")[0]}
                 </span>
                 <div className="flex items-center gap-1 mt-2 text-xs text-neutral-600 font-inter">
-                  <Star className="w-3 h-3 fill-[#d4af37] text-[#d4af37]" />
+                  <Star className="w-3 h-3 fill-[#C9A84C] text-[#C9A84C]" />
                   <span>{show.movie.ratingValue} / 10</span>
                 </div>
               </div>
@@ -494,9 +494,9 @@ export const SeatBooking: React.FC = () => {
 
           {/* Booking summary */}
           <div className="p-5 rounded-2xl"
-            style={{ background: "linear-gradient(160deg, #111 0%, #0c0c0c 100%)", border: "1px solid rgba(212,175,55,0.1)" }}>
+            style={{ background: "linear-gradient(160deg, #111 0%, #0c0c0c 100%)", border: "1px solid rgba(201,168,76,0.1)" }}>
             <h4 className="font-black text-sm text-white mb-4 flex items-center gap-2">
-              <Ticket className="w-4 h-4" style={{ color: "#d4af37" }} /> Booking Summary
+              <Ticket className="w-4 h-4" style={{ color: "#C9A84C" }} /> Booking Summary
             </h4>
 
             {error && (
@@ -521,7 +521,7 @@ export const SeatBooking: React.FC = () => {
 
             <div className="flex justify-between items-center mb-5">
               <span className="font-black text-white">Total Amount</span>
-              <span className="text-2xl font-black" style={{ color: "#d4af37" }}>₹{calculateTotalPrice()}</span>
+              <span className="text-2xl font-black" style={{ color: "#C9A84C" }}>₹{calculateTotalPrice()}</span>
             </div>
 
             <button
@@ -529,9 +529,9 @@ export const SeatBooking: React.FC = () => {
               disabled={selectedSeats.length === 0}
               className="w-full py-3.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-30 disabled:pointer-events-none"
               style={{
-                background: selectedSeats.length > 0 ? "linear-gradient(135deg, #d4af37, #f4d03f)" : "rgba(255,255,255,0.04)",
+                background: selectedSeats.length > 0 ? "linear-gradient(135deg, #C9A84C, #E8C96A)" : "rgba(255,255,255,0.04)",
                 color: selectedSeats.length > 0 ? "#000" : "#333",
-                boxShadow: selectedSeats.length > 0 ? "0 8px 24px rgba(212,175,55,0.25)" : "none",
+                boxShadow: selectedSeats.length > 0 ? "0 8px 24px rgba(201,168,76,0.25)" : "none",
               }}
             >
               {selectedSeats.length > 0 ? `Confirm & Pay ₹${calculateTotalPrice()}` : "Select Seats to Continue"}
@@ -539,7 +539,7 @@ export const SeatBooking: React.FC = () => {
 
             {selectedSeats.length > 0 && timeLeft && (
               <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] font-inter"
-                style={{ color: parseInt(timeLeft) <= 1 ? "#f87171" : "rgba(212,175,55,0.6)" }}>
+                style={{ color: parseInt(timeLeft) <= 1 ? "#f87171" : "rgba(201,168,76,0.6)" }}>
                 <span>Selection expires in</span>
                 <span className="font-black tabular-nums">{timeLeft}</span>
               </div>

@@ -12,13 +12,13 @@ const getImageUrl = (url?: string) => {
 
 const CATEGORY_COLOR: Record<string, string> = {
   Regular:  "rgba(255,255,255,0.12)",
-  Premium:  "rgba(110,231,231,0.25)",
-  Recliner: "rgba(212,175,55,0.35)",
+  Premium:  "rgba(255,255,255,0.18)",
+  Recliner: "rgba(201,168,76,0.35)",
 };
 const CATEGORY_TEXT: Record<string, string> = {
   Regular:  "#aaa",
-  Premium:  "#6ee7e7",
-  Recliner: "#d4af37",
+  Premium:  "rgba(255,255,255,0.65)",
+  Recliner: "#C9A84C",
 };
 
 export const BookingConfirmation: React.FC = () => {
@@ -42,7 +42,7 @@ export const BookingConfirmation: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "#080808" }}>
-        <div className="w-10 h-10 rounded-full border-t-2 animate-spin" style={{ borderColor: "#d4af37" }} />
+        <div className="w-10 h-10 rounded-full border-t-2 animate-spin" style={{ borderColor: "#C9A84C" }} />
       </div>
     );
   }
@@ -51,7 +51,7 @@ export const BookingConfirmation: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ background: "#080808" }}>
         <p className="text-neutral-400 font-inter text-sm">{error || "Something went wrong."}</p>
-        <Link to="/dashboard" className="text-[#d4af37] text-sm font-bold hover:underline">Go to Dashboard</Link>
+        <Link to="/dashboard" className="text-[#C9A84C] text-sm font-bold hover:underline">Go to Dashboard</Link>
       </div>
     );
   }
@@ -80,20 +80,20 @@ export const BookingConfirmation: React.FC = () => {
         </div>
 
         {/* ── TICKET CARD ── */}
-        <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(212,175,55,0.2)", background: "#0d0d0d" }}>
+        <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(201,168,76,0.2)", background: "#0d0d0d" }}>
           {/* gold top stripe */}
-          <div className="h-1 w-full" style={{ background: "linear-gradient(to right, transparent, #d4af37 30%, #f4d03f 50%, #d4af37 70%, transparent)" }} />
+          <div className="h-1 w-full" style={{ background: "linear-gradient(to right, transparent, #C9A84C 30%, #E8C96A 50%, #C9A84C 70%, transparent)" }} />
 
           {/* movie info */}
           <div className="flex gap-4 p-5 border-b" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
             <img
               src={getImageUrl(movie.posterUrl)} alt={movie.title}
               className="w-20 aspect-[2/3] object-cover rounded-xl flex-shrink-0"
-              style={{ border: "1px solid rgba(212,175,55,0.2)" }}
+              style={{ border: "1px solid rgba(201,168,76,0.2)" }}
             />
             <div className="flex flex-col justify-center">
               <h2 className="font-black text-lg text-white leading-tight">{movie.title}</h2>
-              <span className="text-[10px] font-black tracking-wider uppercase mt-1" style={{ color: "#d4af37" }}>
+              <span className="text-[10px] font-black tracking-wider uppercase mt-1" style={{ color: "#C9A84C" }}>
                 {movie.genre?.split("/")[0]}
               </span>
               <span className="text-xs text-neutral-500 font-inter mt-1">{show.language || movie.language}</span>
@@ -110,7 +110,7 @@ export const BookingConfirmation: React.FC = () => {
             ].map(({ icon, label, value }) => (
               <div key={label} className="p-4 flex items-start gap-2.5 border-b border-r"
                 style={{ borderColor: "rgba(255,255,255,0.04)" }}>
-                <span style={{ color: "rgba(212,175,55,0.5)", marginTop: 2 }}>{icon}</span>
+                <span style={{ color: "rgba(201,168,76,0.5)", marginTop: 2 }}>{icon}</span>
                 <div>
                   <p className="text-[9px] uppercase tracking-widest text-neutral-600 font-inter">{label}</p>
                   <p className="text-xs font-bold text-white mt-0.5">{value}</p>
@@ -142,8 +142,8 @@ export const BookingConfirmation: React.FC = () => {
             <div>
               <p className="text-[9px] uppercase tracking-widest text-neutral-600 font-inter mb-1">Booking Code</p>
               <div className="flex items-center gap-2">
-                <Ticket className="w-4 h-4" style={{ color: "#d4af37" }} />
-                <span className="font-black text-lg tracking-widest" style={{ color: "#d4af37" }}>{booking.code}</span>
+                <Ticket className="w-4 h-4" style={{ color: "#C9A84C" }} />
+                <span className="font-black text-lg tracking-widest" style={{ color: "#C9A84C" }}>{booking.code}</span>
               </div>
             </div>
             <div className="text-right">
@@ -174,7 +174,7 @@ export const BookingConfirmation: React.FC = () => {
           <button
             onClick={() => navigate("/dashboard")}
             className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all"
-            style={{ background: "linear-gradient(135deg, #d4af37, #f4d03f)", color: "#000" }}
+            style={{ background: "linear-gradient(135deg, #C9A84C, #E8C96A)", color: "#000" }}
           >
             <LayoutDashboard className="w-4 h-4" /> My Bookings
           </button>

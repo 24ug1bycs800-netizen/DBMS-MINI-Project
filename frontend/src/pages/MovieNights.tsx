@@ -24,7 +24,7 @@ const STATUS_META: Record<string, { label: string; color: string; bg: string; bo
   RECOMMENDED:            { label: "Vote Pending",     color: "#c084fc", bg: "rgba(192,132,252,0.08)", border: "rgba(192,132,252,0.25)", icon: <Sparkles className="w-3 h-3" />, glow: "rgba(192,132,252,0.12)" },
   APPROVED:               { label: "Approved",         color: "#4ade80", bg: "rgba(74,222,128,0.08)",  border: "rgba(74,222,128,0.25)",  icon: <CheckCircle className="w-3 h-3" />, glow: "rgba(74,222,128,0.12)" },
   PAYMENT_PENDING:        { label: "Payment Pending",  color: "#fb923c", bg: "rgba(251,146,60,0.08)",  border: "rgba(251,146,60,0.25)",  icon: <Clock className="w-3 h-3" />, glow: "rgba(251,146,60,0.12)" },
-  READY_TO_BOOK:          { label: "Ready to Book",    color: "#d4af37", bg: "rgba(212,175,55,0.08)",  border: "rgba(212,175,55,0.25)",  icon: <Ticket className="w-3 h-3" />, glow: "rgba(212,175,55,0.15)" },
+  READY_TO_BOOK:          { label: "Ready to Book",    color: "#C9A84C", bg: "rgba(201,168,76,0.08)",  border: "rgba(201,168,76,0.25)",  icon: <Ticket className="w-3 h-3" />, glow: "rgba(201,168,76,0.15)" },
   BOOKED:                 { label: "Booked ✓",         color: "#4ade80", bg: "rgba(74,222,128,0.08)",  border: "rgba(74,222,128,0.25)",  icon: <CheckCircle className="w-3 h-3" />, glow: "rgba(74,222,128,0.12)" },
   REJECTED:               { label: "Rejected",          color: "#f87171", bg: "rgba(248,113,113,0.08)", border: "rgba(248,113,113,0.25)", icon: <XCircle className="w-3 h-3" />, glow: "rgba(248,113,113,0.12)" },
   CANCELLED:              { label: "Cancelled",         color: "#6b7280", bg: "rgba(107,114,128,0.08)", border: "rgba(107,114,128,0.2)",  icon: <Ban className="w-3 h-3" />, glow: "rgba(107,114,128,0.08)" },
@@ -42,7 +42,7 @@ const FloatingStar: React.FC<{ x: number; y: number; delay: number; size: number
     className="absolute pointer-events-none"
     style={{ left: `${x}%`, top: `${y}%`, animationDelay: `${delay}s`, opacity }}
   >
-    <Star className="fill-current" style={{ color: "#d4af37", width: size, height: size, animation: `pulse 3s ease-in-out ${delay}s infinite` }} />
+    <Star className="fill-current" style={{ color: "#C9A84C", width: size, height: size, animation: `pulse 3s ease-in-out ${delay}s infinite` }} />
   </div>
 );
 
@@ -89,8 +89,8 @@ export const MovieNights: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center" style={{ background: "#060606" }}>
       <div className="flex flex-col items-center gap-4">
         <div className="relative">
-          <div className="w-14 h-14 rounded-full border-2 border-neutral-800 animate-spin" style={{ borderTopColor: "#d4af37" }} />
-          <Moon className="w-6 h-6 absolute inset-0 m-auto" style={{ color: "#d4af37" }} />
+          <div className="w-14 h-14 rounded-full border-2 border-neutral-800 animate-spin" style={{ borderTopColor: "#C9A84C" }} />
+          <Moon className="w-6 h-6 absolute inset-0 m-auto" style={{ color: "#C9A84C" }} />
         </div>
         <p className="text-neutral-600 text-xs font-bold tracking-widest uppercase">Loading your nights…</p>
       </div>
@@ -109,9 +109,9 @@ export const MovieNights: React.FC = () => {
         }} />
 
         {/* Ambient glow orbs */}
-        <div className="absolute -top-20 -left-20 w-96 h-96 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(212,175,55,0.08) 0%, transparent 70%)" }} />
+        <div className="absolute -top-20 -left-20 w-96 h-96 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 70%)" }} />
         <div className="absolute -top-10 right-0 w-80 h-80 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(192,132,252,0.06) 0%, transparent 70%)" }} />
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-32 pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(212,175,55,0.05) 0%, transparent 70%)" }} />
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-32 pointer-events-none" style={{ background: "radial-gradient(ellipse, rgba(201,168,76,0.05) 0%, transparent 70%)" }} />
 
         {/* Floating stars */}
         <FloatingStar x={8}  y={20} delay={0}   size={6} opacity={0.3} />
@@ -136,7 +136,7 @@ export const MovieNights: React.FC = () => {
         <div className="relative max-w-5xl mx-auto px-6 sm:px-16 pt-14 pb-10">
           {/* Badge */}
           <div className="inline-flex items-center gap-2 mb-5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest"
-            style={{ background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.2)", color: "#d4af37" }}>
+            style={{ background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.2)", color: "#C9A84C" }}>
             <Sparkles className="w-3 h-3" /> AI-Powered Squad Planner
           </div>
 
@@ -144,7 +144,7 @@ export const MovieNights: React.FC = () => {
             <div>
               <h1 className="text-4xl sm:text-5xl font-black tracking-tight leading-none mb-3">
                 <span className="text-white">Movie</span>{" "}
-                <span style={{ background: "linear-gradient(135deg,#d4af37,#f4d03f,#d4af37)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                <span style={{ background: "linear-gradient(135deg,#C9A84C,#E8C96A,#C9A84C)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
                   Nights
                 </span>
               </h1>
@@ -157,9 +157,9 @@ export const MovieNights: React.FC = () => {
               onClick={() => navigate("/movie-nights/create")}
               className="flex items-center gap-2.5 px-6 py-3.5 rounded-2xl font-black text-sm transition-all hover:scale-105 hover:shadow-2xl shrink-0"
               style={{
-                background: "linear-gradient(135deg,#d4af37,#f4d03f)",
+                background: "linear-gradient(135deg,#C9A84C,#E8C96A)",
                 color: "#000",
-                boxShadow: "0 4px 24px rgba(212,175,55,0.35)",
+                boxShadow: "0 4px 24px rgba(201,168,76,0.35)",
               }}
             >
               <Plus className="w-4 h-4" /> Create Night
@@ -172,7 +172,7 @@ export const MovieNights: React.FC = () => {
               {[
                 { label: "Active", value: activeCount, color: "#6ee7e7", icon: <Moon className="w-3.5 h-3.5" /> },
                 { label: "Booked", value: bookedCount, color: "#4ade80", icon: <CheckCircle className="w-3.5 h-3.5" /> },
-                { label: "Hosting", value: hostedCount, color: "#d4af37", icon: <Crown className="w-3.5 h-3.5" /> },
+                { label: "Hosting", value: hostedCount, color: "#C9A84C", icon: <Crown className="w-3.5 h-3.5" /> },
                 { label: "Total", value: nights.length, color: "#c084fc", icon: <Film className="w-3.5 h-3.5" /> },
               ].map(({ label, value, color, icon }) => (
                 <div key={label} className="flex items-center gap-2">
@@ -194,10 +194,10 @@ export const MovieNights: React.FC = () => {
         {/* Join panel — cinematic */}
         <div className="relative overflow-hidden rounded-2xl p-6"
           style={{ background: "linear-gradient(135deg, #0d0d0d 0%, #111 100%)", border: "1px solid rgba(255,255,255,0.06)" }}>
-          <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(212,175,55,0.06) 0%, transparent 70%)" }} />
+          <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(201,168,76,0.06) 0%, transparent 70%)" }} />
           <div className="relative">
             <div className="flex items-center gap-2 mb-4">
-              <div className="p-1.5 rounded-lg" style={{ background: "rgba(212,175,55,0.1)", color: "#d4af37" }}>
+              <div className="p-1.5 rounded-lg" style={{ background: "rgba(201,168,76,0.1)", color: "#C9A84C" }}>
                 <LogIn className="w-3.5 h-3.5" />
               </div>
               <p className="text-xs font-black uppercase tracking-widest text-neutral-400">Join with Invite Code</p>
@@ -212,7 +212,7 @@ export const MovieNights: React.FC = () => {
                     border: "1px solid rgba(255,255,255,0.08)",
                     fontFamily: "monospace",
                   }}
-                  onFocus={e => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.4)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(212,175,55,0.06)"; }}
+                  onFocus={e => { e.currentTarget.style.borderColor = "rgba(201,168,76,0.4)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(201,168,76,0.06)"; }}
                   onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.boxShadow = "none"; }}
                   placeholder="ENTER CODE"
                   value={joinCode}
@@ -224,7 +224,7 @@ export const MovieNights: React.FC = () => {
                 type="submit"
                 disabled={joinLoading || !joinCode.trim()}
                 className="px-6 py-3 rounded-xl font-black text-xs flex items-center gap-2 transition-all hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-                style={{ background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000", boxShadow: "0 4px 16px rgba(212,175,55,0.2)" }}
+                style={{ background: "linear-gradient(135deg,#C9A84C,#E8C96A)", color: "#000", boxShadow: "0 4px 16px rgba(201,168,76,0.2)" }}
               >
                 {joinLoading
                   ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
@@ -243,13 +243,13 @@ export const MovieNights: React.FC = () => {
         {nights.length === 0 ? (
           <div className="relative overflow-hidden rounded-3xl py-20 text-center"
             style={{ background: "#0a0a0a", border: "1px solid rgba(255,255,255,0.05)" }}>
-            <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(212,175,55,0.06) 0%, transparent 60%)" }} />
+            <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(201,168,76,0.06) 0%, transparent 60%)" }} />
 
             {/* Decorative film reel */}
             <div className="relative inline-flex items-center justify-center w-20 h-20 mb-6">
-              <div className="absolute inset-0 rounded-full animate-spin" style={{ border: "1px dashed rgba(212,175,55,0.2)", animationDuration: "10s" }} />
-              <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.15)" }}>
-                <Moon className="w-8 h-8" style={{ color: "#d4af37" }} />
+              <div className="absolute inset-0 rounded-full animate-spin" style={{ border: "1px dashed rgba(201,168,76,0.2)", animationDuration: "10s" }} />
+              <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: "rgba(201,168,76,0.06)", border: "1px solid rgba(201,168,76,0.15)" }}>
+                <Moon className="w-8 h-8" style={{ color: "#C9A84C" }} />
               </div>
             </div>
 
@@ -260,7 +260,7 @@ export const MovieNights: React.FC = () => {
             <button
               onClick={() => navigate("/movie-nights/create")}
               className="px-8 py-3.5 rounded-2xl font-black text-sm inline-flex items-center gap-2.5 hover:scale-105 transition-all"
-              style={{ background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000", boxShadow: "0 8px 32px rgba(212,175,55,0.25)" }}
+              style={{ background: "linear-gradient(135deg,#C9A84C,#E8C96A)", color: "#000", boxShadow: "0 8px 32px rgba(201,168,76,0.25)" }}
             >
               <Plus className="w-4 h-4" /> Create Your First Night
             </button>
@@ -311,7 +311,7 @@ export const MovieNights: React.FC = () => {
                           {meta.icon} {meta.label}
                         </span>
                         {isOrganizer && (
-                          <div className="p-1 rounded-md" style={{ background: "rgba(212,175,55,0.08)", color: "#d4af37" }} title="Organizer">
+                          <div className="p-1 rounded-md" style={{ background: "rgba(201,168,76,0.08)", color: "#C9A84C" }} title="Organizer">
                             <Crown className="w-3 h-3" />
                           </div>
                         )}
@@ -363,11 +363,11 @@ export const MovieNights: React.FC = () => {
         {/* How it works strip */}
         <div className="relative overflow-hidden rounded-2xl p-6"
           style={{ background: "linear-gradient(135deg,#0a0a0a,#0d0d0d)", border: "1px solid rgba(255,255,255,0.04)" }}>
-          <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at 0% 50%, rgba(212,175,55,0.04) 0%, transparent 60%)" }} />
+          <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at 0% 50%, rgba(201,168,76,0.04) 0%, transparent 60%)" }} />
           <p className="text-[10px] font-black uppercase tracking-widest text-neutral-600 mb-4">How It Works</p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 relative">
             {[
-              { n: "01", title: "Create", desc: "Start a night & invite your squad", color: "#d4af37" },
+              { n: "01", title: "Create", desc: "Start a night & invite your squad", color: "#C9A84C" },
               { n: "02", title: "Preferences", desc: "Everyone shares their picks & budget", color: "#c084fc" },
               { n: "03", title: "AI Match", desc: "Smart engine finds the perfect show", color: "#6ee7e7" },
               { n: "04", title: "Book", desc: "Vote, split costs, and grab seats", color: "#4ade80" },
