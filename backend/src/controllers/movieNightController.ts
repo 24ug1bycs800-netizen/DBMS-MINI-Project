@@ -1,11 +1,12 @@
 import { Request, Response } from "express";
 import crypto from "crypto";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db/db";
 import {
   movieNights, movieNightMembers, movieNightPreferences,
   movieNightRecommendations, movieNightVotes, movieNightContributions,
-  movies, shows, screens, theatres, cities, users,
+  movieNightSeatAssignments,
+  movies, shows, screens, theatres, cities, users, seats, bookings,
 } from "../db/schema";
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -117,11 +118,34 @@ export const getMyMovieNights = async (req: Request, res: Response) => {
 
     const countMap = Object.fromEntries(counts.map(c => [c.movieNightId, c.count]));
 
+    // Seat assignments for the current user across all BOOKED nights
+    const bookedNightIds = nights.filter(n => n.status === "BOOKED").map(n => n.id);
+    let myAssignments: { movieNightId: number; seatRow: string; seatNumber: number; bookingCode: string }[] = [];
+    if (bookedNightIds.length > 0) {
+      const rows = await db
+        .select({
+          movieNightId: movieNightSeatAssignments.movieNightId,
+          seatRow: seats.row,
+          seatNumber: seats.number,
+          bookingCode: bookings.code,
+        })
+        .from(movieNightSeatAssignments)
+        .innerJoin(seats, eq(movieNightSeatAssignments.seatId, seats.id))
+        .innerJoin(bookings, eq(movieNightSeatAssignments.bookingId, bookings.id))
+        .where(and(
+          inArray(movieNightSeatAssignments.movieNightId, bookedNightIds),
+          eq(movieNightSeatAssignments.userId, userId)
+        ));
+      myAssignments = rows;
+    }
+    const assignmentMap = Object.fromEntries(myAssignments.map(a => [a.movieNightId, a]));
+
     return res.json({
       movieNights: nights.map(n => ({
         ...n,
         myRole: roleMap[n.id],
         memberCount: countMap[n.id] ?? 1,
+        mySeatAssignment: assignmentMap[n.id] ?? null,
       })),
     });
   } catch (err) {
@@ -222,6 +246,25 @@ export const getMovieNight = async (req: Request, res: Response) => {
       .innerJoin(users, eq(movieNightContributions.userId, users.id))
       .where(eq(movieNightContributions.movieNightId, id));
 
+    // Seat assignments (only present after BOOKED)
+    let seatAssignments: any[] = [];
+    if (night.status === "BOOKED") {
+      seatAssignments = await db
+        .select({
+          userId: movieNightSeatAssignments.userId,
+          fullName: users.fullName,
+          seatRow: seats.row,
+          seatNumber: seats.number,
+          seatCategory: seats.category,
+          bookingCode: bookings.code,
+        })
+        .from(movieNightSeatAssignments)
+        .innerJoin(users, eq(movieNightSeatAssignments.userId, users.id))
+        .innerJoin(seats, eq(movieNightSeatAssignments.seatId, seats.id))
+        .innerJoin(bookings, eq(movieNightSeatAssignments.bookingId, bookings.id))
+        .where(eq(movieNightSeatAssignments.movieNightId, id));
+    }
+
     return res.json({
       movieNight: night,
       myRole: members.find(m => m.userId === userId)?.role ?? "MEMBER",
@@ -230,6 +273,7 @@ export const getMovieNight = async (req: Request, res: Response) => {
       recommendation: rec ?? null,
       votes,
       contributions: contribs,
+      seatAssignments,
     });
   } catch (err) {
     console.error("[getMovieNight]", err);
@@ -572,13 +616,76 @@ export const completeBooking = async (req: Request, res: Response) => {
 
     if (!rec) return res.status(400).json({ error: "No recommendation found." });
 
-    await db.update(movieNights)
-      .set({ status: "BOOKED", updatedAt: new Date() })
-      .where(eq(movieNights.id, movieNightId));
+    const memberRows = await db.select({ id: movieNightMembers.id })
+      .from(movieNightMembers)
+      .where(eq(movieNightMembers.movieNightId, movieNightId));
 
-    return res.json({ message: "Movie night marked as booked.", showId: rec.showId });
+    // Status stays READY_TO_BOOK until payment is confirmed in /bookings/verify
+    return res.json({ message: "Proceed to seat selection.", showId: rec.showId, memberCount: memberRows.length });
   } catch (err) {
     console.error("[completeBooking]", err);
     return res.status(500).json({ error: "Failed to complete booking." });
+  }
+};
+
+// ─── GET SEAT ASSIGNMENTS (all members, for the success/detail page) ──────────
+
+export const getNightSeatAssignments = async (req: Request, res: Response) => {
+  const movieNightId = parseInt(req.params.id);
+  const userId = uid(req);
+  try {
+    const member = await isMember(movieNightId, userId);
+    if (!member) return res.status(403).json({ error: "Not a member of this movie night." });
+
+    const assignments = await db
+      .select({
+        userId: movieNightSeatAssignments.userId,
+        fullName: users.fullName,
+        seatRow: seats.row,
+        seatNumber: seats.number,
+        seatCategory: seats.category,
+        bookingCode: bookings.code,
+      })
+      .from(movieNightSeatAssignments)
+      .innerJoin(users, eq(movieNightSeatAssignments.userId, users.id))
+      .innerJoin(seats, eq(movieNightSeatAssignments.seatId, seats.id))
+      .innerJoin(bookings, eq(movieNightSeatAssignments.bookingId, bookings.id))
+      .where(eq(movieNightSeatAssignments.movieNightId, movieNightId))
+      .orderBy(asc(seats.row), asc(seats.number));
+
+    return res.json({ assignments });
+  } catch (err) {
+    console.error("[getNightSeatAssignments]", err);
+    return res.status(500).json({ error: "Failed to fetch seat assignments." });
+  }
+};
+
+// ─── GET MY TICKET (current user's seat for this movie night) ─────────────────
+
+export const getMyNightTicket = async (req: Request, res: Response) => {
+  const movieNightId = parseInt(req.params.id);
+  const userId = uid(req);
+  try {
+    const rows = await db
+      .select({
+        seatRow: seats.row,
+        seatNumber: seats.number,
+        seatCategory: seats.category,
+        bookingCode: bookings.code,
+        bookingId: movieNightSeatAssignments.bookingId,
+      })
+      .from(movieNightSeatAssignments)
+      .innerJoin(seats, eq(movieNightSeatAssignments.seatId, seats.id))
+      .innerJoin(bookings, eq(movieNightSeatAssignments.bookingId, bookings.id))
+      .where(and(
+        eq(movieNightSeatAssignments.movieNightId, movieNightId),
+        eq(movieNightSeatAssignments.userId, userId)
+      ));
+
+    if (!rows[0]) return res.status(404).json({ error: "No ticket found for this movie night." });
+    return res.json({ ticket: rows[0] });
+  } catch (err) {
+    console.error("[getMyNightTicket]", err);
+    return res.status(500).json({ error: "Failed to fetch ticket." });
   }
 };

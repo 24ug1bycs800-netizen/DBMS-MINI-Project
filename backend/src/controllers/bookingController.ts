@@ -4,13 +4,16 @@ import Razorpay from "razorpay";
 import {
   bookings, bookingSeats, payments, seats, shows,
   movies, screens, theatres, wishlist, reviews, seatLocks, notifications,
+  movieNightSeatAssignments, movieNightMembers, movieNights, users,
 } from "../db/schema";
 import {
   and,
+  asc,
   eq,
   lt,
   inArray,
-  desc
+  desc,
+  sql,
 } from "drizzle-orm";
 import crypto from "crypto";
 const razorpay = new Razorpay({
@@ -259,7 +262,7 @@ export const cancelBooking = async (
 // VERIFY PAYMENT & CONFIRM BOOKING
 export const verifyPayment = async (req: Request, res: Response) => {
   try {
-    const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, movieNightId: rawNightId } = req.body;
     if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
       return res.status(400).json({
         error: "razorpayOrderId, razorpayPaymentId and razorpaySignature are required",
@@ -293,16 +296,66 @@ export const verifyPayment = async (req: Request, res: Response) => {
       .returning();
     const updatedBooking = updated[0];
 
-    // Notify user that booking is confirmed
-    await db.insert(notifications).values({
-      userId: updatedBooking.userId,
-      message: `Booking confirmed! Your ticket code is ${updatedBooking.code}. Enjoy the show 🎬`,
-    });
+    const movieNightId = rawNightId ? parseInt(rawNightId) : null;
+
+    if (movieNightId && !isNaN(movieNightId)) {
+      // Get booked seats in selection order (bookingSeats insertion order = user's pick order)
+      const bookedSeatRows = await db
+        .select({ seat: seats, bsId: bookingSeats.id })
+        .from(bookingSeats)
+        .innerJoin(seats, eq(bookingSeats.seatId, seats.id))
+        .where(eq(bookingSeats.bookingId, updatedBooking.id))
+        .orderBy(asc(bookingSeats.id));
+
+      // Get members: organizer first, then by join time
+      const memberRows = await db
+        .select({ userId: movieNightMembers.userId, role: movieNightMembers.role, fullName: users.fullName })
+        .from(movieNightMembers)
+        .innerJoin(users, eq(movieNightMembers.userId, users.id))
+        .where(eq(movieNightMembers.movieNightId, movieNightId))
+        .orderBy(
+          sql`CASE WHEN ${movieNightMembers.role} = 'ORGANIZER' THEN 0 ELSE 1 END`,
+          asc(movieNightMembers.joinedAt)
+        );
+
+      // Zip members → seats (one seat per member in order)
+      const assignments = memberRows.slice(0, bookedSeatRows.length).map((m, i) => ({
+        movieNightId,
+        userId: m.userId,
+        bookingId: updatedBooking.id,
+        seatId: bookedSeatRows[i].seat.id,
+      }));
+
+      if (assignments.length > 0) {
+        await db.insert(movieNightSeatAssignments).values(assignments).onConflictDoNothing();
+      }
+
+      // Link booking to the night and mark night as BOOKED
+      await db.update(bookings).set({ movieNightId }).where(eq(bookings.id, updatedBooking.id));
+      const [night] = await db.select({ title: movieNights.title }).from(movieNights).where(eq(movieNights.id, movieNightId));
+      await db.update(movieNights).set({ status: "BOOKED", updatedAt: new Date() }).where(eq(movieNights.id, movieNightId));
+
+      // Send each member their seat assignment notification
+      for (let i = 0; i < assignments.length; i++) {
+        const s = bookedSeatRows[i].seat;
+        await db.insert(notifications).values({
+          userId: assignments[i].userId,
+          message: `🎬 ${night?.title ?? "Movie Night"} is booked! Your seat: ${s.row}${s.number}. Code: ${updatedBooking.code}`,
+        });
+      }
+    } else {
+      // Regular single booking notification
+      await db.insert(notifications).values({
+        userId: updatedBooking.userId,
+        message: `Booking confirmed! Your ticket code is ${updatedBooking.code}. Enjoy the show 🎬`,
+      });
+    }
 
     return res.status(200).json({
       message: "Payment verified and ticket confirmed!",
       booking: updatedBooking,
       ticketCode: updatedBooking?.code,
+      movieNightId: movieNightId ?? null,
     });
   } catch (err) {
     console.error("Verify payment error:", err);

@@ -727,7 +727,7 @@ export const generateShows = async (req: Request, res: Response) => {
       screenQuery = screenQuery.where(inArray(screens.type, normalizedTypes));
     }
 
-    const availableScreens = await screenQuery.orderBy(
+    let availableScreens = await screenQuery.orderBy(
       asc(cities.name),
       asc(theatres.name),
       asc(screens.number)
@@ -735,6 +735,18 @@ export const generateShows = async (req: Request, res: Response) => {
 
     if (availableScreens.length === 0) {
       return res.status(400).json({ error: "No screens matched the selected locations" });
+    }
+
+    // Safety guard: if specific theatres were selected but no specific screens were
+    // provided, limit to ONE screen per theatre (the lowest-numbered one).
+    // This prevents a single movie from flooding every screen in a multi-screen theatre.
+    if (parsedTheatreIds.length > 0 && parsedScreenIds.length === 0) {
+      const seen = new Set<number>();
+      availableScreens = availableScreens.filter(s => {
+        if (seen.has(s.theatreId)) return false;
+        seen.add(s.theatreId);
+        return true;
+      });
     }
 
     const targetScreenIds = availableScreens.map((s) => s.screenId);

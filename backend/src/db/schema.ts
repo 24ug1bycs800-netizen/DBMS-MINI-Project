@@ -119,6 +119,8 @@ export const bookings = pgTable("bookings", {
   showId: integer("show_id")
     .references(() => shows.id, { onDelete: "cascade" })
     .notNull(),
+  // nullable: set when this booking was made for a movie night group
+  movieNightId: integer("movie_night_id"),
   totalAmount: integer("total_amount").notNull(),
   status: varchar("status", { length: 50 }).default("pending").notNull(), // 'pending' | 'confirmed' | 'cancelled'
   code: varchar("code", { length: 100 }).notNull().unique(),
@@ -257,6 +259,22 @@ export const wishlist = pgTable("wishlist", {
   movieId: integer("movie_id")
     .references(() => movies.id, { onDelete: "cascade" })
     .notNull(),
+});
+
+// MOVIE NIGHT SEAT ASSIGNMENTS — one row per member per night after booking
+export const movieNightSeatAssignments = pgTable("movie_night_seat_assignments", {
+  id: serial("id").primaryKey(),
+  movieNightId: integer("movie_night_id").notNull(),
+  userId: integer("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  bookingId: integer("booking_id")
+    .references(() => bookings.id, { onDelete: "cascade" })
+    .notNull(),
+  seatId: integer("seat_id")
+    .references(() => seats.id, { onDelete: "cascade" })
+    .notNull(),
+  assignedAt: timestamp("assigned_at").defaultNow().notNull(),
 });
 
 // ─── RELATIONS ───────────────────────────────────────────────────────────────

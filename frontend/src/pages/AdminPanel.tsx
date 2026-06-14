@@ -332,12 +332,16 @@ export const AdminPanel: React.FC = () => {
       .finally(() => setLoadingTheatres(false));
   }, [wCity]);
 
-  // Cascade: theatre → screens
+  // Cascade: theatre → screens (auto-select first screen so we never blast all screens)
   useEffect(() => {
     if (!wTheatre) { setWScreens([]); setWScreen(null); return; }
     setLoadingScreens(true);
     api.get(`/admin/screens?theatreId=${wTheatre.id}`)
-      .then(r => setWScreens(r.data || []))
+      .then(r => {
+        const list = r.data || [];
+        setWScreens(list);
+        setWScreen(list[0] ?? null);
+      })
       .catch(() => setWScreens([]))
       .finally(() => setLoadingScreens(false));
   }, [wTheatre]);
@@ -1204,26 +1208,32 @@ export const AdminPanel: React.FC = () => {
 
                     <div>
                       <FieldLabel>
-                        Screen (Optional)
-                        {wTheatre && !loadingScreens && <span className="text-neutral-600 normal-case font-normal ml-1">({wScreens.length} screens)</span>}
+                        Screen
+                        {wTheatre && !loadingScreens && <span className="text-neutral-600 normal-case font-normal ml-1">({wScreens.length} available)</span>}
                       </FieldLabel>
                       {loadingScreens ? (
                         <div className={`${inputCls} flex items-center gap-2 text-neutral-600`}>
                           <div className="w-3 h-3 border border-neutral-600 border-t-[#d4af37] rounded-full animate-spin" /> Loading screens…
                         </div>
                       ) : (
-                        <select
-                          className={selectCls}
-                          disabled={!wTheatre}
-                          value={wScreen?.id ?? ""}
-                          onChange={e => {
-                            const found = wScreens.find((s: any) => s.id === parseInt(e.target.value));
-                            setWScreen(found ?? null);
-                          }}
-                        >
-                          <option value="">— All Screens —</option>
-                          {wScreens.map((s: any) => <option key={s.id} value={s.id}>Screen {s.number} ({s.type})</option>)}
-                        </select>
+                        <>
+                          <select
+                            className={selectCls}
+                            disabled={!wTheatre || wScreens.length === 0}
+                            value={wScreen?.id ?? ""}
+                            onChange={e => {
+                              const found = wScreens.find((s: any) => s.id === parseInt(e.target.value));
+                              setWScreen(found ?? null);
+                            }}
+                          >
+                            {wScreens.map((s: any) => <option key={s.id} value={s.id}>Screen {s.number} ({s.type})</option>)}
+                          </select>
+                          {!wTheatre && (
+                            <p className="mt-1.5 text-[10px] text-neutral-600 font-inter">
+                              Select a theatre first to pick a specific screen.
+                            </p>
+                          )}
+                        </>
                       )}
                     </div>
                   </>
@@ -1472,7 +1482,7 @@ export const AdminPanel: React.FC = () => {
                 <div>
                   <FieldLabel>Ticket Pricing by Screen Type (₹)</FieldLabel>
                   <div className="space-y-4">
-                    {(["2D", "3D", "IMAX"] as const).map(type => (
+                    {(["2D", "3D", "IMAX"] as const).filter(type => wScreenTypes.includes(type)).map(type => (
                       <div key={type} className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
                         <div className="px-4 py-2 flex items-center gap-2" style={{ background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
                           <span className="text-[10px] font-black uppercase tracking-widest"
@@ -1559,7 +1569,7 @@ export const AdminPanel: React.FC = () => {
                       <div className="col-span-2">
                         <p className="text-[10px] text-neutral-600 font-black uppercase tracking-widest mb-2">Pricing by Screen</p>
                         <div className="space-y-1">
-                          {(["2D", "3D", "IMAX"] as const).map(t => (
+                          {(["2D", "3D", "IMAX"] as const).filter(t => wScreenTypes.includes(t)).map(t => (
                             <p key={t} className="text-xs font-inter">
                               <span className="font-black mr-2" style={{ color: t === "IMAX" ? "rgba(212,175,55,0.9)" : t === "3D" ? "rgba(255,255,255,0.6)" : "rgba(212,175,55,0.55)" }}>{t}</span>
                               <span className="text-white">₹{wPrices[t].reg}</span>

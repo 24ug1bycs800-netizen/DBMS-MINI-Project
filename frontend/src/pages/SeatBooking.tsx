@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.js";
-import { Star, Ticket, AlertCircle } from "lucide-react";
+import { Star, Ticket, AlertCircle, Users } from "lucide-react";
 import api from "../services/api.js";
 
 declare global {
@@ -139,7 +139,12 @@ const SeatBtn: React.FC<{
 export const SeatBooking: React.FC = () => {
   const { showId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading: authLoading } = useAuth();
+
+  const movieNightId: number | null = (location.state as any)?.movieNightId ?? null;
+  const memberCount: number = (location.state as any)?.memberCount ?? 6;
+  const maxSeats = movieNightId ? memberCount : 6;
 
   const [show, setShow] = useState<ShowDetails | null>(null);
   const [seats, setSeats] = useState<Seat[]>([]);
@@ -197,8 +202,10 @@ export const SeatBooking: React.FC = () => {
     if (seat.status === "booked") return;
     setSelectedSeats(prev => {
       if (prev.includes(seatId)) return prev.filter(id => id !== seatId);
-      if (prev.length >= 6) {
-        setError("Maximum 6 seats per booking.");
+      if (prev.length >= maxSeats) {
+        setError(movieNightId
+          ? `Select exactly ${maxSeats} seats — one per member.`
+          : "Maximum 6 seats per booking.");
         setTimeout(() => setError(""), 4000);
         return prev;
       }
@@ -236,8 +243,13 @@ export const SeatBooking: React.FC = () => {
               razorpayOrderId: response.razorpay_order_id,
               razorpayPaymentId: response.razorpay_payment_id,
               razorpaySignature: response.razorpay_signature,
+              ...(movieNightId ? { movieNightId } : {}),
             });
-            navigate(`/booking/confirm/${verifyRes.data.ticketCode}`);
+            if (movieNightId) {
+              navigate(`/movie-nights/${movieNightId}/booked`);
+            } else {
+              navigate(`/booking/confirm/${verifyRes.data.ticketCode}`);
+            }
           } catch (err) { console.error(err); }
         },
         prefill: { name: user?.fullName, email: user?.email },
@@ -499,6 +511,19 @@ export const SeatBooking: React.FC = () => {
               <Ticket className="w-4 h-4" style={{ color: "#C9A84C" }} /> Booking Summary
             </h4>
 
+            {movieNightId && (
+              <div className="mb-4 p-3.5 rounded-xl flex items-start gap-2"
+                style={{ background: "rgba(201,168,76,0.06)", border: "1px solid rgba(201,168,76,0.2)" }}>
+                <Users className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#C9A84C" }} />
+                <div>
+                  <p className="text-xs font-black" style={{ color: "#C9A84C" }}>Movie Night Group Booking</p>
+                  <p className="text-[10px] font-inter mt-0.5" style={{ color: "rgba(201,168,76,0.6)" }}>
+                    Select exactly {maxSeats} seat{maxSeats !== 1 ? "s" : ""} — one per member. Seats will be auto-assigned.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {error && (
               <div className="mb-4 p-3.5 rounded-xl flex items-center gap-2 text-xs font-inter"
                 style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)" }}>
@@ -515,7 +540,12 @@ export const SeatBooking: React.FC = () => {
               </div>
               <div className="flex justify-between">
                 <span>Seat Count</span>
-                <span className="font-black text-white">{selectedSeats.length} <span className="text-neutral-700 font-normal">/ 6 max</span></span>
+                <span className="font-black text-white">
+                  {selectedSeats.length}
+                  {" "}<span className="text-neutral-700 font-normal">
+                    {movieNightId ? `/ ${maxSeats} required` : "/ 6 max"}
+                  </span>
+                </span>
               </div>
             </div>
 
@@ -524,18 +554,29 @@ export const SeatBooking: React.FC = () => {
               <span className="text-2xl font-black" style={{ color: "#C9A84C" }}>₹{calculateTotalPrice()}</span>
             </div>
 
-            <button
-              onClick={handleCheckoutSubmit}
-              disabled={selectedSeats.length === 0}
-              className="w-full py-3.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-30 disabled:pointer-events-none"
-              style={{
-                background: selectedSeats.length > 0 ? "linear-gradient(135deg, #C9A84C, #E8C96A)" : "rgba(255,255,255,0.04)",
-                color: selectedSeats.length > 0 ? "#000" : "#333",
-                boxShadow: selectedSeats.length > 0 ? "0 8px 24px rgba(201,168,76,0.25)" : "none",
-              }}
-            >
-              {selectedSeats.length > 0 ? `Confirm & Pay ₹${calculateTotalPrice()}` : "Select Seats to Continue"}
-            </button>
+            {(() => {
+              const ready = movieNightId
+                ? selectedSeats.length === maxSeats
+                : selectedSeats.length > 0;
+              return (
+                <button
+                  onClick={handleCheckoutSubmit}
+                  disabled={!ready}
+                  className="w-full py-3.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-30 disabled:pointer-events-none"
+                  style={{
+                    background: ready ? "linear-gradient(135deg, #C9A84C, #E8C96A)" : "rgba(255,255,255,0.04)",
+                    color: ready ? "#000" : "#333",
+                    boxShadow: ready ? "0 8px 24px rgba(201,168,76,0.25)" : "none",
+                  }}
+                >
+                  {ready
+                    ? `Confirm & Pay ₹${calculateTotalPrice()}`
+                    : movieNightId
+                      ? `Select ${maxSeats} seats to continue`
+                      : "Select Seats to Continue"}
+                </button>
+              );
+            })()}
 
             {selectedSeats.length > 0 && timeLeft && (
               <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] font-inter"

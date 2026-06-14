@@ -24,6 +24,7 @@ interface Recommendation {
 interface Vote { userId: number; vote: string; fullName: string; }
 interface Contribution { id: number; userId: number; contributionAmount: number; status: string; paidAt?: string; fullName: string; profilePic?: string; }
 interface MovieNight { id: number; title: string; description?: string; organizerId: number; inviteCode: string; status: string; createdAt: string; }
+interface SeatAssignment { userId: number; fullName: string; seatRow: string; seatNumber: number; seatCategory: string; bookingCode: string; }
 
 // ─── GENRE OPTIONS ────────────────────────────────────────────────────────────
 
@@ -72,6 +73,7 @@ export const MovieNightDetail: React.FC = () => {
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
   const [votes, setVotes] = useState<Vote[]>([]);
   const [contributions, setContributions] = useState<Contribution[]>([]);
+  const [seatAssignments, setSeatAssignments] = useState<SeatAssignment[]>([]);
   const [fetching, setFetching] = useState(true);
   const [err, setErr] = useState("");
 
@@ -109,6 +111,7 @@ export const MovieNightDetail: React.FC = () => {
       setRecommendation(d.recommendation);
       setVotes(d.votes);
       setContributions(d.contributions);
+      if (d.seatAssignments) setSeatAssignments(d.seatAssignments);
 
       // Pre-fill preference form only on first load
       if (!prefFilledRef.current) {
@@ -200,7 +203,9 @@ export const MovieNightDetail: React.FC = () => {
     setBookLoading(true); setActionMsg("");
     try {
       const res = await api.post(`/movie-nights/${nightId}/book`);
-      navigate(`/shows/${res.data.showId}/booking`);
+      navigate(`/shows/${res.data.showId}/booking`, {
+        state: { movieNightId: nightId, memberCount: members.length },
+      });
     } catch (e: any) { setActionMsg(e.response?.data?.error || "Failed."); setBookLoading(false); }
   };
 
@@ -650,13 +655,18 @@ export const MovieNightDetail: React.FC = () => {
                 {status === "READY_TO_BOOK" && isOrganizer && (
                   <div className="pt-2">
                     <div className="flex items-center gap-2 mb-3 p-3 rounded-xl" style={{ background: "rgba(74,222,128,0.06)", border: "1px solid rgba(74,222,128,0.2)" }}>
-                      <CheckCircle className="w-4 h-4 text-green-400" />
-                      <p className="text-xs font-bold text-green-400">All contributions collected! Ready to book.</p>
+                      <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-bold text-green-400">All contributions collected! Ready to book.</p>
+                        <p className="text-[10px] font-inter mt-0.5" style={{ color: "rgba(74,222,128,0.6)" }}>
+                          You'll select {members.length} seat{members.length !== 1 ? "s" : ""} — one per member. Seats are auto-assigned by join order.
+                        </p>
+                      </div>
                     </div>
                     <button onClick={handleBook} disabled={bookLoading}
                       className="w-full py-3.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.01] disabled:opacity-40"
                       style={{ background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000", boxShadow: "0 6px 24px rgba(212,175,55,0.25)" }}>
-                      {bookLoading ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : <><Ticket className="w-4 h-4" />Proceed to Book Seats<ArrowRight className="w-4 h-4" /></>}
+                      {bookLoading ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : <><Ticket className="w-4 h-4" />Select {members.length} Seats<ArrowRight className="w-4 h-4" /></>}
                     </button>
                   </div>
                 )}
@@ -767,12 +777,53 @@ export const MovieNightDetail: React.FC = () => {
 
             {/* ── SECTION: BOOKED ───────────────────────────────────────────── */}
             {status === "BOOKED" && (
-              <div className="p-8 rounded-2xl text-center" style={{ background: "rgba(74,222,128,0.05)", border: "1px solid rgba(74,222,128,0.2)" }}>
-                <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "rgba(74,222,128,0.1)" }}>
-                  <CheckCircle className="w-8 h-8 text-green-400" />
+              <div className="space-y-4">
+                {/* Success banner */}
+                <div className="p-6 rounded-2xl text-center" style={{ background: "rgba(74,222,128,0.05)", border: "1px solid rgba(74,222,128,0.2)" }}>
+                  <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: "rgba(74,222,128,0.1)" }}>
+                    <CheckCircle className="w-7 h-7 text-green-400" />
+                  </div>
+                  <h3 className="text-xl font-black text-white mb-1">Movie Night Booked!</h3>
+                  <p className="text-sm text-neutral-500 font-inter">Your squad's seats are confirmed. Enjoy the movie! 🎬</p>
+                  <button
+                    onClick={() => navigate(`/movie-nights/${nightId}/booked`)}
+                    className="mt-4 px-5 py-2.5 rounded-xl font-black text-xs inline-flex items-center gap-2 transition-all hover:scale-105"
+                    style={{ background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000", boxShadow: "0 6px 20px rgba(212,175,55,0.2)" }}>
+                    <Ticket className="w-3.5 h-3.5" /> View Tickets & Seats
+                  </button>
                 </div>
-                <h3 className="text-xl font-black text-white mb-2">Movie Night Booked!</h3>
-                <p className="text-sm text-neutral-500 font-inter">Your squad's booking is confirmed. Enjoy the movie! 🎬</p>
+
+                {/* Seat assignments */}
+                {seatAssignments.length > 0 && (
+                  <div className={cardCls} style={{ ...cardStyle, border: "1px solid rgba(201,168,76,0.15)" }}>
+                    <h2 className="font-black text-sm text-white flex items-center gap-2">
+                      <Ticket className="w-4 h-4" style={{ color: "#d4af37" }} /> Seat Assignments
+                    </h2>
+                    <div className="space-y-2">
+                      {seatAssignments.map(a => (
+                        <div key={a.userId} className="flex items-center justify-between px-3 py-3 rounded-xl"
+                          style={{ background: a.userId === user?.id ? "rgba(212,175,55,0.06)" : "rgba(255,255,255,0.02)", border: a.userId === user?.id ? "1px solid rgba(212,175,55,0.2)" : "1px solid rgba(255,255,255,0.04)" }}>
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black" style={{ background: "rgba(212,175,55,0.12)", color: "#d4af37" }}>
+                              {a.fullName.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-white flex items-center gap-1.5">
+                                {a.fullName}
+                                {a.userId === user?.id && <span className="text-[8px] font-black px-1.5 py-0.5 rounded" style={{ background: "rgba(212,175,55,0.15)", color: "#d4af37" }}>YOU</span>}
+                              </p>
+                              <p className="text-[9px] text-neutral-600 font-inter">Code: {a.bookingCode}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-lg font-black" style={{ color: "#d4af37" }}>{a.seatRow}{a.seatNumber}</div>
+                            <div className="text-[9px] text-neutral-600 uppercase tracking-widest font-bold">{a.seatCategory}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

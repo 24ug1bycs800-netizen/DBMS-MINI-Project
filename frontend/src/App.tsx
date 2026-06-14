@@ -15,6 +15,7 @@ const BookingConfirmation = lazy(() => import('./pages/BookingConfirmation.js').
 const MovieNights = lazy(() => import('./pages/MovieNights.js').then(m => ({ default: m.MovieNights })));
 const CreateMovieNight = lazy(() => import('./pages/CreateMovieNight.js').then(m => ({ default: m.CreateMovieNight })));
 const MovieNightDetail = lazy(() => import('./pages/MovieNightDetail.js').then(m => ({ default: m.MovieNightDetail })));
+const MovieNightSuccess = lazy(() => import('./pages/MovieNightSuccess.js').then(m => ({ default: m.MovieNightSuccess })));
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center" style={{ background: '#080808' }}>
@@ -42,6 +43,7 @@ function App() {
                 <Route path="/movie-nights" element={<MovieNights />} />
                 <Route path="/movie-nights/create" element={<CreateMovieNight />} />
                 <Route path="/movie-nights/:id" element={<MovieNightDetail />} />
+                <Route path="/movie-nights/:id/booked" element={<MovieNightSuccess />} />
               </Routes>
             </Suspense>
           </div>

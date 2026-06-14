@@ -12,6 +12,8 @@ import {
   cancelMovieNight,
   markContributionPaid,
   completeBooking,
+  getNightSeatAssignments,
+  getMyNightTicket,
 } from "../controllers/movieNightController";
 
 const router = Router();
@@ -27,5 +29,7 @@ router.post("/:id/regenerate", authenticateJWT, regenerateRecommendation);
 router.post("/:id/cancel", authenticateJWT, cancelMovieNight);
 router.post("/:id/contributions/pay", authenticateJWT, markContributionPaid);
 router.post("/:id/book", authenticateJWT, completeBooking);
+router.get("/:id/seats", authenticateJWT, getNightSeatAssignments);
+router.get("/:id/my-ticket", authenticateJWT, getMyNightTicket);
 
 export default router;
