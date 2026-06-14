@@ -289,6 +289,7 @@ export const MovieDetails: React.FC = () => {
   const [cast, setCast] = useState<CastMember[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(DATE_OPTIONS[0]);
   const [selectedLanguage, setSelectedLanguage] = useState("");
+  const [selectedScreenTypes, setSelectedScreenTypes] = useState<Set<string>>(new Set());
   const [trailerOpen, setTrailerOpen] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
 
@@ -365,6 +366,29 @@ export const MovieDetails: React.FC = () => {
     return Array.from(langs) as string[];
   }, [shows]);
 
+  // Shows for the selected date + language, before screen-type filtering
+  const baseShows = useMemo(
+    () => shows.filter(
+      s => s.date === selectedDate &&
+        isShowAvailable(s, selectedDate) &&
+        (!selectedLanguage || s.language === selectedLanguage)
+    ),
+    [shows, selectedDate, selectedLanguage]
+  );
+
+  // Screen types available for the current date + language combination
+  const availableScreenTypes = useMemo(
+    () => [...new Set(baseShows.map(s => s.screen?.type).filter(Boolean))] as string[],
+    [baseShows]
+  );
+
+  // When available screen types change (date/language switch), select all of them
+  const screenTypesKey = availableScreenTypes.join("|");
+  useEffect(() => {
+    setSelectedScreenTypes(new Set(availableScreenTypes));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screenTypesKey]);
+
   if (!movie) {
     return (
       <div
@@ -379,11 +403,10 @@ export const MovieDetails: React.FC = () => {
     );
   }
 
-  const dailyShows = shows.filter(
-    (s) => s.date === selectedDate &&
-      isShowAvailable(s, selectedDate) &&
-      (!selectedLanguage || s.language === selectedLanguage),
-  );
+  const dailyShows = selectedScreenTypes.size === 0
+    ? baseShows
+    : baseShows.filter(s => selectedScreenTypes.has(s.screen?.type));
+
   const theatresMap: Record<
     number,
     { name: string; address: string; shows: Show[] }
@@ -688,6 +711,33 @@ export const MovieDetails: React.FC = () => {
                       {lang}
                     </button>
                   ))}
+                </div>
+              )}
+
+              {/* SCREEN TYPE FILTER */}
+              {availableScreenTypes.length > 1 && (
+                <div className="flex flex-wrap gap-2 items-center">
+                  <span className="text-[10px] font-black tracking-widest uppercase" style={{ color: "#555" }}>Format</span>
+                  {availableScreenTypes.map(type => {
+                    const active = selectedScreenTypes.has(type);
+                    return (
+                      <button
+                        key={type}
+                        onClick={() => setSelectedScreenTypes(prev => {
+                          const next = new Set(prev);
+                          active ? next.delete(type) : next.add(type);
+                          return next;
+                        })}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                        style={active
+                          ? { background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.4)", color: "#C9A84C" }
+                          : { background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", color: "#444", textDecoration: "line-through", opacity: 0.5 }
+                        }
+                      >
+                        {type}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
 

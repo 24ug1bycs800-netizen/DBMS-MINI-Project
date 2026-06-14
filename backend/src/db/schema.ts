@@ -7,6 +7,7 @@ import {
   boolean,
   text,
   index,
+  unique,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -94,6 +95,8 @@ export const shows = pgTable("shows", {
   screenIdIdx: index("shows_screen_id_idx").on(table.screenId),
   dateIdx: index("shows_date_idx").on(table.date),
   statusIdx: index("shows_status_idx").on(table.status),
+  // One show per screen per time slot — a screen can't play two things simultaneously
+  screenSlotUniq: unique("shows_screen_date_time_unique").on(table.screenId, table.date, table.startTime),
 }));
 
 // SEATS TABLE
