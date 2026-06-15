@@ -5,7 +5,7 @@ import {
   Moon, Users, Copy, Check, Star,
   Clock, MapPin, Ticket, CheckCircle, XCircle, Sparkles,
   ArrowRight, AlertCircle, Wallet, Film, RefreshCw, Ban, Plus,
-  Share2, Play, Timer,
+  Share2, Play, Timer, MessageCircle, Send,
 } from "lucide-react";
 import api from "../services/api.js";
 
@@ -26,6 +26,7 @@ interface Vote { userId: number; vote: string; fullName: string; }
 interface Contribution { id: number; userId: number; contributionAmount: number; status: string; paidAt?: string; fullName: string; profilePic?: string; }
 interface MovieNight { id: number; title: string; description?: string; organizerId: number; inviteCode: string; status: string; createdAt: string; }
 interface SeatAssignment { userId: number; fullName: string; seatRow: string; seatNumber: number; seatCategory: string; bookingCode: string; }
+interface ChatMessage { id: number; message: string; createdAt: string; userId: number; userFullName: string; userProfilePic?: string; }
 
 // ─── GENRE OPTIONS ────────────────────────────────────────────────────────────
 
@@ -100,6 +101,12 @@ export const MovieNightDetail: React.FC = () => {
   const prefFilledRef = useRef(false);
   const [countdown, setCountdown] = useState("");
 
+  // Chat state
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatSending, setChatSending] = useState(false);
+  const chatBottomRef = useRef<HTMLDivElement>(null);
+
   // Live countdown for BOOKED status
   useEffect(() => {
     if (!recommendation || !night || night.status !== "BOOKED") return;
@@ -138,6 +145,33 @@ export const MovieNightDetail: React.FC = () => {
       setActionMsg("Invite message copied! Share it with your squad.");
       setTimeout(() => setActionMsg(""), 3000);
     }
+  };
+
+  const fetchMessages = useCallback(async () => {
+    try {
+      const res = await api.get(`/movie-nights/${nightId}/messages`);
+      setChatMessages(res.data.messages);
+      setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    } catch { /* silent */ }
+  }, [nightId]);
+
+  // Poll chat every 5s
+  useEffect(() => {
+    if (!night) return;
+    fetchMessages();
+    const t = setInterval(fetchMessages, 5000);
+    return () => clearInterval(t);
+  }, [night?.id, fetchMessages]);
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim() || chatSending) return;
+    setChatSending(true);
+    try {
+      await api.post(`/movie-nights/${nightId}/messages`, { message: chatInput.trim() });
+      setChatInput("");
+      fetchMessages();
+    } catch { /* silent */ } finally { setChatSending(false); }
   };
 
   const fetchNight = useCallback(async (silent = false) => {
@@ -983,6 +1017,77 @@ export const MovieNightDetail: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {/* ── SQUAD CHAT ─────────────────────────────────────────────────── */}
+            <div className="rounded-2xl overflow-hidden flex flex-col" style={{ background: "#0d0d0d", border: "1px solid rgba(255,255,255,0.06)", height: 360 }}>
+              {/* Header */}
+              <div className="px-4 py-3 flex items-center justify-between flex-shrink-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(0,0,0,0.3)" }}>
+                <div className="flex items-center gap-2">
+                  <MessageCircle className="w-3.5 h-3.5" style={{ color: "#6ee7e7" }} />
+                  <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: "#6ee7e7" }}>Squad Chat</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                  <span className="text-[9px] font-bold text-neutral-600">LIVE</span>
+                </div>
+              </div>
+
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-neutral-800">
+                {chatMessages.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center gap-2">
+                    <MessageCircle className="w-6 h-6 text-neutral-800" />
+                    <p className="text-[10px] text-neutral-700 font-inter text-center">No messages yet.<br />Start the conversation!</p>
+                  </div>
+                ) : chatMessages.map(msg => {
+                  const isMe = msg.userId === user?.id;
+                  const time = new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                  return (
+                    <div key={msg.id} className={`flex gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
+                      {/* Avatar */}
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black flex-shrink-0 mt-0.5"
+                        style={{ background: isMe ? "rgba(212,175,55,0.18)" : "rgba(255,255,255,0.06)", color: isMe ? "#d4af37" : "#888" }}>
+                        {msg.userFullName.charAt(0).toUpperCase()}
+                      </div>
+                      {/* Bubble */}
+                      <div className={`max-w-[75%] ${isMe ? "items-end" : "items-start"} flex flex-col gap-0.5`}>
+                        {!isMe && <span className="text-[8px] font-bold text-neutral-600 px-1">{msg.userFullName.split(" ")[0]}</span>}
+                        <div className="px-2.5 py-1.5 rounded-2xl text-[11px] leading-relaxed font-inter"
+                          style={isMe
+                            ? { background: "rgba(212,175,55,0.12)", border: "1px solid rgba(212,175,55,0.2)", color: "#e8e8e8", borderBottomRightRadius: 4 }
+                            : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", color: "#aaa", borderBottomLeftRadius: 4 }}>
+                          {msg.message}
+                        </div>
+                        <span className="text-[8px] text-neutral-700 px-1 font-inter">{time}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div ref={chatBottomRef} />
+              </div>
+
+              {/* Input */}
+              <form onSubmit={handleSendMessage} className="px-3 py-2.5 flex gap-2 flex-shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.05)", background: "rgba(0,0,0,0.2)" }}>
+                <input
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(e as any); } }}
+                  placeholder="Type a message…"
+                  maxLength={500}
+                  style={{ flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "8px 12px", color: "#f0f0f0", fontSize: "0.75rem", fontFamily: "'Inter', sans-serif", outline: "none" }}
+                  onFocus={e => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.35)"; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; }}
+                />
+                <button type="submit" disabled={!chatInput.trim() || chatSending}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-30"
+                  style={{ background: chatInput.trim() ? "linear-gradient(135deg,#d4af37,#f4d03f)" : "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  {chatSending
+                    ? <div className="w-3 h-3 border border-black/30 border-t-black rounded-full animate-spin" />
+                    : <Send className="w-3.5 h-3.5" style={{ color: chatInput.trim() ? "#000" : "#444" }} />}
+                </button>
+              </form>
+            </div>
+
           </div>
 
         </div>

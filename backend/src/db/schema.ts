@@ -165,32 +165,6 @@ export const payments = pgTable("payments", {
     .notNull(),
 });
 
-// GROUP ROOMS TABLE (Collaborative Booking)
-export const groupRooms = pgTable("group_rooms", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  creatorId: integer("creator_id")
-    .references(() => users.id, { onDelete: "cascade" })
-    .notNull(),
-  inviteCode: varchar("invite_code", { length: 100 }).notNull().unique(),
-  status: varchar("status", { length: 50 }).default("voting").notNull(), // 'voting' | 'finalizing' | 'booked'
-  selectedMovieId: integer("selected_movie_id").references(() => movies.id),
-  selectedTheatreId: integer("selected_theatre_id").references(() => theatres.id),
-  selectedShowId: integer("selected_show_id").references(() => shows.id),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-// GROUP MEMBERS TABLE
-export const groupMembers = pgTable("group_members", {
-  id: serial("id").primaryKey(),
-  roomId: integer("room_id")
-    .references(() => groupRooms.id, { onDelete: "cascade" })
-    .notNull(),
-  userId: integer("user_id")
-    .references(() => users.id, { onDelete: "cascade" })
-    .notNull(),
-  joinedAt: timestamp("joined_at").defaultNow().notNull(),
-});
 export const seatLocks = pgTable("seat_locks", {
   id: serial("id").primaryKey(),
 
@@ -212,32 +186,6 @@ export const seatLocks = pgTable("seat_locks", {
     .defaultNow()
     .notNull(),
 });
-// VOTES TABLE
-export const votes = pgTable("votes", {
-  id: serial("id").primaryKey(),
-  roomId: integer("room_id")
-    .references(() => groupRooms.id, { onDelete: "cascade" })
-    .notNull(),
-  userId: integer("user_id")
-    .references(() => users.id, { onDelete: "cascade" })
-    .notNull(),
-  voteType: varchar("vote_type", { length: 50 }).notNull(), // 'movie' | 'theatre' | 'showtime'
-  votedId: integer("voted_id").notNull(),
-});
-
-// GROUP MESSAGES TABLE (in-room discussion chat)
-export const groupMessages = pgTable("group_messages", {
-  id: serial("id").primaryKey(),
-  roomId: integer("room_id")
-    .references(() => groupRooms.id, { onDelete: "cascade" })
-    .notNull(),
-  userId: integer("user_id")
-    .references(() => users.id, { onDelete: "cascade" })
-    .notNull(),
-  message: text("message").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
 // NOTIFICATIONS TABLE
 export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
@@ -298,9 +246,6 @@ export const citiesRelations = relations(cities, ({ many }) => ({
 
 export const usersRelations = relations(users, ({ many }) => ({
   bookings: many(bookings),
-  groupRooms: many(groupRooms),
-  groupMembers: many(groupMembers),
-  votes: many(votes),
   notifications: many(notifications),
   reviews: many(reviews),
   wishlist: many(wishlist),
@@ -360,31 +305,6 @@ export const paymentsRelations = relations(payments, ({ one }) => ({
     references: [bookings.id],
   }),
 }));
-export const groupRoomsRelations = relations(groupRooms, ({ one, many }) => ({
-  creator: one(users, {
-    fields: [groupRooms.creatorId],
-    references: [users.id],
-  }),
-  members: many(groupMembers),
-  votes: many(votes),
-}));
-
-export const groupMembersRelations = relations(groupMembers, ({ one }) => ({
-  room: one(groupRooms, {
-    fields: [groupMembers.roomId],
-    references: [groupRooms.id],
-  }),
-  user: one(users, { fields: [groupMembers.userId], references: [users.id] }),
-}));
-
-export const votesRelations = relations(votes, ({ one }) => ({
-  room: one(groupRooms, {
-    fields: [votes.roomId],
-    references: [groupRooms.id],
-  }),
-  user: one(users, { fields: [votes.userId], references: [users.id] }),
-}));
-
 export const notificationsRelations = relations(notifications, ({ one }) => ({
   user: one(users, {
     fields: [notifications.userId],
@@ -456,6 +376,19 @@ export const movieNightVotes = pgTable("movie_night_votes", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// MOVIE NIGHT MESSAGES (in-night group chat)
+export const movieNightMessages = pgTable("movie_night_messages", {
+  id: serial("id").primaryKey(),
+  movieNightId: integer("movie_night_id")
+    .references(() => movieNights.id, { onDelete: "cascade" })
+    .notNull(),
+  userId: integer("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  message: text("message").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const movieNightContributions = pgTable("movie_night_contributions", {
   id: serial("id").primaryKey(),
   movieNightId: integer("movie_night_id").references(() => movieNights.id, { onDelete: "cascade" }).notNull(),
@@ -475,6 +408,12 @@ export const movieNightsRelations = relations(movieNights, ({ one, many }) => ({
   recommendations: many(movieNightRecommendations),
   votes: many(movieNightVotes),
   contributions: many(movieNightContributions),
+  messages: many(movieNightMessages),
+}));
+
+export const movieNightMessagesRelations = relations(movieNightMessages, ({ one }) => ({
+  movieNight: one(movieNights, { fields: [movieNightMessages.movieNightId], references: [movieNights.id] }),
+  user: one(users, { fields: [movieNightMessages.userId], references: [users.id] }),
 }));
 
 export const movieNightMembersRelations = relations(movieNightMembers, ({ one }) => ({

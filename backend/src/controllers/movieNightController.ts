@@ -5,7 +5,7 @@ import { db } from "../db/db";
 import {
   movieNights, movieNightMembers, movieNightPreferences,
   movieNightRecommendations, movieNightVotes, movieNightContributions,
-  movieNightSeatAssignments,
+  movieNightSeatAssignments, movieNightMessages,
   movies, shows, screens, theatres, cities, users, seats, bookings,
 } from "../db/schema";
 
@@ -688,5 +688,69 @@ export const getMyNightTicket = async (req: Request, res: Response) => {
   } catch (err) {
     console.error("[getMyNightTicket]", err);
     return res.status(500).json({ error: "Failed to fetch ticket." });
+  }
+};
+
+// ─── GET MOVIE NIGHT MESSAGES (group chat) ────────────────────────────────────
+
+export const getMovieNightMessages = async (req: Request, res: Response) => {
+  const movieNightId = parseInt(req.params.id);
+  const userId = uid(req);
+  try {
+    const member = await isMember(movieNightId, userId);
+    if (!member) return res.status(403).json({ error: "Not a member of this movie night." });
+
+    const messages = await db
+      .select({
+        id: movieNightMessages.id,
+        message: movieNightMessages.message,
+        createdAt: movieNightMessages.createdAt,
+        userId: movieNightMessages.userId,
+        userFullName: users.fullName,
+        userProfilePic: users.profilePic,
+      })
+      .from(movieNightMessages)
+      .innerJoin(users, eq(movieNightMessages.userId, users.id))
+      .where(eq(movieNightMessages.movieNightId, movieNightId))
+      .orderBy(asc(movieNightMessages.createdAt))
+      .limit(150);
+
+    return res.json({ messages });
+  } catch (err) {
+    console.error("[getMovieNightMessages]", err);
+    return res.status(500).json({ error: "Failed to fetch messages." });
+  }
+};
+
+// ─── SEND MOVIE NIGHT MESSAGE (group chat) ────────────────────────────────────
+
+export const sendMovieNightMessage = async (req: Request, res: Response) => {
+  const movieNightId = parseInt(req.params.id);
+  const userId = uid(req);
+  const { message } = req.body;
+
+  if (!message?.trim()) return res.status(400).json({ error: "Message cannot be empty." });
+
+  try {
+    const member = await isMember(movieNightId, userId);
+    if (!member) return res.status(403).json({ error: "Not a member of this movie night." });
+
+    const [newMsg] = await db
+      .insert(movieNightMessages)
+      .values({ movieNightId, userId, message: message.trim() })
+      .returning();
+
+    const [userInfo] = await db
+      .select({ fullName: users.fullName, profilePic: users.profilePic })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    return res.status(201).json({
+      message: { ...newMsg, userFullName: userInfo.fullName, userProfilePic: userInfo.profilePic },
+    });
+  } catch (err) {
+    console.error("[sendMovieNightMessage]", err);
+    return res.status(500).json({ error: "Failed to send message." });
   }
 };
