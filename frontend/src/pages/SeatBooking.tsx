@@ -345,7 +345,7 @@ export const SeatBooking: React.FC = () => {
           </div>
 
           {/* SEAT ZONES */}
-          <div className="overflow-x-auto pb-4 w-full flex flex-col items-center">
+          <div className="overflow-x-auto pb-4 w-full flex flex-col items-center" style={{ WebkitOverflowScrolling: "touch" }}>
             <div className="space-y-4">
               {categoryZones.map(({ category, rows }) => {
                 const zone = ZONE_CONFIG[category] ?? ZONE_CONFIG.Regular;

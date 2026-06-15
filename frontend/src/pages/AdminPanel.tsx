@@ -1380,15 +1380,14 @@ export const AdminPanel: React.FC = () => {
                     ))}
                     {movieLanguageOptions.filter(l => !wLanguageTimes.some(lt => lt.language === l)).length > 0 && (
                       <select
-                        className="px-3 py-2 rounded-xl text-xs font-black cursor-pointer appearance-none"
-                        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)" }}
+                        className={`${selectCls} w-auto min-w-[140px]`}
                         value=""
                         onChange={e => { if (e.target.value) { addWLanguage(e.target.value); (e.target as HTMLSelectElement).value = ""; } }}
                       >
-                        <option value="">+ Add Language</option>
+                        <option value="" style={{ background: "#0a0a0a" }}>+ Add Language</option>
                         {movieLanguageOptions
                           .filter(l => !wLanguageTimes.some(lt => lt.language === l))
-                          .map(l => <option key={l} value={l}>{l}</option>)
+                          .map(l => <option key={l} value={l} style={{ background: "#0a0a0a" }}>{l}</option>)
                         }
                       </select>
                     )}

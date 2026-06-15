@@ -80,6 +80,16 @@ const HOME_STYLES = `
   }
 `;
 
+const SkeletonCard = () => (
+  <div style={{ borderRadius: 12, overflow: "hidden", background: "#0f0f0f", border: "1px solid rgba(255,255,255,0.05)" }}>
+    <div className="shimmer" style={{ aspectRatio: "2/3", width: "100%" }} />
+    <div style={{ padding: "10px 12px 14px" }}>
+      <div className="shimmer" style={{ height: 14, borderRadius: 4, marginBottom: 8 }} />
+      <div className="shimmer" style={{ height: 10, borderRadius: 4, width: "60%" }} />
+    </div>
+  </div>
+);
+
 export const Home: React.FC = () => {
   const { selectedCity } = useCityStore();
   const navigate = useNavigate();
@@ -88,14 +98,18 @@ export const Home: React.FC = () => {
   const [theatres, setTheatres] = useState<Theatre[]>([]);
   const [heroIdx, setHeroIdx] = useState(0);
   const [heroLoaded, setHeroLoaded] = useState(false);
+  const [loadingMovies, setLoadingMovies] = useState(true);
   const [cityModalOpen, setCityModalOpen] = useState(false);
 
   useEffect(() => {
     setHeroLoaded(false);
     setHeroIdx(0);
-    api.get(`/movies?isNowShowing=true&citySlug=${selectedCity.slug}`).then(r => { setNowShowing(r.data.movies); setHeroLoaded(true); }).catch(() => {});
-    api.get("/movies?isNowShowing=false").then(r => setComingSoon(r.data.movies)).catch(() => {});
-    api.get(`/theatres?citySlug=${selectedCity.slug}`).then(r => setTheatres(r.data.theatres)).catch(() => {});
+    setLoadingMovies(true);
+    Promise.all([
+      api.get(`/movies?isNowShowing=true&citySlug=${selectedCity.slug}`).then(r => setNowShowing(r.data.movies)).catch(() => {}),
+      api.get("/movies?isNowShowing=false").then(r => setComingSoon(r.data.movies)).catch(() => {}),
+      api.get(`/theatres?citySlug=${selectedCity.slug}`).then(r => setTheatres(r.data.theatres)).catch(() => {}),
+    ]).finally(() => { setLoadingMovies(false); setHeroLoaded(true); });
   }, [selectedCity]);
 
   useEffect(() => {
@@ -211,15 +225,9 @@ export const Home: React.FC = () => {
       {/* ── NOW SHOWING ── */}
       <div style={{ padding:"3rem 1.5rem 2.5rem" }} className="sm:px-16">
         <SectionHeading icon={<Film size={14} color="#C9A84C" />} label="Now Showing" />
-        {nowShowing.length === 0 && !heroLoaded ? (
+        {loadingMovies ? (
           <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))", gap:16 }}>
-            {Array.from({ length: 10 }).map((_, i) => (
-              <div key={i} style={{ borderRadius:12, overflow:"hidden" }}>
-                <div className="shimmer" style={{ aspectRatio:"2/3", borderRadius:12 }} />
-                <div className="shimmer" style={{ height:12, borderRadius:4, marginTop:8, width:"80%" }} />
-                <div className="shimmer" style={{ height:10, borderRadius:4, marginTop:5, width:"55%" }} />
-              </div>
-            ))}
+            {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
           </div>
         ) : (
           <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))", gap:16 }}>
@@ -239,10 +247,15 @@ export const Home: React.FC = () => {
       </div>
 
       {/* ── COMING SOON ── */}
-      {comingSoon.length > 0 && (
+      {(loadingMovies || comingSoon.length > 0) && (
         <div style={{ padding:"0 1.5rem 3rem" }} className="sm:px-16">
           <SectionHeading icon={<Calendar size={14} color="#888" />} label="Coming Soon" />
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))", gap:16 }}>
+          {loadingMovies && (
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))", gap:16 }}>
+              {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+            </div>
+          )}
+          {!loadingMovies && <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))", gap:16 }}>
             {comingSoon.map((m, i) => (
               <MovieCard key={m.id} movie={m} delay={i * 45}
                 badge={
@@ -255,7 +268,7 @@ export const Home: React.FC = () => {
                 muted
               />
             ))}
-          </div>
+          </div>}
         </div>
       )}
 

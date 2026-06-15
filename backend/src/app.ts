@@ -10,6 +10,7 @@ import bookingRoutes from "./routes/bookingRoutes";
 import groupRoutes from "./routes/groupRoutes";
 import adminRoutes from "./routes/adminRoutes";
 import movieNightRoutes from "./routes/movieNightRoutes";
+import notificationRoutes from "./routes/notificationRoutes";
 import { startCleanupScheduler } from "./jobs/cleanupShows";
 import { db } from "./db/db";
 import { sql } from "drizzle-orm";
@@ -70,6 +71,7 @@ app.use("/api/bookings", bookingRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/movie-nights", movieNightRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 /* ---------------- ERROR HANDLER ---------------- */
 
@@ -95,6 +97,21 @@ const runMigrations = async () => {
     console.log("✅ TMDB migration applied");
   } catch (err) {
     console.warn("⚠️  Migration skipped:", (err as Error).message);
+  }
+
+  // Performance indexes — CREATE INDEX IF NOT EXISTS is safe to re-run
+  try {
+    await db.execute(sql.raw(`
+      CREATE INDEX IF NOT EXISTS bookings_user_id_idx          ON bookings (user_id);
+      CREATE INDEX IF NOT EXISTS users_email_idx               ON users (email);
+      CREATE INDEX IF NOT EXISTS movie_night_members_user_idx  ON movie_night_members (user_id);
+      CREATE INDEX IF NOT EXISTS notifications_user_id_idx     ON notifications (user_id);
+      CREATE INDEX IF NOT EXISTS wishlist_user_id_idx          ON wishlist (user_id);
+      CREATE INDEX IF NOT EXISTS reviews_movie_id_idx          ON reviews (movie_id);
+    `));
+    console.log("✅ Performance indexes applied");
+  } catch (err) {
+    console.warn("⚠️  Index migration skipped:", (err as Error).message);
   }
 };
 
