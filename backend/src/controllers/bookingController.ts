@@ -110,6 +110,116 @@ export const getSeatsForShow = async (req: Request, res: Response) => {
   }
 };
  
+// SMART SEAT SUGGESTION
+// Given a show and a party size, returns the single best block of contiguous
+// (same row, consecutive numbers) available seats — preferring central columns
+// and middle rows for the best viewing experience. Optionally filters by category.
+const ROW_ORDER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+export const suggestSeats = async (req: Request, res: Response) => {
+  try {
+    const showId = parseInt(req.params.showId);
+    const count = parseInt(String(req.query.count ?? "2"));
+    const category = req.query.category ? String(req.query.category) : null;
+
+    if (Number.isNaN(showId)) return res.status(400).json({ error: "Invalid show ID" });
+    if (Number.isNaN(count) || count < 1 || count > 10) {
+      return res.status(400).json({ error: "count must be between 1 and 10" });
+    }
+
+    // Resolve the show's screen
+    const showRows = await db.select().from(shows).where(eq(shows.id, showId)).limit(1);
+    const show = showRows[0];
+    if (!show) return res.status(404).json({ error: "Show not found" });
+
+    // Drop expired locks first so they don't block suggestions
+    await db.delete(seatLocks).where(lt(seatLocks.expiresAt, new Date()));
+
+    // Pull all seats for the screen + the seats that are unavailable
+    // (confirmed bookings OR currently held locks) in parallel.
+    const [allSeats, bookedRows, lockRows] = await Promise.all([
+      db.select().from(seats).where(eq(seats.screenId, show.screenId)),
+      db
+        .select({ seatId: bookingSeats.seatId })
+        .from(bookingSeats)
+        .innerJoin(bookings, eq(bookingSeats.bookingId, bookings.id))
+        .where(and(eq(bookings.showId, showId), eq(bookings.status, "confirmed"))),
+      db.select({ seatId: seatLocks.seatId }).from(seatLocks).where(eq(seatLocks.showId, showId)),
+    ]);
+
+    const unavailable = new Set<number>([
+      ...bookedRows.map((r) => r.seatId),
+      ...lockRows.map((r) => r.seatId),
+    ]);
+
+    // Group available seats by row, sorted by seat number.
+    const byRow = new Map<string, typeof allSeats>();
+    for (const seat of allSeats) {
+      if (unavailable.has(seat.id)) continue;
+      if (category && seat.category !== category) continue;
+      const arr = byRow.get(seat.row) ?? [];
+      arr.push(seat);
+      byRow.set(seat.row, arr);
+    }
+
+    const rowLetters = [...byRow.keys()];
+    const middleRowIdx = (Math.min(...rowLetters.map((r) => ROW_ORDER.indexOf(r))) +
+      Math.max(...rowLetters.map((r) => ROW_ORDER.indexOf(r)))) / 2;
+
+    // Slide a window of `count` over each row; keep only windows where every seat
+    // is consecutive (number gap of exactly 1). Score each by how central it is.
+    let best: { seats: typeof allSeats; score: number } | null = null;
+
+    for (const [rowLetter, rowSeatsUnsorted] of byRow) {
+      const rowSeats = [...rowSeatsUnsorted].sort((a, b) => a.number - b.number);
+      const rowMinNum = rowSeats[0]?.number ?? 0;
+      const rowMaxNum = rowSeats[rowSeats.length - 1]?.number ?? 0;
+      const rowCenterNum = (rowMinNum + rowMaxNum) / 2;
+      const rowIdx = ROW_ORDER.indexOf(rowLetter);
+
+      for (let i = 0; i + count <= rowSeats.length; i++) {
+        const window = rowSeats.slice(i, i + count);
+        const contiguous = window.every(
+          (s, k) => k === 0 || s.number === window[k - 1].number + 1
+        );
+        if (!contiguous) continue;
+
+        const windowCenter = (window[0].number + window[count - 1].number) / 2;
+        // Lower score = better: central columns weighted, middle rows weighted.
+        const score =
+          Math.abs(windowCenter - rowCenterNum) +
+          Math.abs(rowIdx - middleRowIdx) * 1.5;
+
+        if (!best || score < best.score) best = { seats: window, score };
+      }
+    }
+
+    if (!best) {
+      return res.status(200).json({
+        contiguous: false,
+        message: `No block of ${count} adjacent seats is available${category ? ` in ${category}` : ""}.`,
+        seats: [],
+        seatIds: [],
+      });
+    }
+
+    const priceFor = (cat: string) =>
+      cat === "Premium" ? show.pricePremium : cat === "Recliner" ? show.priceRecliner : show.priceRegular;
+    const totalPrice = best.seats.reduce((sum, s) => sum + priceFor(s.category), 0);
+
+    return res.status(200).json({
+      contiguous: true,
+      seatIds: best.seats.map((s) => s.id),
+      seats: best.seats.map((s) => ({ id: s.id, row: s.row, number: s.number, category: s.category })),
+      labels: best.seats.map((s) => `${s.row}${s.number}`),
+      totalPrice,
+    });
+  } catch (err) {
+    console.error("suggestSeats error:", err);
+    return res.status(500).json({ error: "Internal server error suggesting seats" });
+  }
+};
+
 // CREATE BOOKING ORDER
 export const createBooking = async (req: Request, res: Response) => {
   try {
@@ -534,18 +644,68 @@ export const addReview = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     const { movieId, rating, comment } = req.body;
- 
-    if (!movieId || !rating) {
-      return res.status(400).json({ error: "movieId and rating are required" });
+
+    // Validate movieId
+    const movieIdInt = parseInt(movieId);
+    if (!movieId || Number.isNaN(movieIdInt)) {
+      return res.status(400).json({ error: "A valid movieId is required" });
     }
- 
+
+    // Validate rating: must be an integer between 1 and 5
+    const ratingInt = parseInt(rating);
+    if (Number.isNaN(ratingInt) || ratingInt < 1 || ratingInt > 5) {
+      return res.status(400).json({ error: "rating must be an integer between 1 and 5" });
+    }
+
+    // Validate comment length (optional field)
+    if (comment !== undefined && comment !== null) {
+      if (typeof comment !== "string") {
+        return res.status(400).json({ error: "comment must be text" });
+      }
+      if (comment.length > 1000) {
+        return res.status(400).json({ error: "comment must be 1000 characters or fewer" });
+      }
+    }
+
+    // The movie must exist
+    const movieExists = await db.select({ id: movies.id }).from(movies).where(eq(movies.id, movieIdInt)).limit(1);
+    if (!movieExists[0]) {
+      return res.status(404).json({ error: "Movie not found" });
+    }
+
+    // Authorization: only users who actually booked (and confirmed) a show of this
+    // movie may review it. Prevents review spam from users who never watched it.
+    const hasBooked = await db
+      .select({ id: bookings.id })
+      .from(bookings)
+      .innerJoin(shows, eq(bookings.showId, shows.id))
+      .where(and(
+        eq(bookings.userId, user.id),
+        eq(shows.movieId, movieIdInt),
+        eq(bookings.status, "confirmed"),
+      ))
+      .limit(1);
+    if (!hasBooked[0]) {
+      return res.status(403).json({ error: "You can only review movies you have booked" });
+    }
+
+    // One review per user per movie
+    const existingReview = await db
+      .select({ id: reviews.id })
+      .from(reviews)
+      .where(and(eq(reviews.userId, user.id), eq(reviews.movieId, movieIdInt)))
+      .limit(1);
+    if (existingReview[0]) {
+      return res.status(409).json({ error: "You have already reviewed this movie" });
+    }
+
     const inserted = await db.insert(reviews).values({
       userId: user.id,
-      movieId: parseInt(movieId),
-      rating: parseInt(rating),
-      comment,
+      movieId: movieIdInt,
+      rating: ratingInt,
+      comment: comment ?? null,
     }).returning();
- 
+
     return res.status(201).json({ message: "Review added successfully", review: inserted[0] });
   } catch (err) {
     console.error("Add review error:", err);

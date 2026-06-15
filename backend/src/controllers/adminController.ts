@@ -4,7 +4,6 @@ import { db } from "../db/db";
 import {
   bookings,
   cities,
-  groupRooms,
   movieNights,
   movieNightMembers,
   movies,
@@ -154,7 +153,7 @@ const buildUpcomingDates = (days: number, startDate?: string) => {
 
 export const getDashboardStats = async (_req: Request, res: Response) => {
   try {
-    const [confirmedRows, totalUsersResult, activeRoomsResult, bookedRoomsResult] =
+    const [confirmedRows, totalUsersResult] =
       await Promise.all([
         db
           .select({
@@ -172,11 +171,6 @@ export const getDashboardStats = async (_req: Request, res: Response) => {
           .innerJoin(cities, eq(theatres.cityId, cities.id))
           .where(eq(bookings.status, "confirmed")),
         db.select({ count: sql<number>`count(*)::int` }).from(users),
-        db.select({ count: sql<number>`count(*)::int` }).from(groupRooms),
-        db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(groupRooms)
-          .where(eq(groupRooms.status, "booked")),
       ]);
 
     const totalRevenue = confirmedRows.reduce(
@@ -188,7 +182,7 @@ export const getDashboardStats = async (_req: Request, res: Response) => {
       totalRevenue,
       totalBookings: confirmedRows.length,
       totalUsers: totalUsersResult[0]?.count ?? 0,
-      activeGroupRooms: activeRoomsResult[0]?.count ?? 0,
+      activeGroupRooms: 0, // group feature removed
     };
 
     const datesMap: Record<string, { bookings: number; revenue: number }> = {};
@@ -225,10 +219,10 @@ export const getDashboardStats = async (_req: Request, res: Response) => {
       .map(([name, bookingsCount]) => ({ name, bookings: bookingsCount }))
       .sort((a, b) => b.bookings - a.bookings);
 
-    const bookedRoomCount = bookedRoomsResult[0]?.count ?? 0;
+    const bookedRoomCount = 0; // group feature removed
     const groupBookingUsage = [
-      { name: "Individual Bookings", value: Math.max(0, confirmedRows.length - bookedRoomCount * 3) },
-      { name: "Group Bookings", value: bookedRoomCount * 3 || 0 },
+      { name: "Individual Bookings", value: confirmedRows.length },
+      { name: "Group Bookings", value: 0 },
     ];
 
     // Monthly aggregation
@@ -632,7 +626,6 @@ export const deleteShow = async (req: Request, res: Response) => {
     if (Number.isNaN(id)) return res.status(400).json({ error: "Invalid show ID" });
 
     await db.delete(seatLocks).where(eq(seatLocks.showId, id));
-    await db.update(groupRooms).set({ selectedShowId: null }).where(eq(groupRooms.selectedShowId, id));
     await db.delete(shows).where(eq(shows.id, id));
 
     return res.status(200).json({ message: "Show deleted successfully" });
@@ -709,10 +702,6 @@ export const bulkDeleteShows = async (req: Request, res: Response) => {
 
     // Clean up dependencies before hard delete
     await db.delete(seatLocks).where(inArray(seatLocks.showId, showIds));
-    await db
-      .update(groupRooms)
-      .set({ selectedShowId: null })
-      .where(inArray(groupRooms.selectedShowId as any, showIds));
     await db.delete(shows).where(inArray(shows.id, showIds));
 
     return res.status(200).json({ message: `${showIds.length} shows deleted`, deleted: showIds.length });

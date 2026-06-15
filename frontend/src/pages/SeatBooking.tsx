@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.js";
-import { Star, Ticket, AlertCircle, Users } from "lucide-react";
+import { Star, Ticket, AlertCircle, Users, Sparkles } from "lucide-react";
 import api from "../services/api.js";
 
 declare global {
@@ -154,6 +154,8 @@ export const SeatBooking: React.FC = () => {
   const [error, setError] = useState("");
   const [lockExpiry, setLockExpiry] = useState<Date | null>(null);
   const [timeLeft, setTimeLeft] = useState("");
+  const [partySize, setPartySize] = useState(2);
+  const [suggesting, setSuggesting] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -212,6 +214,25 @@ export const SeatBooking: React.FC = () => {
       }
       return [...prev, seatId];
     });
+  };
+
+  // Smart seat picker — asks the backend for the best contiguous block.
+  const handleAutoPick = async () => {
+    setError("");
+    setSuggesting(true);
+    const count = movieNightId ? maxSeats : partySize;
+    try {
+      const res = await api.get(`/bookings/shows/${showId}/suggest`, { params: { count } });
+      if (!res.data.contiguous || !res.data.seatIds?.length) {
+        setError(res.data.message || "No block of adjacent seats found. Try fewer seats or pick manually.");
+        return;
+      }
+      setSelectedSeats(res.data.seatIds);
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Couldn't suggest seats. Please pick manually.");
+    } finally {
+      setSuggesting(false);
+    }
   };
 
   const getSelectedSeatNames = () =>
@@ -503,6 +524,50 @@ export const SeatBooking: React.FC = () => {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Smart seat picker */}
+          <div className="p-5 rounded-2xl"
+            style={{ background: "linear-gradient(160deg, #111 0%, #0c0c0c 100%)", border: "1px solid rgba(201,168,76,0.1)" }}>
+            <h4 className="font-black text-sm text-white mb-1 flex items-center gap-2">
+              <Sparkles className="w-4 h-4" style={{ color: "#C9A84C" }} /> Smart Seat Picker
+            </h4>
+            <p className="text-[10px] text-neutral-600 font-inter mb-4">
+              Let us auto-select the best block of seats together.
+            </p>
+
+            {!movieNightId && (
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-xs text-neutral-500 font-inter">Party size</span>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setPartySize(p => Math.max(1, p - 1))}
+                    className="w-7 h-7 rounded-lg font-black text-sm flex items-center justify-center transition-all hover:scale-105 disabled:opacity-30"
+                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#C9A84C" }}
+                    disabled={partySize <= 1}
+                  >−</button>
+                  <span className="w-5 text-center font-black text-white tabular-nums">{partySize}</span>
+                  <button
+                    onClick={() => setPartySize(p => Math.min(maxSeats, p + 1))}
+                    className="w-7 h-7 rounded-lg font-black text-sm flex items-center justify-center transition-all hover:scale-105 disabled:opacity-30"
+                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#C9A84C" }}
+                    disabled={partySize >= maxSeats}
+                  >+</button>
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={handleAutoPick}
+              disabled={suggesting}
+              className="w-full py-3 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
+              style={{ background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.3)", color: "#E8C96A" }}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              {suggesting
+                ? "Finding best seats…"
+                : `Auto-pick ${movieNightId ? maxSeats : partySize} best seat${(movieNightId ? maxSeats : partySize) !== 1 ? "s" : ""}`}
+            </button>
           </div>
 
           {/* Booking summary */}

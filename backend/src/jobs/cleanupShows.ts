@@ -1,6 +1,6 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db/db";
-import { groupRooms, movieNightRecommendations, movies, seatLocks, shows } from "../db/schema";
+import { movieNightRecommendations, movies, seatLocks, shows } from "../db/schema";
 
 const getToday = () => new Date().toISOString().slice(0, 10);
 
@@ -19,7 +19,7 @@ const timeToMinutes = (t: string): number => {
 // Hard-deletes all shows that are in the past:
 //   • shows from previous dates
 //   • shows from today whose startTime ended ≥30 minutes ago
-// Cleans up seat locks and group room references first.
+// Cleans up seat locks and movie-night recommendations first.
 export const deletePastShows = async () => {
   const today = getToday();
   const now = new Date();
@@ -50,10 +50,6 @@ export const deletePastShows = async () => {
     if (allExpiredIds.length === 0) return;
 
     await db.delete(seatLocks).where(inArray(seatLocks.showId, allExpiredIds));
-    await db
-      .update(groupRooms)
-      .set({ selectedShowId: null })
-      .where(inArray(groupRooms.selectedShowId as any, allExpiredIds));
     // Remove movie night recommendations referencing these shows before deleting
     await db.delete(movieNightRecommendations).where(
       inArray(movieNightRecommendations.showId, allExpiredIds)

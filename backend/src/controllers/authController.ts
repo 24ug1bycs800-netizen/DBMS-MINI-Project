@@ -190,14 +190,23 @@ export const refreshToken = async (req: Request, res: Response) => {
   }
 };
  
-// FORGOT PASSWORD (simulated)
-export const forgotPassword = async (req: Request, res: Response) => {
-  const { email } = req.body;
-  console.log(`Password reset requested for: ${email}`);
-  return res.status(200).json({ message: "Password reset link sent to registered email (simulated)" });
+// FORGOT PASSWORD
+// NOTE: A secure implementation must (1) generate a single-use, time-limited reset
+// token, (2) store its hash against the user, and (3) email the token to the user.
+// That requires a password_reset_tokens table and a mail transport (nodemailer), which
+// are not yet set up. We return 501 rather than falsely claiming an email was sent.
+export const forgotPassword = async (_req: Request, res: Response) => {
+  return res.status(501).json({
+    error: "Password reset is not implemented yet. Please contact an administrator.",
+  });
 };
- 
-// RESET PASSWORD (simulated)
-export const resetPassword = async (req: Request, res: Response) => {
-  return res.status(200).json({ message: "Password has been reset successfully" });
+
+// RESET PASSWORD
+// Intentionally NOT implemented: resetting a password without verifying a single-use
+// reset token would let anyone change any user's password. Returning 501 is the safe,
+// honest behaviour until a proper token-based flow exists.
+export const resetPassword = async (_req: Request, res: Response) => {
+  return res.status(501).json({
+    error: "Password reset is not implemented yet. Please contact an administrator.",
+  });
 };

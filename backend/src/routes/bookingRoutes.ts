@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import {
   getSeatsForShow,
+  suggestSeats,
   createBooking,
   cancelBooking,
   verifyPayment,
@@ -16,6 +17,7 @@ import { authenticateJWT } from "../middleware/authMiddleware";
 const router = Router();
 
 router.get("/shows/:showId/seats", getSeatsForShow);
+router.get("/shows/:showId/suggest", suggestSeats);
 
 router.post("/create", authenticateJWT, createBooking);
 router.post("/verify", authenticateJWT, verifyPayment);
