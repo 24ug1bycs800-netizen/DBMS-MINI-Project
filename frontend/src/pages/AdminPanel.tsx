@@ -805,7 +805,7 @@ export const AdminPanel: React.FC = () => {
                 {
                   icon: <Film className="w-5 h-5" />, label: "Total Bookings",
                   value: kpi.totalBookings.toLocaleString(),
-                  sub: `${charts.groupBookingUsage[1]?.value || 0} via group rooms`,
+                  sub: `${charts.groupBookingUsage[1]?.value || 0} via Movie Nights`,
                   gradient: "from-blue-500/10 to-blue-900/5", iconColor: "#60a5fa", border: "rgba(96,165,250,0.18)"
                 },
                 {

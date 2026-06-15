@@ -162,6 +162,7 @@ export const getDashboardStats = async (_req: Request, res: Response) => {
             createdAt: bookings.createdAt,
             movieTitle: movies.title,
             cityName: cities.name,
+            movieNightId: bookings.movieNightId,
           })
           .from(bookings)
           .innerJoin(shows, eq(bookings.showId, shows.id))
@@ -219,21 +220,22 @@ export const getDashboardStats = async (_req: Request, res: Response) => {
       .map(([name, bookingsCount]) => ({ name, bookings: bookingsCount }))
       .sort((a, b) => b.bookings - a.bookings);
 
-    const bookedRoomCount = 0; // group feature removed
+    const movieNightBookingCount = confirmedRows.filter(r => r.movieNightId != null).length;
     const groupBookingUsage = [
-      { name: "Individual Bookings", value: confirmedRows.length },
-      { name: "Group Bookings", value: 0 },
+      { name: "Individual Bookings", value: confirmedRows.length - movieNightBookingCount },
+      { name: "Movie Night Bookings", value: movieNightBookingCount },
     ];
 
     // Monthly aggregation
-    const monthlyMap: Record<string, { revenue: number; bookings: number }> = {};
+    const monthlyMap: Record<string, { revenue: number; bookings: number; groupBookings: number }> = {};
     confirmedRows.forEach((booking) => {
       const monthStr = booking.createdAt
         ? new Date(booking.createdAt).toISOString().substring(0, 7)
         : new Date().toISOString().substring(0, 7);
-      if (!monthlyMap[monthStr]) monthlyMap[monthStr] = { revenue: 0, bookings: 0 };
+      if (!monthlyMap[monthStr]) monthlyMap[monthStr] = { revenue: 0, bookings: 0, groupBookings: 0 };
       monthlyMap[monthStr].revenue += booking.totalAmount;
       monthlyMap[monthStr].bookings += 1;
+      if (booking.movieNightId != null) monthlyMap[monthStr].groupBookings += 1;
     });
 
     // Ensure last 6 months are always present
@@ -241,7 +243,7 @@ export const getDashboardStats = async (_req: Request, res: Response) => {
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      if (!monthlyMap[key]) monthlyMap[key] = { revenue: 0, bookings: 0 };
+      if (!monthlyMap[key]) monthlyMap[key] = { revenue: 0, bookings: 0, groupBookings: 0 };
     }
 
     const monthlyRevenue = Object.entries(monthlyMap)
@@ -250,8 +252,8 @@ export const getDashboardStats = async (_req: Request, res: Response) => {
         label: new Date(month + "-01").toLocaleString("en-IN", { month: "short", year: "2-digit" }),
         revenue: v.revenue,
         bookings: v.bookings,
-        groupBookings: 0,
-        individualBookings: v.bookings,
+        groupBookings: v.groupBookings,
+        individualBookings: v.bookings - v.groupBookings,
       }))
       .sort((a, b) => a.month.localeCompare(b.month))
       .slice(-6);

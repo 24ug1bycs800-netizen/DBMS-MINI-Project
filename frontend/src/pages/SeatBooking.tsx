@@ -43,29 +43,29 @@ const ZONE_CONFIG: Record<string, {
   label: string; priceKey: "priceRecliner" | "pricePremium" | "priceRegular";
 }> = {
   Recliner: {
-    color: "#d4af37", glow: "rgba(212,175,55,0.18)",
-    bg: "rgba(212,175,55,0.04)", border: "rgba(212,175,55,0.14)",
+    color: "#f59e0b", glow: "rgba(245,158,11,0.18)",
+    bg: "rgba(245,158,11,0.05)", border: "rgba(245,158,11,0.22)",
     label: "RECLINER", priceKey: "priceRecliner",
   },
   Premium: {
-    color: "#a78bfa", glow: "rgba(139,92,246,0.12)",
-    bg: "rgba(139,92,246,0.04)", border: "rgba(139,92,246,0.12)",
+    color: "#3b82f6", glow: "rgba(59,130,246,0.15)",
+    bg: "rgba(59,130,246,0.05)", border: "rgba(59,130,246,0.22)",
     label: "PREMIUM", priceKey: "pricePremium",
   },
   Regular: {
-    color: "#60a5fa", glow: "rgba(59,130,246,0.12)",
-    bg: "rgba(59,130,246,0.04)", border: "rgba(59,130,246,0.1)",
+    color: "#10b981", glow: "rgba(16,185,129,0.15)",
+    bg: "rgba(16,185,129,0.05)", border: "rgba(16,185,129,0.22)",
     label: "REGULAR", priceKey: "priceRegular",
   },
 };
 
-// Regular = blue | Premium = purple | Recliner = gold
+// Regular = emerald | Premium = blue | Recliner = amber
 const SEAT_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  booked:   { bg: "rgba(255,255,255,0.025)", border: "rgba(255,255,255,0.07)",  text: "rgba(255,255,255,0.1)"  },
-  selected: { bg: "rgba(34,197,94,0.2)",     border: "rgba(34,197,94,0.9)",    text: "#4ade80"                },
-  Regular:  { bg: "rgba(59,130,246,0.10)",   border: "rgba(59,130,246,0.5)",   text: "#60a5fa"                },
-  Premium:  { bg: "rgba(139,92,246,0.10)",   border: "rgba(139,92,246,0.55)",  text: "#a78bfa"                },
-  Recliner: { bg: "rgba(212,175,55,0.10)",   border: "rgba(212,175,55,0.55)",  text: "#d4af37"                },
+  booked:   { bg: "rgba(255,255,255,0.02)",  border: "rgba(255,255,255,0.06)",  text: "rgba(255,255,255,0.08)" },
+  selected: { bg: "rgba(34,197,94,0.25)",    border: "#22c55e",                  text: "#4ade80"                },
+  Regular:  { bg: "rgba(16,185,129,0.13)",   border: "rgba(16,185,129,0.65)",    text: "#34d399"                },
+  Premium:  { bg: "rgba(59,130,246,0.13)",   border: "rgba(59,130,246,0.65)",    text: "#60a5fa"                },
+  Recliner: { bg: "rgba(245,158,11,0.13)",   border: "rgba(245,158,11,0.65)",    text: "#fbbf24"                },
 };
 
 // Splits a row into left-wing | (optional center) | right-wing
