@@ -20,7 +20,7 @@ export default {
       },
       fontFamily: {
         poppins: ["Poppins", "sans-serif"],
-        inter: ["Inter", "sans-serif"],
+        inter:   ["Poppins", "sans-serif"],
       },
       boxShadow: {
         premium: "0 8px 32px 0 rgba(0, 0, 0, 0.5)",
