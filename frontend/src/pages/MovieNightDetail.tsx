@@ -5,6 +5,7 @@ import {
   Moon, Users, Copy, Check, Star,
   Clock, MapPin, Ticket, CheckCircle, XCircle, Sparkles,
   ArrowRight, AlertCircle, Wallet, Film, RefreshCw, Ban, Plus,
+  Share2, Play, Timer,
 } from "lucide-react";
 import api from "../services/api.js";
 
@@ -15,7 +16,7 @@ interface Preference { userId: number; preferredGenres: string[]; preferredTime:
 interface Recommendation {
   id: number;
   genreScore: number; timeScore: number; budgetScore: number; locationScore: number; compatibilityScore: number;
-  movie: { id: number; title: string; posterUrl: string; genre: string; language: string; durationMins: number; rating: string; ratingValue: string; };
+  movie: { id: number; title: string; posterUrl: string; genre: string; language: string; durationMins: number; rating: string; ratingValue: string; trailerUrl?: string; overview?: string; };
   show: { id: number; startTime: string; date: string; priceRegular: number; pricePremium: number; priceRecliner: number; language: string; };
   theatre: { id: number; name: string; address: string; };
   city: { id: number; name: string; };
@@ -97,6 +98,47 @@ export const MovieNightDetail: React.FC = () => {
 
   const nightId = parseInt(id!);
   const prefFilledRef = useRef(false);
+  const [countdown, setCountdown] = useState("");
+
+  // Live countdown for BOOKED status
+  useEffect(() => {
+    if (!recommendation || !night || night.status !== "BOOKED") return;
+    const showDateStr = `${recommendation.show.date}`;
+    const showTimeStr = recommendation.show.startTime; // e.g. "10:30 PM"
+    const parse = () => {
+      const [time, period] = showTimeStr.split(" ");
+      const [hStr, mStr] = time.split(":");
+      let h = parseInt(hStr); const m = parseInt(mStr);
+      if (period === "PM" && h !== 12) h += 12;
+      if (period === "AM" && h === 12) h = 0;
+      const d = new Date(showDateStr);
+      d.setHours(h, m, 0, 0);
+      return d;
+    };
+    const tick = () => {
+      const diff = parse().getTime() - Date.now();
+      if (diff <= 0) { setCountdown("Show started!"); return; }
+      const days = Math.floor(diff / 86400000);
+      const hrs  = Math.floor((diff % 86400000) / 3600000);
+      const mins = Math.floor((diff % 3600000) / 60000);
+      const secs = Math.floor((diff % 60000) / 1000);
+      setCountdown(days > 0 ? `${days}d ${hrs}h ${mins}m` : `${hrs}h ${mins}m ${secs}s`);
+    };
+    tick();
+    const t = setInterval(tick, 1000);
+    return () => clearInterval(t);
+  }, [recommendation, night?.status]);
+
+  const handleShare = () => {
+    const msg = `🎬 Join our Movie Night "${night?.title}"!\nUse invite code: ${night?.inviteCode}\nOpen CineCircle → Movie Nights → Join`;
+    if (navigator.share) {
+      navigator.share({ title: "Movie Night Invite", text: msg }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(msg);
+      setActionMsg("Invite message copied! Share it with your squad.");
+      setTimeout(() => setActionMsg(""), 3000);
+    }
+  };
 
   const fetchNight = useCallback(async (silent = false) => {
     if (!silent) setFetching(true);
@@ -274,15 +316,25 @@ export const MovieNightDetail: React.FC = () => {
               </div>
               {night.description && <p className="text-sm text-neutral-500 font-inter ml-11">{night.description}</p>}
             </div>
-            {/* Invite code chip */}
-            <button
-              onClick={copyInvite}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs transition-all hover:scale-105 flex-shrink-0"
-              style={{ background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.2)", color: "#d4af37" }}
-            >
-              {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              {copied ? "Copied!" : night.inviteCode}
-            </button>
+            {/* Invite code chip + share */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={copyInvite}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs transition-all hover:scale-105"
+                style={{ background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.2)", color: "#d4af37" }}
+              >
+                {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? "Copied!" : night.inviteCode}
+              </button>
+              <button
+                onClick={handleShare}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-xl font-black text-xs transition-all hover:scale-105"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)" }}
+                title="Share invite"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           {/* Status progress bar */}
@@ -495,13 +547,25 @@ export const MovieNightDetail: React.FC = () => {
                   </div>
                   <div className="flex gap-5">
                     {/* Poster */}
-                    <div className="w-24 h-36 rounded-xl overflow-hidden flex-shrink-0 bg-neutral-900">
+                    <div className="w-24 h-36 rounded-xl overflow-hidden flex-shrink-0 bg-neutral-900 relative group">
                       <img src={getImageUrl(recommendation.movie.posterUrl)} alt={recommendation.movie.title}
                         className="w-full h-full object-cover" loading="lazy" />
+                      {recommendation.movie.trailerUrl && (
+                        <a href={recommendation.movie.trailerUrl} target="_blank" rel="noopener noreferrer"
+                          className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          style={{ background: "rgba(0,0,0,0.6)" }}>
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(212,175,55,0.9)" }}>
+                            <Play className="w-4 h-4 text-black fill-black" />
+                          </div>
+                        </a>
+                      )}
                     </div>
                     <div className="flex-1 min-w-0 space-y-2">
                       <h3 className="font-black text-lg text-white leading-tight">{recommendation.movie.title}</h3>
                       <p className="text-[11px] text-neutral-500 font-inter">{recommendation.movie.genre} · {recommendation.movie.language} · {recommendation.movie.durationMins}min</p>
+                      {recommendation.movie.overview && (
+                        <p className="text-[10px] text-neutral-600 font-inter leading-relaxed line-clamp-2">{recommendation.movie.overview}</p>
+                      )}
                       <div className="flex items-center gap-2 flex-wrap text-[10px] font-bold">
                         <span className="flex items-center gap-1" style={{ color: "#d4af37" }}><Star className="w-3 h-3 fill-[#d4af37]" />{recommendation.movie.ratingValue}</span>
                         <span className="text-neutral-700">·</span>
@@ -518,6 +582,13 @@ export const MovieNightDetail: React.FC = () => {
                           Screen {recommendation.screenNumber} · {recommendation.screenType} · ₹{recommendation.show.priceRegular}/seat
                         </p>
                       </div>
+                      {recommendation.movie.trailerUrl && (
+                        <a href={recommendation.movie.trailerUrl} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-lg transition-all hover:scale-105"
+                          style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171" }}>
+                          <Play className="w-3 h-3 fill-[#f87171]" /> Watch Trailer
+                        </a>
+                      )}
                     </div>
                   </div>
 
@@ -603,12 +674,26 @@ export const MovieNightDetail: React.FC = () => {
               <div className={cardCls} style={{ ...cardStyle, border: "1px solid rgba(251,146,60,0.15)" }}>
                 <div className="flex items-center justify-between">
                   <h2 className="font-black text-sm text-white flex items-center gap-2">
-                    <Wallet className="w-4 h-4" style={{ color: "#fb923c" }} /> Contributions
+                    <Wallet className="w-4 h-4" style={{ color: "#fb923c" }} /> Cost Split
                   </h2>
                   <span className="text-[10px] font-black px-2.5 py-1 rounded-lg" style={{ background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.2)", color: "#fb923c" }}>
                     {paidCount}/{contributions.length} Paid
                   </span>
                 </div>
+
+                {/* My share highlight */}
+                {myContrib && (
+                  <div className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.18)" }}>
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-neutral-500 mb-0.5">Your Share</p>
+                      <p className="text-2xl font-black" style={{ color: "#d4af37" }}>₹{myContrib.contributionAmount}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[9px] font-bold text-neutral-500 font-inter">Total split across</p>
+                      <p className="text-xs font-black text-white">{contributions.length} members</p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Progress bar */}
                 <div className="space-y-1">
@@ -778,19 +863,39 @@ export const MovieNightDetail: React.FC = () => {
             {/* ── SECTION: BOOKED ───────────────────────────────────────────── */}
             {status === "BOOKED" && (
               <div className="space-y-4">
-                {/* Success banner */}
-                <div className="p-6 rounded-2xl text-center" style={{ background: "rgba(74,222,128,0.05)", border: "1px solid rgba(74,222,128,0.2)" }}>
-                  <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: "rgba(74,222,128,0.1)" }}>
-                    <CheckCircle className="w-7 h-7 text-green-400" />
+                {/* Success banner + countdown */}
+                <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(74,222,128,0.04)", border: "1px solid rgba(74,222,128,0.2)" }}>
+                  <div className="p-6 text-center space-y-3">
+                    <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto" style={{ background: "rgba(74,222,128,0.1)" }}>
+                      <CheckCircle className="w-7 h-7 text-green-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-black text-white mb-1">Movie Night Booked!</h3>
+                      <p className="text-sm text-neutral-500 font-inter">Your squad's seats are confirmed. Enjoy the movie! 🎬</p>
+                    </div>
+                    <button
+                      onClick={() => navigate(`/movie-nights/${nightId}/booked`)}
+                      className="px-5 py-2.5 rounded-xl font-black text-xs inline-flex items-center gap-2 transition-all hover:scale-105"
+                      style={{ background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000", boxShadow: "0 6px 20px rgba(212,175,55,0.2)" }}>
+                      <Ticket className="w-3.5 h-3.5" /> View Tickets & Seats
+                    </button>
                   </div>
-                  <h3 className="text-xl font-black text-white mb-1">Movie Night Booked!</h3>
-                  <p className="text-sm text-neutral-500 font-inter">Your squad's seats are confirmed. Enjoy the movie! 🎬</p>
-                  <button
-                    onClick={() => navigate(`/movie-nights/${nightId}/booked`)}
-                    className="mt-4 px-5 py-2.5 rounded-xl font-black text-xs inline-flex items-center gap-2 transition-all hover:scale-105"
-                    style={{ background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000", boxShadow: "0 6px 20px rgba(212,175,55,0.2)" }}>
-                    <Ticket className="w-3.5 h-3.5" /> View Tickets & Seats
-                  </button>
+                  {/* Countdown */}
+                  {countdown && countdown !== "Show started!" && (
+                    <div className="px-6 py-4 border-t flex items-center justify-between" style={{ borderColor: "rgba(74,222,128,0.12)", background: "rgba(74,222,128,0.02)" }}>
+                      <div className="flex items-center gap-2 text-xs text-neutral-500 font-inter">
+                        <Timer className="w-3.5 h-3.5 text-green-400" /> Show starts in
+                      </div>
+                      <div className="font-black text-lg tracking-wider" style={{ color: "#4ade80", fontVariantNumeric: "tabular-nums" }}>
+                        {countdown}
+                      </div>
+                    </div>
+                  )}
+                  {countdown === "Show started!" && (
+                    <div className="px-6 py-3 border-t text-center text-xs font-bold text-green-400" style={{ borderColor: "rgba(74,222,128,0.12)" }}>
+                      🍿 The show has started — enjoy!
+                    </div>
+                  )}
                 </div>
 
                 {/* Seat assignments */}

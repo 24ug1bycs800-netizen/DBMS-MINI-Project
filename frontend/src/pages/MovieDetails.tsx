@@ -419,7 +419,12 @@ export const MovieDetails: React.FC = () => {
         shows: [],
       };
     }
-    theatresMap[show.theatre?.id].shows.push(show);
+    // Deduplicate: same startTime + screenType within the same theatre
+    const bucket = theatresMap[show.theatre?.id].shows;
+    const isDupe = bucket.some(
+      (s) => s.startTime === show.startTime && s.screen?.type === show.screen?.type && s.language === show.language
+    );
+    if (!isDupe) bucket.push(show);
   });
 
   return (

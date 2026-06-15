@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useCityStore } from "../store/useCityStore.js";
-import { Search, MapPin, X } from "lucide-react";
+import { Search, MapPin, X, Globe } from "lucide-react";
 import api from "../services/api.js";
 
 interface City {
@@ -8,6 +8,8 @@ interface City {
   name: string;
   slug: string;
 }
+
+const ALL_CITIES: City = { id: 0, name: "All Cities", slug: "" };
 
 interface CitySelectorModalProps {
   isOpen: boolean;
@@ -45,6 +47,8 @@ export const CitySelectorModal: React.FC<CitySelectorModalProps> = ({
     onClose();
   };
 
+  const isAllCities = selectedCity.id === 0;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-80 backdrop-blur-md">
       <div className="w-full max-w-xl p-6 rounded-2xl bg-card border border-gray-700 font-poppins shadow-premium text-white relative animate-fade-in">
@@ -60,8 +64,25 @@ export const CitySelectorModal: React.FC<CitySelectorModalProps> = ({
           Select Your City
         </h2>
 
+        {/* ALL CITIES OPTION */}
+        <button
+          onClick={() => handleSelect(ALL_CITIES)}
+          className="w-full mb-4 p-3 rounded-xl border text-sm font-semibold font-inter transition-all flex items-center gap-2.5"
+          style={
+            isAllCities
+              ? { borderColor: "rgba(201,168,76,0.5)", background: "rgba(201,168,76,0.1)", color: "#C9A84C" }
+              : { borderColor: "rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.45)" }
+          }
+          onMouseEnter={(e) => { if (!isAllCities) { e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "#fff"; } }}
+          onMouseLeave={(e) => { if (!isAllCities) { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "rgba(255,255,255,0.45)"; } }}
+        >
+          <Globe className="w-4 h-4 flex-shrink-0" style={{ color: isAllCities ? "#C9A84C" : "rgba(255,255,255,0.3)" }} />
+          All Cities
+          <span className="ml-auto text-[10px] font-normal opacity-60">Show everything</span>
+        </button>
+
         {/* SEARCH BOX */}
-        <div className="relative mb-6">
+        <div className="relative mb-4">
           <Search className="absolute left-3 top-3.5 w-5 h-5 text-muted" />
           <input
             type="text"
@@ -73,7 +94,7 @@ export const CitySelectorModal: React.FC<CitySelectorModalProps> = ({
         </div>
 
         {/* CITIES GRID */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-80 overflow-y-auto pr-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-72 overflow-y-auto pr-2">
           {filtered.length > 0 ? (
             filtered.map((city) => {
               const isSelected = selectedCity.id === city.id;

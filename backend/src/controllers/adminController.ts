@@ -231,9 +231,108 @@ export const getDashboardStats = async (_req: Request, res: Response) => {
       { name: "Group Bookings", value: bookedRoomCount * 3 || 0 },
     ];
 
+    // Monthly aggregation
+    const monthlyMap: Record<string, { revenue: number; bookings: number }> = {};
+    confirmedRows.forEach((booking) => {
+      const monthStr = booking.createdAt
+        ? new Date(booking.createdAt).toISOString().substring(0, 7)
+        : new Date().toISOString().substring(0, 7);
+      if (!monthlyMap[monthStr]) monthlyMap[monthStr] = { revenue: 0, bookings: 0 };
+      monthlyMap[monthStr].revenue += booking.totalAmount;
+      monthlyMap[monthStr].bookings += 1;
+    });
+
+    // Ensure last 6 months are always present
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (!monthlyMap[key]) monthlyMap[key] = { revenue: 0, bookings: 0 };
+    }
+
+    const monthlyRevenue = Object.entries(monthlyMap)
+      .map(([month, v]) => ({
+        month,
+        label: new Date(month + "-01").toLocaleString("en-IN", { month: "short", year: "2-digit" }),
+        revenue: v.revenue,
+        bookings: v.bookings,
+        groupBookings: 0,
+        individualBookings: v.bookings,
+      }))
+      .sort((a, b) => a.month.localeCompare(b.month))
+      .slice(-6);
+
+    const avgRevenue = confirmedRows.length > 0
+      ? Math.round(confirmedRows.reduce((s, b) => s + b.totalAmount, 0) / confirmedRows.length)
+      : 0;
+
+    // ── THIS MONTH breakdown ──────────────────────────────────────────
+    const thisMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthKey = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, "0")}`;
+
+    const thisMonthRows = confirmedRows.filter((b) => {
+      const d = b.createdAt ? new Date(b.createdAt).toISOString().substring(0, 7) : "";
+      return d === thisMonthKey;
+    });
+    const lastMonthRows = confirmedRows.filter((b) => {
+      const d = b.createdAt ? new Date(b.createdAt).toISOString().substring(0, 7) : "";
+      return d === lastMonthKey;
+    });
+
+    const thisMonthRevenue = thisMonthRows.reduce((s, b) => s + b.totalAmount, 0);
+    const lastMonthRevenue = lastMonthRows.reduce((s, b) => s + b.totalAmount, 0);
+    const revenueDelta = lastMonthRevenue === 0 ? null
+      : Math.round(((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100);
+
+    const thisMonthBookings = thisMonthRows.length;
+    const lastMonthBookings = lastMonthRows.length;
+    const bookingsDelta = lastMonthBookings === 0 ? null
+      : Math.round(((thisMonthBookings - lastMonthBookings) / lastMonthBookings) * 100);
+
+    // This month's top movies
+    const thisMonthMovieMap: Record<string, { bookings: number; revenue: number }> = {};
+    thisMonthRows.forEach((b) => {
+      const t = b.movieTitle || "Unknown";
+      if (!thisMonthMovieMap[t]) thisMonthMovieMap[t] = { bookings: 0, revenue: 0 };
+      thisMonthMovieMap[t].bookings += 1;
+      thisMonthMovieMap[t].revenue += b.totalAmount;
+    });
+    const thisMonthTopMovies = Object.entries(thisMonthMovieMap)
+      .map(([title, v]) => ({ title, bookings: v.bookings, revenue: v.revenue }))
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
+
+    // This month's top cities
+    const thisMonthCityMap: Record<string, number> = {};
+    thisMonthRows.forEach((b) => {
+      const c = b.cityName || "Unknown";
+      thisMonthCityMap[c] = (thisMonthCityMap[c] || 0) + 1;
+    });
+    const thisMonthTopCities = Object.entries(thisMonthCityMap)
+      .map(([name, count]) => ({ name, bookings: count }))
+      .sort((a, b) => b.bookings - a.bookings)
+      .slice(0, 5);
+
+    // This month's daily activity
+    const thisMonthDailyBookings = dailyBookings.filter((d) => d.date.startsWith(thisMonthKey));
+
+    const thisMonth = {
+      label: now.toLocaleString("en-IN", { month: "long", year: "numeric" }),
+      revenue: thisMonthRevenue,
+      bookings: thisMonthBookings,
+      avgRevenue: thisMonthBookings > 0 ? Math.round(thisMonthRevenue / thisMonthBookings) : 0,
+      revenueDelta,
+      bookingsDelta,
+      topMovies: thisMonthTopMovies,
+      topCities: thisMonthTopCities,
+      dailyActivity: thisMonthDailyBookings,
+    };
+
     return res.status(200).json({
-      kpi,
-      charts: { dailyBookings, popularMovies, popularCities, groupBookingUsage },
+      kpi: { ...kpi, avgRevenue },
+      charts: { dailyBookings, popularMovies, popularCities, groupBookingUsage, monthlyRevenue },
+      thisMonth,
     });
   } catch (err) {
     console.error("Fetch dashboard stats error:", err);
@@ -737,10 +836,10 @@ export const generateShows = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "No screens matched the selected locations" });
     }
 
-    // Safety guard: if specific theatres were selected but no specific screens were
-    // provided, limit to ONE screen per theatre (the lowest-numbered one).
-    // This prevents a single movie from flooding every screen in a multi-screen theatre.
-    if (parsedTheatreIds.length > 0 && parsedScreenIds.length === 0) {
+    // Safety guard: when no specific screens are chosen, limit to ONE screen per
+    // theatre (the lowest-numbered one returned by the ORDER BY above).
+    // This prevents the same movie flooding every screen in a multi-screen theatre.
+    if (parsedScreenIds.length === 0) {
       const seen = new Set<number>();
       availableScreens = availableScreens.filter(s => {
         if (seen.has(s.theatreId)) return false;
@@ -756,12 +855,25 @@ export const generateShows = async (req: Request, res: Response) => {
     // Fetch only active (non-expired) shows to check for duplicate slots.
     // Expired shows no longer occupy the slot, so new movies can use that time.
     const existingShows = await db
-      .select({ screenId: shows.screenId, date: shows.date, startTime: shows.startTime })
+      .select({
+        screenId: shows.screenId,
+        movieId: shows.movieId,
+        date: shows.date,
+        startTime: shows.startTime,
+        theatreId: screens.theatreId,
+      })
       .from(shows)
+      .innerJoin(screens, eq(shows.screenId, screens.id))
       .where(and(inArray(shows.screenId, targetScreenIds), ne(shows.status, "expired")));
 
+    // Screen-level key: one show per screen per slot
     const existingKeys = new Set(
       existingShows.map((s) => `${s.screenId}::${s.date}::${s.startTime}`)
+    );
+    // Theatre+movie+time key: same movie must not appear on multiple screens
+    // of the same theatre at the same time
+    const theatreMovieKeys = new Set(
+      existingShows.map((s) => `${s.theatreId}::${s.movieId}::${s.date}::${s.startTime}`)
     );
 
     // Build per-language time entries — new format preferred, legacy fallback
@@ -783,12 +895,12 @@ export const generateShows = async (req: Request, res: Response) => {
       for (const date of upcomingDates) {
         for (const { language: lang, startTimes: langTimes } of rawLanguageTimes) {
           for (const startTime of langTimes) {
-            // Screen occupancy is per time slot — different languages can't share the same slot
+            // Screen occupancy: one show per screen per slot
             const key = `${screen.screenId}::${date}::${startTime}`;
-            if (existingKeys.has(key)) {
-              skipped += 1;
-              continue;
-            }
+            if (existingKeys.has(key)) { skipped += 1; continue; }
+            // Theatre+movie uniqueness: same movie can't run on two screens of the same theatre at the same time
+            const tmKey = `${screen.theatreId}::${parsedMovieId}::${date}::${startTime}`;
+            if (theatreMovieKeys.has(tmKey)) { skipped += 1; continue; }
             // Use per-type pricing if provided, fall back to flat pricing, then defaults
             const typeKey = String(screen.screenType || "2D").toUpperCase().trim();
             const typePrices = pricesByType?.[typeKey] ?? pricesByType?.["2D"];
@@ -808,6 +920,7 @@ export const generateShows = async (req: Request, res: Response) => {
               status: "active",
             });
             existingKeys.add(key);
+            theatreMovieKeys.add(tmKey);
           }
         }
       }

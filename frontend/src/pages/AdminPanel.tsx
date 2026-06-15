@@ -125,6 +125,7 @@ export const AdminPanel: React.FC = () => {
   // ── Dashboard ────────────────────────────────────────────────────────────────
   const [kpi, setKpi] = useState<KPI | null>(null);
   const [charts, setCharts] = useState<any>(null);
+  const [thisMonth, setThisMonth] = useState<any>(null);
 
   // ── Shared data ──────────────────────────────────────────────────────────────
   const [movies, setMovies] = useState<AdminMovie[]>([]);
@@ -291,6 +292,7 @@ export const AdminPanel: React.FC = () => {
       const res = await api.get("/admin/stats");
       setKpi(res.data.kpi);
       setCharts(res.data.charts);
+      setThisMonth(res.data.thisMonth || null);
     } catch (e) { console.error(e); }
   };
 
@@ -773,117 +775,378 @@ export const AdminPanel: React.FC = () => {
         {/* ── ANALYTICS DASHBOARD ────────────────────────────────────────── */}
         {/* ══════════════════════════════════════════════════════════════════ */}
         {activeTab === "dashboard" && (!kpi || !charts ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {[0, 1, 2, 3].map(i => (
-              <div key={i} className={`${cardDark} animate-pulse`}>
-                <div className="w-10 h-10 rounded-xl bg-neutral-800 mb-4" />
-                <div className="w-24 h-2.5 rounded-full bg-neutral-800 mb-3" />
-                <div className="w-16 h-6 rounded-full bg-neutral-800" />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-8">
+          <div className="space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { icon: <Wallet className="w-4 h-4" />,   label: "Total Revenue",    value: `₹${kpi.totalRevenue.toLocaleString()}` },
-                { icon: <Film className="w-4 h-4" />,     label: "Total Bookings",   value: `${kpi.totalBookings}` },
-                { icon: <Users className="w-4 h-4" />,    label: "Registered Users", value: `${kpi.totalUsers}` },
-                { icon: <BarChart3 className="w-4 h-4" />,label: "Movie Nights",     value: `${kpi.activeGroupRooms}` },
-              ].map(({ icon, label, value }) => (
-                <div key={label} className="p-5 rounded-xl" style={{ background: "#0d0d0d", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-[10px] font-semibold tracking-widest uppercase text-neutral-600">{label}</span>
-                    <span style={{ color: "rgba(212,175,55,0.6)" }}>{icon}</span>
-                  </div>
-                  <strong className="text-2xl font-bold text-white">{value}</strong>
+              {[0,1,2,3].map(i => (
+                <div key={i} className={`${cardDark} animate-pulse`}>
+                  <div className="w-10 h-10 rounded-xl bg-neutral-800 mb-4" />
+                  <div className="w-24 h-2.5 rounded-full bg-neutral-800 mb-3" />
+                  <div className="w-16 h-6 rounded-full bg-neutral-800" />
                 </div>
               ))}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Daily Revenue */}
-              <div className={cardDark}>
-                <h3 className="font-semibold text-sm text-white mb-5 flex items-center gap-2 border-b border-neutral-900 pb-3">
-                  <LineChart className="w-4 h-4" style={{ color: "rgba(212,175,55,0.7)" }} /> Daily Revenue
-                </h3>
-                <div className="h-48 flex items-end gap-2 justify-around pt-4 font-inter text-[9px] text-neutral-600">
-                  {charts.dailyBookings.map((p: any, idx: number) => {
-                    const maxVal = Math.max(...charts.dailyBookings.map((x: any) => x.revenue), 1);
-                    return (
-                      <div key={idx} className="flex flex-col items-center gap-1.5 w-full">
-                        <span className="text-neutral-400 font-medium">₹{p.revenue}</span>
-                        <div className="w-full bg-neutral-900 rounded overflow-hidden h-28 flex items-end">
-                          <div className="w-full rounded-sm" style={{ height: `${Math.max(6, (p.revenue / maxVal) * 100)}%`, background: "rgba(212,175,55,0.55)" }} />
-                        </div>
-                        <span className="truncate max-w-10">{p.date.substring(5)}</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[0,1,2,3].map(i => (
+                <div key={i} className={`${cardDark} animate-pulse h-52`} />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* ── KPI CARDS ── */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                {
+                  icon: <Wallet className="w-5 h-5" />, label: "Total Revenue",
+                  value: `₹${(kpi.totalRevenue / 1000).toFixed(1)}K`,
+                  sub: `Avg ₹${(kpi as any).avgRevenue?.toLocaleString() || "—"}/booking`,
+                  gradient: "from-amber-500/10 to-amber-900/5", iconColor: "#d4af37", border: "rgba(212,175,55,0.18)"
+                },
+                {
+                  icon: <Film className="w-5 h-5" />, label: "Total Bookings",
+                  value: kpi.totalBookings.toLocaleString(),
+                  sub: `${charts.groupBookingUsage[1]?.value || 0} via group rooms`,
+                  gradient: "from-blue-500/10 to-blue-900/5", iconColor: "#60a5fa", border: "rgba(96,165,250,0.18)"
+                },
+                {
+                  icon: <Users className="w-5 h-5" />, label: "Registered Users",
+                  value: kpi.totalUsers.toLocaleString(),
+                  sub: "All time signups",
+                  gradient: "from-purple-500/10 to-purple-900/5", iconColor: "#a78bfa", border: "rgba(167,139,250,0.18)"
+                },
+                {
+                  icon: <Moon className="w-5 h-5" />, label: "Group Rooms",
+                  value: kpi.activeGroupRooms.toLocaleString(),
+                  sub: "Collaborative sessions",
+                  gradient: "from-green-500/10 to-green-900/5", iconColor: "#4ade80", border: "rgba(74,222,128,0.18)"
+                },
+              ].map(({ icon, label, value, sub, gradient, iconColor, border }) => (
+                <div
+                  key={label}
+                  className={`p-5 rounded-2xl bg-gradient-to-br ${gradient} relative overflow-hidden`}
+                  style={{ border: `1px solid ${border}` }}
+                >
+                  <div className="absolute -right-4 -top-4 w-20 h-20 rounded-full opacity-10" style={{ background: iconColor }} />
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-[9px] font-black tracking-widest uppercase text-neutral-500">{label}</span>
+                    <span style={{ color: iconColor }}>{icon}</span>
+                  </div>
+                  <strong className="text-2xl font-black text-white block">{value}</strong>
+                  <span className="text-[10px] text-neutral-600 font-inter mt-1 block">{sub}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* ── THIS MONTH SECTION ── */}
+            {thisMonth && (
+              <div
+                className="rounded-2xl overflow-hidden"
+                style={{ border: "1px solid rgba(212,175,55,0.2)", background: "linear-gradient(160deg,#0f0e09,#0b0b0b)" }}
+              >
+                {/* Header */}
+                <div
+                  className="px-6 py-4 flex items-center justify-between"
+                  style={{ borderBottom: "1px solid rgba(212,175,55,0.1)", background: "rgba(212,175,55,0.04)" }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#d4af37" }} />
+                    <h3 className="font-black text-sm text-white">{thisMonth.label}</h3>
+                    <span
+                      className="text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest"
+                      style={{ background: "rgba(212,175,55,0.1)", border: "1px solid rgba(212,175,55,0.25)", color: "#d4af37" }}
+                    >
+                      This Month
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-neutral-600 font-inter">vs last month</span>
+                </div>
+
+                <div className="p-6 space-y-6">
+                  {/* KPI row */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[
+                      {
+                        label: "Revenue",
+                        value: `₹${thisMonth.revenue >= 1000 ? (thisMonth.revenue / 1000).toFixed(1) + "K" : thisMonth.revenue}`,
+                        delta: thisMonth.revenueDelta,
+                        color: "#d4af37",
+                      },
+                      {
+                        label: "Bookings",
+                        value: thisMonth.bookings,
+                        delta: thisMonth.bookingsDelta,
+                        color: "#60a5fa",
+                      },
+                      {
+                        label: "Avg / Booking",
+                        value: `₹${thisMonth.avgRevenue}`,
+                        delta: null,
+                        color: "#a78bfa",
+                      },
+                      {
+                        label: "Active Days",
+                        value: thisMonth.dailyActivity.filter((d: any) => d.bookings > 0).length,
+                        delta: null,
+                        color: "#4ade80",
+                      },
+                    ].map(({ label, value, delta, color }) => (
+                      <div
+                        key={label}
+                        className="p-4 rounded-xl"
+                        style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
+                      >
+                        <p className="text-[9px] font-black uppercase tracking-widest text-neutral-600 mb-2">{label}</p>
+                        <p className="text-xl font-black text-white">{value}</p>
+                        {delta !== null && (
+                          <p
+                            className="text-[10px] font-bold mt-1 flex items-center gap-1"
+                            style={{ color: delta >= 0 ? "#4ade80" : "#f87171" }}
+                          >
+                            {delta >= 0 ? "▲" : "▼"} {Math.abs(delta)}% vs last month
+                          </p>
+                        )}
                       </div>
-                    );
-                  })}
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    {/* Daily activity this month */}
+                    <div
+                      className="md:col-span-2 p-4 rounded-xl"
+                      style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
+                    >
+                      <p className="text-[10px] font-black uppercase tracking-widest text-neutral-600 mb-4">Daily Bookings This Month</p>
+                      {thisMonth.dailyActivity.length === 0 ? (
+                        <p className="text-xs text-neutral-700 font-inter py-4 text-center">No bookings yet this month.</p>
+                      ) : (
+                        <div className="flex items-end gap-1.5 h-28">
+                          {thisMonth.dailyActivity.map((d: any, i: number) => {
+                            const maxV = Math.max(...thisMonth.dailyActivity.map((x: any) => x.revenue), 1);
+                            return (
+                              <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
+                                <div
+                                  className="absolute bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[8px] font-inter px-1.5 py-0.5 rounded bg-neutral-900 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10"
+                                  style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+                                >
+                                  ₹{d.revenue} · {d.bookings}
+                                </div>
+                                <div className="w-full flex items-end" style={{ height: 80 }}>
+                                  <div
+                                    className="w-full rounded-t transition-all"
+                                    style={{
+                                      height: `${Math.max(3, (d.revenue / maxV) * 100)}%`,
+                                      background: d.bookings > 0 ? "rgba(212,175,55,0.6)" : "rgba(255,255,255,0.04)",
+                                    }}
+                                  />
+                                </div>
+                                <span className="text-[7px] text-neutral-700 font-inter">{d.date.substring(8)}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Top movies this month */}
+                    <div
+                      className="p-4 rounded-xl"
+                      style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
+                    >
+                      <p className="text-[10px] font-black uppercase tracking-widest text-neutral-600 mb-4">Top Movies</p>
+                      {thisMonth.topMovies.length === 0 ? (
+                        <p className="text-xs text-neutral-700 font-inter py-4 text-center">No data yet.</p>
+                      ) : (
+                        <div className="space-y-3">
+                          {thisMonth.topMovies.map((m: any, i: number) => {
+                            const maxV = Math.max(...thisMonth.topMovies.map((x: any) => x.revenue), 1);
+                            const medals = ["🥇", "🥈", "🥉", "4", "5"];
+                            return (
+                              <div key={i} className="space-y-1">
+                                <div className="flex items-center justify-between text-xs font-inter">
+                                  <span className="text-white font-semibold truncate flex items-center gap-1.5 max-w-[65%]">
+                                    <span>{medals[i]}</span>
+                                    <span className="truncate">{m.title}</span>
+                                  </span>
+                                  <span className="text-neutral-500 tabular-nums flex-shrink-0">₹{m.revenue}</span>
+                                </div>
+                                <div className="w-full h-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.05)" }}>
+                                  <div
+                                    className="h-full rounded-full"
+                                    style={{ width: `${(m.revenue / maxV) * 100}%`, background: "#d4af37" }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
-              {/* Popular Movies */}
-              <div className={cardDark}>
-                <h3 className="font-semibold text-sm text-white mb-5 flex items-center gap-2 border-b border-neutral-900 pb-3">
-                  <BarChart3 className="w-4 h-4" style={{ color: "rgba(212,175,55,0.7)" }} /> Movies by Revenue
+            )}
+
+            {/* ── MONTHLY REVENUE BAR CHART ── */}
+            <div className={cardDark}>
+              <div className="flex items-center justify-between mb-5 pb-3 border-b border-neutral-900">
+                <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4" style={{ color: "#d4af37" }} /> Monthly Revenue
                 </h3>
-                <div className="space-y-4 pt-1">
-                  {charts.popularMovies.slice(0, 4).map((p: any, idx: number) => {
+                <span className="text-[10px] text-neutral-600 font-inter">Last 6 months</span>
+              </div>
+              <div className="flex items-end gap-3 h-44 pt-2">
+                {(charts.monthlyRevenue || []).map((m: any, idx: number) => {
+                  const maxVal = Math.max(...(charts.monthlyRevenue || []).map((x: any) => x.revenue), 1);
+                  const pct = Math.max(4, (m.revenue / maxVal) * 100);
+                  const isLast = idx === (charts.monthlyRevenue || []).length - 1;
+                  return (
+                    <div key={m.month} className="flex-1 flex flex-col items-center gap-1 group">
+                      <span className="text-[9px] text-neutral-500 font-inter opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                        ₹{m.revenue.toLocaleString()}
+                      </span>
+                      <div className="w-full rounded-t-lg overflow-hidden flex items-end" style={{ height: 120 }}>
+                        <div
+                          className="w-full rounded-t-lg transition-all duration-700"
+                          style={{
+                            height: `${pct}%`,
+                            background: isLast
+                              ? "linear-gradient(180deg,#f4d03f,#d4af37)"
+                              : "rgba(212,175,55,0.35)",
+                            boxShadow: isLast ? "0 0 12px rgba(212,175,55,0.3)" : "none",
+                          }}
+                        />
+                      </div>
+                      <span className="text-[9px] font-inter text-neutral-600">{m.label}</span>
+                      <span className="text-[8px] font-inter text-neutral-700">{m.bookings} tickets</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* ── POPULAR MOVIES ── */}
+              <div className={cardDark}>
+                <h3 className="font-bold text-sm text-white mb-5 flex items-center gap-2 border-b border-neutral-900 pb-3">
+                  <Film className="w-4 h-4" style={{ color: "#d4af37" }} /> Top Movies by Revenue
+                </h3>
+                <div className="space-y-4">
+                  {charts.popularMovies.slice(0, 5).map((p: any, idx: number) => {
                     const maxVal = Math.max(...charts.popularMovies.map((x: any) => x.revenue), 1);
+                    const medals = ["🥇", "🥈", "🥉", "4.", "5."];
                     return (
                       <div key={idx} className="space-y-1.5 font-inter text-xs">
-                        <div className="flex justify-between">
-                          <span className="text-white font-medium">{p.title}</span>
-                          <span className="text-neutral-500">₹{p.revenue}</span>
+                        <div className="flex justify-between items-center">
+                          <span className="text-white font-semibold flex items-center gap-2">
+                            <span className="text-sm">{medals[idx]}</span>{p.title}
+                          </span>
+                          <span className="text-neutral-500 tabular-nums">₹{p.revenue.toLocaleString()}</span>
                         </div>
-                        <div className="w-full h-1.5 bg-neutral-900 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full" style={{ width: `${(p.revenue / maxVal) * 100}%`, background: "rgba(212,175,55,0.6)" }} />
+                        <div className="w-full h-1 bg-neutral-900 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-700"
+                            style={{ width: `${(p.revenue / maxVal) * 100}%`, background: idx === 0 ? "#d4af37" : "rgba(212,175,55,0.4)" }}
+                          />
                         </div>
                       </div>
                     );
                   })}
                 </div>
               </div>
-              {/* Cities */}
+
+              {/* ── BOOKING MIX (GROUP VS INDIVIDUAL) ── */}
               <div className={cardDark}>
-                <h3 className="font-semibold text-sm text-white mb-5 flex items-center gap-2 border-b border-neutral-900 pb-3">
-                  <Compass className="w-4 h-4" style={{ color: "rgba(212,175,55,0.7)" }} /> Location Breakdown
+                <h3 className="font-bold text-sm text-white mb-5 flex items-center gap-2 border-b border-neutral-900 pb-3">
+                  <PieChart className="w-4 h-4" style={{ color: "#d4af37" }} /> Booking Split
                 </h3>
-                <div className="space-y-4 pt-1">
-                  {charts.popularCities.slice(0, 4).map((p: any, idx: number) => {
+                <div className="space-y-5 pt-2">
+                  {charts.groupBookingUsage.map((u: any, idx: number) => {
+                    const totalVal = charts.groupBookingUsage.reduce((s: number, x: any) => s + x.value, 0) || 1;
+                    const pct = Math.round((u.value / totalVal) * 100);
+                    const colors = ["#d4af37", "#60a5fa"];
+                    return (
+                      <div key={idx} className="space-y-2">
+                        <div className="flex justify-between items-center text-xs font-inter">
+                          <span className="font-semibold" style={{ color: colors[idx] }}>{u.name}</span>
+                          <span className="text-neutral-400 font-bold">{pct}% · {u.value} bookings</span>
+                        </div>
+                        <div className="w-full h-2.5 bg-neutral-900 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-700"
+                            style={{ width: `${pct}%`, background: colors[idx] }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="pt-2 border-t border-neutral-900 grid grid-cols-2 gap-3">
+                    {charts.groupBookingUsage.map((u: any, idx: number) => {
+                      const totalVal = charts.groupBookingUsage.reduce((s: number, x: any) => s + x.value, 0) || 1;
+                      const colors = ["#d4af37", "#60a5fa"];
+                      return (
+                        <div key={idx} className="p-3 rounded-xl text-center" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
+                          <div className="text-2xl font-black" style={{ color: colors[idx] }}>
+                            {Math.round((u.value / totalVal) * 100)}%
+                          </div>
+                          <div className="text-[9px] text-neutral-600 font-inter mt-1">{u.name}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* ── LOCATION BREAKDOWN ── */}
+              <div className={cardDark}>
+                <h3 className="font-bold text-sm text-white mb-5 flex items-center gap-2 border-b border-neutral-900 pb-3">
+                  <MapPin className="w-4 h-4" style={{ color: "#d4af37" }} /> Top Locations
+                </h3>
+                <div className="space-y-4">
+                  {charts.popularCities.slice(0, 5).map((p: any, idx: number) => {
                     const maxVal = Math.max(...charts.popularCities.map((x: any) => x.bookings), 1);
                     return (
                       <div key={idx} className="space-y-1.5 font-inter text-xs">
-                        <div className="flex justify-between">
-                          <span className="text-white font-medium">{p.name}</span>
-                          <span className="text-neutral-500">{p.bookings} tickets</span>
+                        <div className="flex justify-between items-center">
+                          <span className="text-white font-semibold">{p.name}</span>
+                          <span className="text-neutral-500 tabular-nums">{p.bookings} tickets</span>
                         </div>
-                        <div className="w-full h-1.5 bg-neutral-900 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full" style={{ width: `${(p.bookings / maxVal) * 100}%`, background: "rgba(255,255,255,0.2)" }} />
+                        <div className="w-full h-1 bg-neutral-900 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full"
+                            style={{ width: `${(p.bookings / maxVal) * 100}%`, background: "rgba(167,139,250,0.6)" }}
+                          />
                         </div>
                       </div>
                     );
                   })}
                 </div>
               </div>
-              {/* Booking Mix */}
+
+              {/* ── DAILY RECENT ACTIVITY ── */}
               <div className={cardDark}>
-                <h3 className="font-semibold text-sm text-white mb-5 flex items-center gap-2 border-b border-neutral-900 pb-3">
-                  <PieChart className="w-4 h-4" style={{ color: "rgba(212,175,55,0.7)" }} /> Booking Model Mix
+                <h3 className="font-bold text-sm text-white mb-5 flex items-center gap-2 border-b border-neutral-900 pb-3">
+                  <LineChart className="w-4 h-4" style={{ color: "#d4af37" }} /> Recent Daily Activity
                 </h3>
-                <div className="flex items-center justify-around h-40 pt-4">
-                  {charts.groupBookingUsage.map((u: any, idx: number) => {
-                    const totalVal = charts.groupBookingUsage.reduce((s: number, x: any) => s + x.value, 0) || 1;
+                <div className="flex items-end gap-1.5 h-32">
+                  {charts.dailyBookings.slice(-14).map((p: any, idx: number) => {
+                    const maxVal = Math.max(...charts.dailyBookings.map((x: any) => x.revenue), 1);
                     return (
-                      <div key={idx} className="text-center font-inter">
-                        <div className="text-3xl font-bold" style={{ color: idx === 0 ? "#d4af37" : "rgba(255,255,255,0.7)" }}>
-                          {Math.round((u.value / totalVal) * 100)}%
+                      <div key={idx} className="flex-1 flex flex-col items-center gap-1 group">
+                        <div className="w-full rounded-t overflow-hidden flex items-end" style={{ height: 90 }}>
+                          <div
+                            className="w-full rounded-t transition-all duration-500"
+                            style={{
+                              height: `${Math.max(4, (p.revenue / maxVal) * 100)}%`,
+                              background: "rgba(96,165,250,0.5)",
+                            }}
+                          />
                         </div>
-                        <div className="text-xs text-neutral-500 font-medium mt-2">{u.name}</div>
-                        <div className="text-[10px] text-neutral-600 mt-1">{u.value} bookings</div>
+                        <span className="text-[7px] text-neutral-700 font-inter">{p.date.substring(5)}</span>
                       </div>
                     );
                   })}
                 </div>
+                <p className="text-[10px] text-neutral-600 font-inter mt-3 text-center">Last 14 days</p>
               </div>
             </div>
           </div>

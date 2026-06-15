@@ -102,12 +102,20 @@ const runMigrations = async () => {
   // Performance indexes — CREATE INDEX IF NOT EXISTS is safe to re-run
   try {
     await db.execute(sql.raw(`
+      CREATE TABLE IF NOT EXISTS group_messages (
+        id SERIAL PRIMARY KEY,
+        room_id INTEGER NOT NULL REFERENCES group_rooms(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        message TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL
+      );
       CREATE INDEX IF NOT EXISTS bookings_user_id_idx          ON bookings (user_id);
       CREATE INDEX IF NOT EXISTS users_email_idx               ON users (email);
       CREATE INDEX IF NOT EXISTS movie_night_members_user_idx  ON movie_night_members (user_id);
       CREATE INDEX IF NOT EXISTS notifications_user_id_idx     ON notifications (user_id);
       CREATE INDEX IF NOT EXISTS wishlist_user_id_idx          ON wishlist (user_id);
       CREATE INDEX IF NOT EXISTS reviews_movie_id_idx          ON reviews (movie_id);
+      CREATE INDEX IF NOT EXISTS group_messages_room_id_idx    ON group_messages (room_id);
     `));
     console.log("✅ Performance indexes applied");
   } catch (err) {

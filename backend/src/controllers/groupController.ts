@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { db } from "../db/db";
-import { groupRooms, groupMembers, votes, users, movies, theatres, shows } from "../db/schema";
-import { eq, and } from "drizzle-orm";
+import { groupRooms, groupMembers, votes, users, movies, theatres, shows, groupMessages } from "../db/schema";
+import { eq, and, asc } from "drizzle-orm";
 import crypto from "crypto";
  
 // CREATE GROUP ROOM
@@ -221,6 +221,104 @@ export const deleteGroupRoom = async (req: Request, res: Response) => {
   } catch (err) {
     console.error("Delete group room error:", err);
     return res.status(500).json({ error: "Internal server error deleting group room" });
+  }
+};
+
+// GET GROUP MESSAGES
+export const getGroupMessages = async (req: Request, res: Response) => {
+  try {
+    const roomId = parseInt(req.params.id);
+    if (isNaN(roomId)) return res.status(400).json({ error: "Invalid room ID" });
+    const msgs = await db
+      .select({
+        id: groupMessages.id,
+        message: groupMessages.message,
+        createdAt: groupMessages.createdAt,
+        userId: groupMessages.userId,
+        userFullName: users.fullName,
+        userProfilePic: users.profilePic,
+      })
+      .from(groupMessages)
+      .innerJoin(users, eq(groupMessages.userId, users.id))
+      .where(eq(groupMessages.roomId, roomId))
+      .orderBy(asc(groupMessages.createdAt))
+      .limit(100);
+    return res.json({ messages: msgs });
+  } catch (err) {
+    console.error("Get group messages error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// SEND GROUP MESSAGE
+export const sendGroupMessage = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const roomId = parseInt(req.params.id);
+    const { message } = req.body;
+    if (isNaN(roomId)) return res.status(400).json({ error: "Invalid room ID" });
+    if (!message?.trim()) return res.status(400).json({ error: "Message cannot be empty" });
+
+    const [msg] = await db.insert(groupMessages).values({
+      roomId, userId: user.id, message: message.trim(),
+    }).returning();
+    return res.status(201).json({
+      message: { ...msg, userFullName: user.fullName, userProfilePic: user.profilePic },
+    });
+  } catch (err) {
+    console.error("Send group message error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// REJECT MOVIE SUGGESTION (vote to reject)
+export const rejectMovieSuggestion = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const roomId = parseInt(req.params.id);
+    const { movieId } = req.body;
+    if (isNaN(roomId) || !movieId) return res.status(400).json({ error: "roomId and movieId required" });
+
+    await db.delete(votes).where(
+      and(eq(votes.roomId, roomId), eq(votes.userId, user.id), eq(votes.voteType, "reject_movie"))
+    );
+    await db.insert(votes).values({ roomId, userId: user.id, voteType: "reject_movie", votedId: parseInt(movieId) });
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Reject movie error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// GET NEW MOVIE RECOMMENDATION (excludes rejected & already voted movies)
+export const getNewMovieRecommendation = async (req: Request, res: Response) => {
+  try {
+    const roomId = parseInt(req.params.id);
+    if (isNaN(roomId)) return res.status(400).json({ error: "Invalid room ID" });
+
+    const rejectVotes = await db.select({ votedId: votes.votedId })
+      .from(votes)
+      .where(and(eq(votes.roomId, roomId), eq(votes.voteType, "reject_movie")));
+    const rejectedIds = [...new Set(rejectVotes.map((v) => v.votedId))];
+
+    const currentVotes = await db.select({ votedId: votes.votedId })
+      .from(votes)
+      .where(and(eq(votes.roomId, roomId), eq(votes.voteType, "movie")));
+    const votedIds = [...new Set(currentVotes.map((v) => v.votedId))];
+
+    const excluded = [...new Set([...rejectedIds, ...votedIds])];
+
+    const allNowShowing = await db.select().from(movies)
+      .where(and(eq(movies.isNowShowing, true), eq(movies.isActive, true)));
+
+    const candidates = allNowShowing.filter((m) => !excluded.includes(m.id));
+    const pool = candidates.length > 0 ? candidates : allNowShowing.filter((m) => !rejectedIds.includes(m.id));
+    const sorted = [...pool].sort((a, b) => (b.topRated ? 1 : 0) - (a.topRated ? 1 : 0));
+
+    return res.json({ movie: sorted[0] || null });
+  } catch (err) {
+    console.error("Get recommendation error:", err);
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 

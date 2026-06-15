@@ -200,6 +200,7 @@ export const getMovieNight = async (req: Request, res: Response) => {
           id: movies.id, title: movies.title, posterUrl: movies.posterUrl,
           genre: movies.genre, language: movies.language, durationMins: movies.durationMins,
           rating: movies.rating, ratingValue: movies.ratingValue,
+          trailerUrl: movies.trailerUrl, overview: movies.overview,
         },
         show: {
           id: shows.id, startTime: shows.startTime, date: shows.date,

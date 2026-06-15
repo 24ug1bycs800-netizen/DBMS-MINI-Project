@@ -225,6 +225,19 @@ export const votes = pgTable("votes", {
   votedId: integer("voted_id").notNull(),
 });
 
+// GROUP MESSAGES TABLE (in-room discussion chat)
+export const groupMessages = pgTable("group_messages", {
+  id: serial("id").primaryKey(),
+  roomId: integer("room_id")
+    .references(() => groupRooms.id, { onDelete: "cascade" })
+    .notNull(),
+  userId: integer("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  message: text("message").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // NOTIFICATIONS TABLE
 export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),

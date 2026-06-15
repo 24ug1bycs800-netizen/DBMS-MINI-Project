@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.js";
 import { useCityStore } from "../store/useCityStore.js";
@@ -12,8 +12,22 @@ import {
   AlertCircle,
   Compass,
   ShieldAlert,
+  MessageCircle,
+  Send,
+  ThumbsDown,
+  Sparkles,
+  X,
 } from "lucide-react";
 import api from "../services/api.js";
+
+interface ChatMessage {
+  id: number;
+  message: string;
+  createdAt: string;
+  userId: number;
+  userFullName: string;
+  userProfilePic?: string;
+}
 
 interface Room {
   id: number;
@@ -182,6 +196,16 @@ export const GroupBooking: React.FC = () => {
   const [selectedTheatreVote, setSelectedTheatreVote] = useState<number | "">("");
   const [selectedShowtimeVote, setSelectedShowtimeVote] = useState<number | "">("");
 
+  // Chat state
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatSending, setChatSending] = useState(false);
+  const chatBottomRef = useRef<HTMLDivElement>(null);
+
+  // Recommendation state
+  const [recommendation, setRecommendation] = useState<any>(null);
+  const [loadingRec, setLoadingRec] = useState(false);
+
   const fetchRoomData = async () => {
     try {
       const res = await api.get(`/groups/${inviteCode}`);
@@ -215,16 +239,60 @@ export const GroupBooking: React.FC = () => {
     }
   };
 
+  const fetchMessages = async (rId: number) => {
+    try {
+      const res = await api.get(`/groups/${rId}/messages`);
+      setChatMessages(res.data.messages || []);
+      setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    } catch { /* silent */ }
+  };
+
   useEffect(() => {
     if (!user) { navigate("/auth", { state: { from: `/group/${inviteCode}` } }); return; }
     fetchRoomData();
   }, [inviteCode, user, selectedCity]);
 
   useEffect(() => {
-    if (!room || room.status !== "voting") return;
-    const interval = setInterval(fetchRoomData, 8000);
-    return () => clearInterval(interval);
-  }, [room]);
+    if (!room) return;
+    fetchMessages(room.id);
+    const chatInterval = setInterval(() => fetchMessages(room.id), 5000);
+    const voteInterval = room.status === "voting" ? setInterval(fetchRoomData, 8000) : null;
+    return () => {
+      clearInterval(chatInterval);
+      if (voteInterval) clearInterval(voteInterval);
+    };
+  }, [room?.id, room?.status]);
+
+  const handleSendMessage = async () => {
+    if (!chatInput.trim() || !room) return;
+    setChatSending(true);
+    try {
+      await api.post(`/groups/${room.id}/messages`, { message: chatInput.trim() });
+      setChatInput("");
+      await fetchMessages(room.id);
+    } catch { /* silent */ } finally {
+      setChatSending(false);
+    }
+  };
+
+  const handleRejectMovie = async (movieId: number) => {
+    if (!room) return;
+    try {
+      await api.post(`/groups/${room.id}/reject-movie`, { movieId });
+      await fetchRoomData();
+    } catch { console.error("Reject movie failed"); }
+  };
+
+  const handleGetRecommendation = async () => {
+    if (!room) return;
+    setLoadingRec(true);
+    try {
+      const res = await api.get(`/groups/${room.id}/recommend`);
+      setRecommendation(res.data.movie);
+    } catch { /* silent */ } finally {
+      setLoadingRec(false);
+    }
+  };
 
   // ✅ Copy only the invite code (not the full URL)
   const handleCopyCode = async () => {
@@ -311,10 +379,17 @@ export const GroupBooking: React.FC = () => {
   const totalTheatreVotes = theatreVotes.reduce((s, v) => s + v.votes, 0) || 1;
   const totalShowtimeVotes = showtimeVotes.reduce((s, v) => s + v.votes, 0) || 1;
 
-  // ✅ Derive finalShowId from room OR fall back to top showtime vote
+  // Derive finalShowId from room OR fall back to top showtime vote
   const finalShowId =
     room.selectedShowId ||
     [...showtimeVotes].sort((a, b) => b.votes - a.votes)[0]?.id;
+
+  // Majority rejection detection
+  const rejectionVotes = rawVotes.filter(v => v.voteType === "reject_movie");
+  const topMovieId = [...movieVotes].sort((a, b) => b.votes - a.votes)[0]?.id;
+  const topMovieRejections = rejectionVotes.filter(v => v.votedId === topMovieId).length;
+  const majorityRejected = members.length >= 2 && topMovieId != null && topMovieRejections > Math.floor(members.length / 2);
+  const myRejection = rejectionVotes.find(v => v.userId === user?.id && v.votedId === topMovieId);
 
   return (
     <div className="min-h-screen text-white pb-24 font-poppins relative" style={{ background: "#080808" }}>
@@ -415,6 +490,86 @@ export const GroupBooking: React.FC = () => {
                   voteType="movie"
                   barColor="#d4af37"
                 />
+
+                {/* ── REJECT TOP MOVIE / MAJORITY REJECTION PANEL ── */}
+                {topMovieId != null && movieVotes.length > 0 && (
+                  <div
+                    className="p-4 rounded-2xl space-y-3"
+                    style={{
+                      background: majorityRejected
+                        ? "linear-gradient(160deg,rgba(239,68,68,0.06),rgba(239,68,68,0.02))"
+                        : "linear-gradient(160deg,#0f0f0f,#0b0b0b)",
+                      border: majorityRejected
+                        ? "1px solid rgba(239,68,68,0.25)"
+                        : "1px solid rgba(255,255,255,0.04)",
+                    }}
+                  >
+                    <div className="flex items-center justify-between flex-wrap gap-3">
+                      <div>
+                        <p className="text-xs font-bold text-white">
+                          Top voted: <span style={{ color: "#d4af37" }}>{movieVotes.find(v => v.id === topMovieId)?.title}</span>
+                        </p>
+                        <p className="text-[10px] text-neutral-600 font-inter mt-0.5">
+                          {topMovieRejections}/{members.length} members rejected this pick
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => myRejection ? void 0 : handleRejectMovie(topMovieId)}
+                        className="px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all hover:scale-105"
+                        style={myRejection
+                          ? { background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", cursor: "default" }
+                          : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.45)" }
+                        }
+                      >
+                        <ThumbsDown className="w-3.5 h-3.5" />
+                        {myRejection ? "You rejected this" : "Reject this pick"}
+                      </button>
+                    </div>
+
+                    {majorityRejected && (
+                      <div className="pt-2 border-t border-red-500/10 space-y-3">
+                        <p className="text-xs text-red-400 font-semibold flex items-center gap-2">
+                          <X className="w-3.5 h-3.5" /> Majority rejected this movie!
+                        </p>
+                        {recommendation ? (
+                          <div
+                            className="p-3 rounded-xl flex items-start gap-3"
+                            style={{ background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.15)" }}
+                          >
+                            {recommendation.posterUrl && (
+                              <img src={recommendation.posterUrl} alt={recommendation.title} className="w-10 h-14 object-cover rounded-lg flex-shrink-0" />
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-[9px] font-black uppercase tracking-widest text-neutral-500 mb-1">Recommendation</p>
+                              <p className="text-sm font-black text-white">{recommendation.title}</p>
+                              <p className="text-[10px] text-neutral-500 font-inter mt-0.5">{recommendation.genre} · {recommendation.language}</p>
+                              <button
+                                onClick={() => { setSelectedMovieVote(recommendation.id); setRecommendation(null); }}
+                                className="mt-2 px-3 py-1.5 rounded-lg text-[10px] font-black flex items-center gap-1.5"
+                                style={{ background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000" }}
+                              >
+                                <CheckCircle className="w-3 h-3" /> Vote for this
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={handleGetRecommendation}
+                            disabled={loadingRec}
+                            className="w-full py-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all hover:scale-[1.02] disabled:opacity-40"
+                            style={{ background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000" }}
+                          >
+                            {loadingRec
+                              ? <div className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                              : <Sparkles className="w-3.5 h-3.5" />
+                            }
+                            Get New Recommendation
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <VotingCard
                   step={2} title="Select Preferred Theatre"
@@ -559,6 +714,88 @@ export const GroupBooking: React.FC = () => {
                 )}
               </div>
             )}
+
+            {/* ── GROUP CHAT PANEL ── */}
+            <div
+              className="rounded-2xl overflow-hidden flex flex-col"
+              style={{ background: "linear-gradient(160deg, #111 0%, #0c0c0c 100%)", border: "1px solid rgba(255,255,255,0.05)", maxHeight: 380 }}
+            >
+              <div className="p-4 border-b flex items-center gap-2" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+                <MessageCircle className="w-4 h-4" style={{ color: "#d4af37" }} />
+                <span className="font-black text-sm text-white">Group Chat</span>
+                <span
+                  className="ml-auto text-[9px] font-black px-2 py-0.5 rounded-full"
+                  style={{ background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.2)", color: "#d4af37" }}
+                >
+                  LIVE
+                </span>
+              </div>
+
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto p-3 space-y-2.5" style={{ minHeight: 180 }}>
+                {chatMessages.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center py-6">
+                    <MessageCircle className="w-8 h-8 mb-2" style={{ color: "rgba(212,175,55,0.15)" }} />
+                    <p className="text-[10px] text-neutral-700 font-inter">No messages yet. Start the discussion!</p>
+                  </div>
+                ) : (
+                  chatMessages.map((msg) => {
+                    const isMe = msg.userId === user?.id;
+                    return (
+                      <div key={msg.id} className={`flex gap-2 ${isMe ? "flex-row-reverse" : ""}`}>
+                        {msg.userProfilePic ? (
+                          <img src={msg.userProfilePic} alt="" className="w-6 h-6 rounded-full flex-shrink-0 mt-0.5" />
+                        ) : (
+                          <div
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-black uppercase flex-shrink-0 mt-0.5"
+                            style={{ background: isMe ? "rgba(212,175,55,0.12)" : "rgba(255,255,255,0.06)", color: isMe ? "#d4af37" : "rgba(255,255,255,0.4)" }}
+                          >
+                            {msg.userFullName.substring(0, 2)}
+                          </div>
+                        )}
+                        <div className={`max-w-[80%] ${isMe ? "items-end" : "items-start"} flex flex-col gap-0.5`}>
+                          {!isMe && (
+                            <span className="text-[8px] font-bold text-neutral-600 px-1">{msg.userFullName.split(" ")[0]}</span>
+                          )}
+                          <div
+                            className="px-3 py-2 rounded-xl text-xs font-inter leading-relaxed"
+                            style={isMe
+                              ? { background: "rgba(212,175,55,0.12)", border: "1px solid rgba(212,175,55,0.2)", color: "#fff" }
+                              : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)" }
+                            }
+                          >
+                            {msg.message}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                <div ref={chatBottomRef} />
+              </div>
+
+              {/* Input */}
+              <div className="p-3 border-t flex gap-2" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+                <input
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
+                  placeholder="Type a message…"
+                  className="flex-1 px-3 py-2 rounded-lg text-xs text-white placeholder-neutral-700 focus:outline-none transition-all font-inter"
+                  style={{ background: "#0a0a0a", border: "1px solid rgba(255,255,255,0.07)" }}
+                  onFocus={(e) => { e.target.style.border = "1px solid rgba(212,175,55,0.3)"; }}
+                  onBlur={(e) => { e.target.style.border = "1px solid rgba(255,255,255,0.07)"; }}
+                />
+                <button
+                  onClick={handleSendMessage}
+                  disabled={!chatInput.trim() || chatSending}
+                  className="p-2 rounded-lg transition-all hover:scale-110 disabled:opacity-30"
+                  style={{ background: "linear-gradient(135deg,#d4af37,#f4d03f)", color: "#000" }}
+                >
+                  <Send className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
