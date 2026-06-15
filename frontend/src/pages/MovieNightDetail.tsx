@@ -106,6 +106,7 @@ export const MovieNightDetail: React.FC = () => {
   const [chatInput, setChatInput] = useState("");
   const [chatSending, setChatSending] = useState(false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
 
   // Live countdown for BOOKED status
   useEffect(() => {
@@ -151,7 +152,12 @@ export const MovieNightDetail: React.FC = () => {
     try {
       const res = await api.get(`/movie-nights/${nightId}/messages`);
       setChatMessages(res.data.messages);
-      setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+      // Scroll within the chat container only — never touch the page scroll position.
+      setTimeout(() => {
+        if (chatScrollRef.current) {
+          chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+        }
+      }, 50);
     } catch { /* silent */ }
   }, [nightId]);
 
@@ -236,7 +242,7 @@ export const MovieNightDetail: React.FC = () => {
         budgetLimit: parseInt(budget) || 300, preferredLocation: location.trim() || undefined,
       });
       setPrefMsg("✓ Preferences saved!");
-      fetchNight();
+      fetchNight(true);
     } catch (e: any) { setPrefMsg(e.response?.data?.error || "Failed to save."); }
     finally { setPrefLoading(false); }
   };
@@ -247,7 +253,7 @@ export const MovieNightDetail: React.FC = () => {
     try {
       await api.post(`/movie-nights/${nightId}/recommend`);
       setActionMsg("Recommendation generated!");
-      fetchNight();
+      fetchNight(true);
     } catch (e: any) { setActionMsg(e.response?.data?.error || "Failed."); }
     finally { setRecLoading(false); }
   };
@@ -258,7 +264,7 @@ export const MovieNightDetail: React.FC = () => {
     try {
       const res = await api.post(`/movie-nights/${nightId}/vote`, { vote: v });
       setActionMsg(res.data.message);
-      fetchNight();
+      fetchNight(true);
     } catch (e: any) { setActionMsg(e.response?.data?.error || "Failed."); }
     finally { setVoteLoading(false); }
   };
@@ -269,7 +275,7 @@ export const MovieNightDetail: React.FC = () => {
     try {
       const res = await api.post(`/movie-nights/${nightId}/contributions/pay`);
       setActionMsg(res.data.message);
-      fetchNight();
+      fetchNight(true);
     } catch (e: any) { setActionMsg(e.response?.data?.error || "Failed."); }
     finally { setPayLoading(false); }
   };
@@ -291,7 +297,7 @@ export const MovieNightDetail: React.FC = () => {
     try {
       await api.post(`/movie-nights/${nightId}/regenerate`);
       setActionMsg("New recommendation generated! Cast your votes.");
-      fetchNight();
+      fetchNight(true);
     } catch (e: any) { setActionMsg(e.response?.data?.error || "Failed."); }
     finally { setRegenLoading(false); }
   };
@@ -302,7 +308,7 @@ export const MovieNightDetail: React.FC = () => {
     setCancelLoading(true); setActionMsg("");
     try {
       await api.post(`/movie-nights/${nightId}/cancel`);
-      fetchNight();
+      fetchNight(true);
     } catch (e: any) { setActionMsg(e.response?.data?.error || "Failed."); }
     finally { setCancelLoading(false); }
   };
@@ -717,15 +723,21 @@ export const MovieNightDetail: React.FC = () => {
 
                 {/* My share highlight */}
                 {myContrib && (
-                  <div className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.18)" }}>
-                    <div>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-neutral-500 mb-0.5">Your Share</p>
-                      <p className="text-2xl font-black" style={{ color: "#d4af37" }}>₹{myContrib.contributionAmount}</p>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.18)" }}>
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-neutral-500 mb-0.5">Your Share</p>
+                        <p className="text-2xl font-black" style={{ color: "#d4af37" }}>₹{myContrib.contributionAmount}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[9px] font-bold text-neutral-500 font-inter">Split across</p>
+                        <p className="text-xs font-black text-white">{contributions.length} members</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-[9px] font-bold text-neutral-500 font-inter">Total split across</p>
-                      <p className="text-xs font-black text-white">{contributions.length} members</p>
-                    </div>
+                    <p className="text-[9px] font-inter px-1 flex items-center gap-1" style={{ color: "rgba(251,146,60,0.55)" }}>
+                      <AlertCircle className="w-2.5 h-2.5 flex-shrink-0" />
+                      Estimated at Regular seat price — final cost may vary by seat category chosen
+                    </p>
                   </div>
                 )}
 
@@ -761,13 +773,20 @@ export const MovieNightDetail: React.FC = () => {
                   ))}
                 </div>
 
-                {/* Mark as paid */}
+                {/* Acknowledge contribution (simulated payment for demo) */}
                 {myContrib && myContrib.status === "PENDING" && status === "PAYMENT_PENDING" && (
-                  <button onClick={handlePay} disabled={payLoading}
-                    className="w-full py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.01] disabled:opacity-40"
-                    style={{ background: "linear-gradient(135deg,#fb923c,#f59e0b)", color: "#000" }}>
-                    {payLoading ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : <><Wallet className="w-4 h-4" />Mark My Contribution as Paid (₹{myContrib.contributionAmount})</>}
-                  </button>
+                  <div className="space-y-2">
+                    <button onClick={handlePay} disabled={payLoading}
+                      className="w-full py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.01] disabled:opacity-40"
+                      style={{ background: "linear-gradient(135deg,#fb923c,#f59e0b)", color: "#000" }}>
+                      {payLoading
+                        ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                        : <><Wallet className="w-4 h-4" />Acknowledge ₹{myContrib.contributionAmount} Contribution</>}
+                    </button>
+                    <p className="text-[9px] text-center font-inter" style={{ color: "rgba(255,255,255,0.2)" }}>
+                      Demo mode — no real payment is charged here
+                    </p>
+                  </div>
                 )}
 
                 {/* Book now */}
@@ -1033,7 +1052,7 @@ export const MovieNightDetail: React.FC = () => {
               </div>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-neutral-800">
+              <div ref={chatScrollRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-neutral-800">
                 {chatMessages.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center gap-2">
                     <MessageCircle className="w-6 h-6 text-neutral-800" />
