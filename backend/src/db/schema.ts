@@ -342,18 +342,37 @@ export const movieNightMembers = pgTable("movie_night_members", {
   userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   role: varchar("role", { length: 50 }).notNull().default("MEMBER"), // ORGANIZER | MEMBER
   joinedAt: timestamp("joined_at").defaultNow().notNull(),
-});
+}, (t) => ({
+  uniqMember: unique("mn_members_night_user_uq").on(t.movieNightId, t.userId),
+}));
 
 export const movieNightPreferences = pgTable("movie_night_preferences", {
   id: serial("id").primaryKey(),
   movieNightId: integer("movie_night_id").references(() => movieNights.id, { onDelete: "cascade" }).notNull(),
   userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  // Denormalized cache kept for convenience; the authoritative, queryable source of
+  // genres is the normalized movie_night_preference_genres table below.
   preferredGenres: text("preferred_genres").notNull().default("[]"), // JSON array of genre strings
   preferredTime: varchar("preferred_time", { length: 20 }).notNull(), // MORNING|AFTERNOON|EVENING|NIGHT
   budgetLimit: integer("budget_limit").notNull(),
   preferredLocation: text("preferred_location"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (t) => ({
+  // One preference row per member per night (enables ON CONFLICT upsert)
+  uniqPref: unique("mn_prefs_night_user_uq").on(t.movieNightId, t.userId),
+}));
+
+// Normalized genre preferences — one row per (member, genre). This satisfies 1NF
+// (atomic values) and lets the recommendation engine score genres with a pure SQL
+// JOIN/aggregate instead of parsing JSON in application code.
+export const movieNightPreferenceGenres = pgTable("movie_night_preference_genres", {
+  id: serial("id").primaryKey(),
+  movieNightId: integer("movie_night_id").references(() => movieNights.id, { onDelete: "cascade" }).notNull(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  genre: varchar("genre", { length: 50 }).notNull(),
+}, (t) => ({
+  uniqGenre: unique("mn_pref_genres_uq").on(t.movieNightId, t.userId, t.genre),
+}));
 
 export const movieNightRecommendations = pgTable("movie_night_recommendations", {
   id: serial("id").primaryKey(),
@@ -374,7 +393,9 @@ export const movieNightVotes = pgTable("movie_night_votes", {
   userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   vote: varchar("vote", { length: 20 }).notNull(), // ACCEPT | REJECT
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (t) => ({
+  uniqVote: unique("mn_votes_night_user_uq").on(t.movieNightId, t.userId),
+}));
 
 // MOVIE NIGHT MESSAGES (in-night group chat)
 export const movieNightMessages = pgTable("movie_night_messages", {
@@ -397,7 +418,9 @@ export const movieNightContributions = pgTable("movie_night_contributions", {
   status: varchar("status", { length: 20 }).notNull().default("PENDING"), // PENDING | PAID
   paymentId: text("payment_id"),
   paidAt: timestamp("paid_at"),
-});
+}, (t) => ({
+  uniqContribution: unique("mn_contrib_night_user_uq").on(t.movieNightId, t.userId),
+}));
 
 // ─── MOVIE NIGHT RELATIONS ────────────────────────────────────────────────────
 

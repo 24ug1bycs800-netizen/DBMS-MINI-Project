@@ -113,6 +113,49 @@ const runMigrations = async () => {
   } catch (err) {
     console.warn("⚠️  Index migration skipped:", (err as Error).message);
   }
+
+  // Movie-night normalization: genres table (1NF) + per-member unique constraints.
+  // Idempotent — safe to run on every boot.
+  try {
+    await db.execute(sql.raw(`
+      CREATE TABLE IF NOT EXISTS movie_night_preference_genres (
+        id SERIAL PRIMARY KEY,
+        movie_night_id INTEGER NOT NULL REFERENCES movie_nights(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        genre VARCHAR(50) NOT NULL
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS mn_pref_genres_uq        ON movie_night_preference_genres (movie_night_id, user_id, genre);
+      CREATE INDEX        IF NOT EXISTS mn_pref_genres_night_idx ON movie_night_preference_genres (movie_night_id);
+
+      DELETE FROM movie_night_members a USING movie_night_members b
+        WHERE a.id > b.id AND a.movie_night_id = b.movie_night_id AND a.user_id = b.user_id;
+      DELETE FROM movie_night_preferences a USING movie_night_preferences b
+        WHERE a.id > b.id AND a.movie_night_id = b.movie_night_id AND a.user_id = b.user_id;
+      DELETE FROM movie_night_votes a USING movie_night_votes b
+        WHERE a.id > b.id AND a.movie_night_id = b.movie_night_id AND a.user_id = b.user_id;
+      DELETE FROM movie_night_contributions a USING movie_night_contributions b
+        WHERE a.id > b.id AND a.movie_night_id = b.movie_night_id AND a.user_id = b.user_id;
+
+      DO $$ BEGIN ALTER TABLE movie_night_members       ADD CONSTRAINT mn_members_night_user_uq UNIQUE (movie_night_id, user_id);
+        EXCEPTION WHEN duplicate_table THEN NULL; WHEN duplicate_object THEN NULL; END $$;
+      DO $$ BEGIN ALTER TABLE movie_night_preferences   ADD CONSTRAINT mn_prefs_night_user_uq   UNIQUE (movie_night_id, user_id);
+        EXCEPTION WHEN duplicate_table THEN NULL; WHEN duplicate_object THEN NULL; END $$;
+      DO $$ BEGIN ALTER TABLE movie_night_votes         ADD CONSTRAINT mn_votes_night_user_uq   UNIQUE (movie_night_id, user_id);
+        EXCEPTION WHEN duplicate_table THEN NULL; WHEN duplicate_object THEN NULL; END $$;
+      DO $$ BEGIN ALTER TABLE movie_night_contributions ADD CONSTRAINT mn_contrib_night_user_uq UNIQUE (movie_night_id, user_id);
+        EXCEPTION WHEN duplicate_table THEN NULL; WHEN duplicate_object THEN NULL; END $$;
+
+      INSERT INTO movie_night_preference_genres (movie_night_id, user_id, genre)
+        SELECT p.movie_night_id, p.user_id, trim(g.value)
+        FROM movie_night_preferences p
+        CROSS JOIN LATERAL json_array_elements_text(p.preferred_genres::json) AS g(value)
+        WHERE trim(g.value) <> ''
+        ON CONFLICT (movie_night_id, user_id, genre) DO NOTHING;
+    `));
+    console.log("✅ Movie-night normalization applied");
+  } catch (err) {
+    console.warn("⚠️  Movie-night normalization skipped:", (err as Error).message);
+  }
 };
 
 const fixSequences = async () => {
@@ -122,7 +165,7 @@ const fixSequences = async () => {
     "reviews", "wishlist", "notifications",
     "movie_nights", "movie_night_members", "movie_night_preferences",
     "movie_night_recommendations", "movie_night_votes", "movie_night_contributions",
-    "movie_night_messages",
+    "movie_night_messages", "movie_night_preference_genres",
   ];
   try {
     await Promise.all(
